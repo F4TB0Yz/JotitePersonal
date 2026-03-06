@@ -37,6 +37,24 @@ Te contactamos porque el paquete con guía {guia} figura en nuestro sistema como
 
 Por favor, ¿podrías confirmarnos si ya tienes el paquete en tus manos o si desconoces la entrega? Esto nos ayuda a cerrar el caso o iniciar la investigación con el mensajero.`,
 
+    confirmacion_simple_formal: `Estimado cliente: {destinatario}, le saludamos de J&T Express Colombia.
+
+Le contactamos para confirmar que el paquete con guía {guia} figura en nuestro sistema como entregado el día {fecha_entrega}, recibido bajo el nombre de {destinatario}.
+
+¿Podría confirmarnos si ya tiene el paquete en sus manos? Esto nos permite validar la información en nuestro sistema.
+
+Quedamos atentos a su respuesta, ¡muchas gracias!`,
+
+    confirmacion_simple_informal: `Hola, {destinatario}
+
+Te saludamos de J&T Express Colombia.
+
+Te contactamos para confirmar que el paquete con guía {guia} figura en nuestro sistema como entregado el día {fecha_entrega}, recibido bajo el nombre de {destinatario}.
+
+¿Podrías confirmarnos si ya tienes el paquete? Esto nos permite validar la info en nuestro sistema.
+
+¡Gracias! 🙏`,
+
     programada_formal: `Estimado cliente: {destinatario}, nos comunicamos de J&T Express Colombia.
 
 Le informamos que su paquete con guía {guia} se encuentra actualmente en proceso de distribución con destino a {ciudad}. Nuestro equipo de logística está trabajando para que la entrega se realice a la brevedad posible en la dirección {direccion}.
@@ -58,7 +76,8 @@ Si necesitas darnos alguna indicación especial o coordinar la entrega, ¡avísa
 
 const CATEGORIES = [
     { id: 'verificacion', label: '🔍 Verificación', description: 'Entrega no reconocida / sin movimiento' },
-    { id: 'confirmacion', label: '✅ Confirmación', description: 'Entregado pero reportado como no recibido' },
+    { id: 'confirmacion', label: '✅ Confirmación con novedad', description: 'Entregado pero reportado como no recibido' },
+    { id: 'confirmacion_simple', label: '📋 Confirmación simple', description: 'Confirmar entrega sin reporte de novedad' },
     { id: 'programada',   label: '📦 Entrega programada', description: 'Paquete en tránsito / próximo a entregar' }
 ];
 
