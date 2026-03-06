@@ -89,13 +89,24 @@ function saveTemplates(templates) {
     } catch { /* ignore */ }
 }
 
+function formatDate(raw) {
+    if (!raw || raw === 'N/A') return '';
+    try {
+        const d = new Date(raw.replace(' ', 'T'));
+        if (isNaN(d)) return raw;
+        const day = d.getDate();
+        const months = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+        return `${day} de ${months[d.getMonth()]}`;
+    } catch { return raw; }
+}
+
 function interpolate(template, vars) {
     return template
         .replace(/\{destinatario\}/g, vars.destinatario || '___')
         .replace(/\{guia\}/g, vars.guia || '___')
         .replace(/\{ciudad\}/g, vars.ciudad || '___')
         .replace(/\{direccion\}/g, vars.direccion || '___')
-        .replace(/\{fecha_entrega\}/g, vars.fecha_entrega || '___')
+        .replace(/\{fecha_entrega\}/g, formatDate(vars.fecha_entrega) || '___')
         .replace(/\{remitente\}/g, vars.remitente || '___');
 }
 
@@ -285,7 +296,7 @@ export default function FloatingMessageTemplates() {
                                 <div className="msg-tpl-data-pills">
                                     ${waybillData.destinatario ? html`<span className="msg-pill">👤 ${waybillData.destinatario}</span>` : null}
                                     ${waybillData.ciudad ? html`<span className="msg-pill">📍 ${waybillData.ciudad}</span>` : null}
-                                    ${waybillData.fecha_entrega ? html`<span className="msg-pill">📅 ${waybillData.fecha_entrega}</span>` : null}
+                                    ${waybillData.fecha_entrega ? html`<span className="msg-pill">📅 ${formatDate(waybillData.fecha_entrega)}</span>` : null}
                                 </div>
                             ` : null}
                         </div>
