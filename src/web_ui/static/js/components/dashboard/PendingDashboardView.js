@@ -40,11 +40,35 @@ function getPackageStatus(record) {
     return resolveValue([record.statusName, record.status, record.waybillStatusName], 'Pendiente');
 }
 
+function pickFirstDate(record, fields, fallback = 'Sin Fecha') {
+    for (const field of fields) {
+        const value = record?.[field];
+        if (value && value !== 'N/A') return value;
+    }
+    return fallback;
+}
+
 function getPackageDateByMode(record, dateMode, dateModes) {
     if (dateMode === dateModes.assignment) {
-        return record.deliveryScanTimeLatest || 'Sin Fecha';
+        return pickFirstDate(record, [
+            'deliveryScanTimeLatest',
+            'dispatchTime',
+            'assignTime',
+            'operateTime',
+            'createTime',
+            'updateTime',
+            'scanTime'
+        ]);
     }
-    return record.destArrivalTime || 'Sin Fecha';
+    return pickFirstDate(record, [
+        'destArrivalTime',
+        'arrivalTime',
+        'arriveTime',
+        'inboundTime',
+        'dispatchTime',
+        'operateTime',
+        'updateTime'
+    ]);
 }
 
 function getSortTimestamp(value) {

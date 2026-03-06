@@ -16,11 +16,35 @@ function normalizeDate(value) {
     return value.split(' ')[0];
 }
 
+function pickFirstDate(record, fields) {
+    for (const field of fields) {
+        const value = record?.[field];
+        if (value && value !== 'N/A') return value;
+    }
+    return '';
+}
+
 function getRecordDateValue(record, mode) {
     if (mode === DATE_MODE_ASSIGNMENT) {
-        return record.deliveryScanTimeLatest || '';
+        return pickFirstDate(record, [
+            'deliveryScanTimeLatest',
+            'dispatchTime',
+            'assignTime',
+            'operateTime',
+            'createTime',
+            'updateTime',
+            'scanTime'
+        ]);
     }
-    return record.destArrivalTime;
+    return pickFirstDate(record, [
+        'destArrivalTime',
+        'arrivalTime',
+        'arriveTime',
+        'inboundTime',
+        'dispatchTime',
+        'operateTime',
+        'updateTime'
+    ]);
 }
 
 export function usePendingDashboard() {
