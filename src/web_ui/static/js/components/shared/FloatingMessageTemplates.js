@@ -152,7 +152,7 @@ export default function FloatingMessageTemplates() {
         const handler = (e) => {
             const d = e?.detail;
             if (!d) return;
-            setWaybillData({
+            const initialData = {
                 destinatario: d.receiver || '',
                 guia: d.waybill_no || '',
                 ciudad: d.city || '',
@@ -160,12 +160,28 @@ export default function FloatingMessageTemplates() {
                 fecha_entrega: (d.delivery_time && d.delivery_time !== 'N/A') ? d.delivery_time : '',
                 firmante: d.signer_name || '',
                 remitente: d.sender || ''
-            });
+            };
+            setWaybillData(initialData);
             setWaybillInput(d.waybill_no || '');
             setDataError('');
             setEditing(false);
             setCopied(false);
             setIsOpen(true);
+
+            // Auto-fetch signer and date from tracking if missing
+            if (d.waybill_no && (!initialData.firmante || !initialData.fecha_entrega)) {
+                post('/api/waybills/details', { waybills: [d.waybill_no] })
+                    .then((resp) => {
+                        const detail = resp?.[d.waybill_no];
+                        if (!detail) return;
+                        setWaybillData((prev) => ({
+                            ...prev,
+                            firmante: prev.firmante || detail.signerName || '',
+                            fecha_entrega: prev.fecha_entrega || detail.lastEventTime || ''
+                        }));
+                    })
+                    .catch(() => {});
+            }
         };
         window.addEventListener('open-message-templates', handler);
         return () => window.removeEventListener('open-message-templates', handler);
