@@ -162,23 +162,23 @@ export default function FloatingReprintButton() {
 
                             <div className="reprint-cards">
                                 ${waybillItems.length
-            ? waybillItems.map((waybill) => html`
-                                        <div className="reprint-card" key=${waybill}>
-                                            <span className="reprint-code">${waybill}</span>
+            ? waybillItems.map((item) => html`
+                                        <div className="reprint-card" key=${item}>
+                                            <span className="reprint-code">${item}</span>
                                             <div className="reprint-card-actions">
                                                 <button
                                                     type="button"
                                                     className="reprint-btn"
-                                                    onClick=${() => handleReprintOne(waybill)}
-                                                    disabled=${bulkLoading || loadingWaybill === waybill}
+                                                    onClick=${() => handleReprintOne(item)}
+                                                    disabled=${bulkLoading || loadingWaybill === item}
                                                 >
-                                                    ${loadingWaybill === waybill ? 'Generando…' : 'Reimprimir'}
+                                                    ${loadingWaybill === item ? 'Generando…' : 'Reimprimir'}
                                                 </button>
                                                 <button
                                                     type="button"
                                                     className="reprint-btn reprint-btn-danger"
-                                                    onClick=${() => removeWaybill(waybill)}
-                                                    disabled=${bulkLoading || loadingWaybill === waybill}
+                                                    onClick=${() => removeWaybill(item)}
+                                                    disabled=${bulkLoading || loadingWaybill === item}
                                                 >
                                                     Quitar
                                                 </button>

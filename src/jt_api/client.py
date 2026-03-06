@@ -61,7 +61,7 @@ class JTClient:
     def get_order_detail(self, waybill_no):
         payload = {
             "waybillNo": waybill_no,
-            "countryId": self.config["countryId"]
+            "countryId": self.config.get("countryId", "1")
         }
         return self._post("/order/getOrderDetail", payload)
 
@@ -69,7 +69,7 @@ class JTClient:
         payload = {
             "keywordList": [waybill_no],
             "trackingTypeEnum": "WAYBILL",
-            "countryId": self.config["countryId"]
+            "countryId": self.config.get("countryId", "1")
         }
         return self._post("/podTracking/inner/query/keywordList", payload)
 

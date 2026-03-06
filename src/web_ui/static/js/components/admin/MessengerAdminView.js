@@ -357,7 +357,7 @@ export default function MessengerAdminView() {
                         value=${searchTerm}
                         onChange=${(e) => setSearchTerm(e.target.value)}
                         placeholder="Buscar por Nombre, Apellido o Código..."
-                        autocomplete="off"
+                        autoComplete="off"
                     />
                     ${dropdownOpen
             ? html`<ul className="autocomplete-dropdown">

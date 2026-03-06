@@ -25,7 +25,7 @@ function AlertEntry({ alert, thresholdBase, onShowBarcode }) {
                     <p className="temu-alert-entry-label">Guía</p>
                     <h4>${alert.billcode || 'Sin guía'}</h4>
                 </div>
-                <AlertStatusBadge status=${alert.status} />
+                <${AlertStatusBadge} status=${alert.status} />
             </header>
             ${html`<${AlertChips}
                 customer=${alert.customerName || 'Cliente desconocido'}

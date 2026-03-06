@@ -117,7 +117,7 @@ export default function KpiDashboardView({ isActive }) {
                                 </thead>
                                 <tbody>
                                     ${ranking.length === 0
-                                        ? html`<tr><td colspan="4" className="kpi-empty">Sin datos en el rango.</td></tr>`
+                                        ? html`<tr><td colSpan="4" className="kpi-empty">Sin datos en el rango.</td></tr>`
                                         : ranking.map((item) => html`
                                             <tr>
                                                 <td>${item.account_name || item.account_code || 'Sin nombre'}</td>
@@ -165,7 +165,7 @@ export default function KpiDashboardView({ isActive }) {
                                 </thead>
                                 <tbody>
                                     ${trend.length === 0
-                                        ? html`<tr><td colspan="5" className="kpi-empty">Sin tendencia para mostrar.</td></tr>`
+                                        ? html`<tr><td colSpan="5" className="kpi-empty">Sin tendencia para mostrar.</td></tr>`
                                         : trend.map((item) => html`
                                             <tr>
                                                 <td>${item.date}</td>

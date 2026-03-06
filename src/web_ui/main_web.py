@@ -464,7 +464,12 @@ async def get_waybill_timeline(waybill_no: str, max_age_minutes: int = 30):
             "events": response_events,
         }
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        return {
+            "waybill_no": normalized_wb,
+            "current_status": "Desconocido",
+            "events": [],
+            "error": str(exc),
+        }
 
 # ---------------------------------------------------------
 # WebSocket endpoint para procesamiento en tiempo real
@@ -693,7 +698,7 @@ async def get_network_waybills(req: dict = Body(...)):
 
         return {"records": enriched_records}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"records": [], "error": str(e)}
 
 
 @app.get("/api/alerts/temu")
