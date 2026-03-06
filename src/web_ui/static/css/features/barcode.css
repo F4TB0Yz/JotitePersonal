@@ -194,6 +194,55 @@
     z-index: 211;
 }
 
+.floating-phone-wrapper {
+    position: fixed;
+    right: 20px;
+    bottom: 148px;
+    z-index: 212;
+}
+
+.floating-phone-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent-color);
+    color: #fff;
+    font-size: 22px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.floating-phone-btn:hover {
+    transform: translateY(-2px);
+    background: var(--accent-hover);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
+}
+
+.floating-phone-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.floating-phone-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.floating-phone-input-row .form-input {
+    flex: 1;
+}
+
+.floating-phone-result {
+    color: var(--text-main);
+    margin: 0;
+}
+
 .floating-reprint-btn {
     width: 52px;
     height: 52px;
@@ -346,5 +395,9 @@
 
     .floating-reprint-wrapper {
         bottom: calc(var(--bottom-bar-height) + 80px);
+    }
+
+    .floating-phone-wrapper {
+        bottom: calc(var(--bottom-bar-height) + 144px);
     }
 }
