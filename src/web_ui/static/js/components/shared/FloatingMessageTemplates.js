@@ -126,7 +126,7 @@ export default function FloatingMessageTemplates() {
                 guia: d.waybill_no || '',
                 ciudad: d.city || '',
                 direccion: d.address || '',
-                fecha_entrega: d.delivery_time || '',
+                fecha_entrega: (d.delivery_time && d.delivery_time !== 'N/A') ? d.delivery_time : '',
                 remitente: d.sender || ''
             });
             setWaybillInput(d.waybill_no || '');
