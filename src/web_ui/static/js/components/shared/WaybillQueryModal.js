@@ -1,5 +1,6 @@
 import { html, useState, useEffect, useRef } from '../../lib/ui.js';
 import { fetchWaybillTimeline } from '../../services/timelineService.js';
+import { fetchWaybillPhotos, getPhotosDownloadUrl } from '../../services/photosService.js';
 import WaybillTimeline from './WaybillTimeline.js';
 
 export default function WaybillQueryModal() {
@@ -11,6 +12,9 @@ export default function WaybillQueryModal() {
     const [timeline, setTimeline] = useState([]);
     const [timelineLoading, setTimelineLoading] = useState(false);
     const [timelineError, setTimelineError] = useState('');
+    const [photos, setPhotos] = useState([]);
+    const [photosLoading, setPhotosLoading] = useState(false);
+    const [photosError, setPhotosError] = useState('');
     const socketRef = useRef(null);
 
     useEffect(() => {
@@ -69,6 +73,29 @@ export default function WaybillQueryModal() {
             .finally(() => setTimelineLoading(false));
     }, [result?.waybill_no]);
 
+    useEffect(() => {
+        const waybillNo = result?.waybill_no;
+        if (!waybillNo || !result?.is_delivered) {
+            setPhotos([]);
+            setPhotosError('');
+            setPhotosLoading(false);
+            return;
+        }
+
+        setPhotosLoading(true);
+        setPhotosError('');
+        fetchWaybillPhotos(waybillNo)
+            .then((payload) => {
+                setPhotos(payload?.photos || []);
+                if (payload?.error) setPhotosError(payload.error);
+            })
+            .catch((err) => {
+                setPhotos([]);
+                setPhotosError(err?.message || 'No se pudieron cargar las fotos.');
+            })
+            .finally(() => setPhotosLoading(false));
+    }, [result?.waybill_no, result?.is_delivered]);
+
     const handleSearch = (targetWaybill = waybillInput) => {
         try {
             const wb = targetWaybill.trim().toUpperCase();
@@ -80,6 +107,9 @@ export default function WaybillQueryModal() {
             setTimeline([]);
             setTimelineError('');
             setTimelineLoading(false);
+            setPhotos([]);
+            setPhotosError('');
+            setPhotosLoading(false);
 
             // Usamos el WebSocket de procesamiento para consultar la guia individualmente
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -183,6 +213,9 @@ export default function WaybillQueryModal() {
         setTimeline([]);
         setTimelineError('');
         setTimelineLoading(false);
+        setPhotos([]);
+        setPhotosError('');
+        setPhotosLoading(false);
         if (socketRef.current) {
             socketRef.current.close();
             socketRef.current = null;
@@ -274,6 +307,33 @@ export default function WaybillQueryModal() {
                                 loading=${timelineLoading}
                                 error=${timelineError}
                             />
+
+                            ${result.is_delivered ? html`
+                                <section className="delivery-photos-section">
+                                    <div className="delivery-photos-header">
+                                        <h4>📸 Fotos de entrega</h4>
+                                        ${photos.length > 0 ? html`
+                                            <a
+                                                href=${getPhotosDownloadUrl(result.waybill_no)}
+                                                download
+                                                className="form-btn secondary photos-download-btn"
+                                            >⬇ Descargar ZIP</a>
+                                        ` : null}
+                                    </div>
+                                    ${photosLoading ? html`<p className="photos-state">Cargando fotos...</p>` : null}
+                                    ${photosError && !photosLoading ? html`<p className="photos-state error">${photosError}</p>` : null}
+                                    ${!photosLoading && photos.length > 0 ? html`
+                                        <div className="photos-grid">
+                                            ${photos.map((url, i) => html`
+                                                <a key=${i} href=${url} target="_blank" rel="noopener noreferrer" className="photo-thumb-link">
+                                                    <img src=${url} alt=${'Foto ' + (i + 1)} className="photo-thumb" loading="lazy" />
+                                                </a>
+                                            `)}
+                                        </div>
+                                    ` : null}
+                                    ${!photosLoading && !photosError && photos.length === 0 ? html`<p className="photos-state">Sin fotos disponibles.</p>` : null}
+                                </section>
+                            ` : null}
                         </div>
                     ` : null}
 

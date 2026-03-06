@@ -1,10 +1,12 @@
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body, Form, UploadFile, File, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import os
+import io
 import json
+import zipfile
 import concurrent.futures
 import shutil
 import re
@@ -15,6 +17,7 @@ import base64
 import hashlib
 import hmac
 from datetime import datetime
+from urllib.parse import urlparse
 
 from src.jt_api.client import JTClient
 from src.services.report_service import ReportService
@@ -1148,6 +1151,119 @@ async def delete_settlement(settlement_id: int):
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+# ---------------------------------------------------------
+# Fotos de entrega
+
+_PHOTO_ALLOWED_DOMAINS = frozenset({
+    "pro-jmsco-file.jtexpress.co",
+    "jmsco-file.jtexpress.co",
+})
+
+
+def _find_signing_event(tracking_data: list) -> tuple[str | None, str | None]:
+    """Retorna (scanTime, scanByCode) del primer evento de firma/entrega."""
+    for item in (tracking_data[0].get("details") or [] if tracking_data else []):
+        scan_by = (
+            item.get("scanByCode")
+            or item.get("staffCode")
+            or item.get("scanBy")
+        )
+        status = (item.get("status") or "").lower()
+        type_name = (item.get("scanTypeName") or "").lower()
+        if scan_by and (
+            "firmado" in status
+            or "signing" in type_name
+            or "firmado" in type_name
+        ):
+            return item.get("scanTime"), scan_by
+    return None, None
+
+
+@app.get("/api/waybills/{waybill_no}/photos")
+async def get_waybill_photos(waybill_no: str):
+    normalized_wb = (waybill_no or "").strip().upper()
+    if not normalized_wb:
+        raise HTTPException(status_code=400, detail="Waybill requerido")
+
+    try:
+        client = JTClient()
+        tracking = client.get_tracking_list(normalized_wb)
+        data = tracking.get("data") or []
+        scan_time, scan_by_code = _find_signing_event(data)
+
+        if not scan_time or not scan_by_code:
+            return {"waybill_no": normalized_wb, "photos": [], "error": "No se encontró evento de firma/entrega"}
+
+        photos_resp = client.get_delivery_photos(normalized_wb, scan_time, scan_by_code)
+
+        if photos_resp.get("code") != 1:
+            return {
+                "waybill_no": normalized_wb,
+                "photos": [],
+                "error": photos_resp.get("msg", "Error al consultar fotos"),
+            }
+
+        return {
+            "waybill_no": normalized_wb,
+            "photos": photos_resp.get("data") or [],
+            "scan_time": scan_time,
+        }
+    except Exception as exc:
+        return {"waybill_no": normalized_wb, "photos": [], "error": str(exc)}
+
+
+@app.get("/api/waybills/{waybill_no}/photos/download")
+async def download_waybill_photos(waybill_no: str):
+    import requests as _requests
+
+    normalized_wb = (waybill_no or "").strip().upper()
+    if not normalized_wb:
+        raise HTTPException(status_code=400, detail="Waybill requerido")
+
+    try:
+        client = JTClient()
+        tracking = client.get_tracking_list(normalized_wb)
+        data = tracking.get("data") or []
+        scan_time, scan_by_code = _find_signing_event(data)
+
+        if not scan_time or not scan_by_code:
+            raise HTTPException(status_code=404, detail="No se encontró evento de firma/entrega")
+
+        photos_resp = client.get_delivery_photos(normalized_wb, scan_time, scan_by_code)
+
+        if photos_resp.get("code") != 1:
+            raise HTTPException(
+                status_code=502,
+                detail=photos_resp.get("msg", "Error al consultar fotos"),
+            )
+
+        photos = photos_resp.get("data") or []
+        if not photos:
+            raise HTTPException(status_code=404, detail="No hay fotos disponibles para esta guía")
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for idx, url in enumerate(photos, start=1):
+                parsed = urlparse(url)
+                if parsed.hostname not in _PHOTO_ALLOWED_DOMAINS:
+                    continue
+                resp = _requests.get(url, timeout=20)
+                resp.raise_for_status()
+                ext = parsed.path.rsplit(".", 1)[-1] if "." in parsed.path else "jpg"
+                zf.writestr(f"{normalized_wb}_foto_{idx}.{ext}", resp.content)
+
+        buf.seek(0)
+        return StreamingResponse(
+            buf,
+            media_type="application/zip",
+            headers={"Content-Disposition": f'attachment; filename="{normalized_wb}_fotos_entrega.zip"'},
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
 
 @app.put("/api/novedades/{novedad_id}/status")
 async def update_novedad_status(novedad_id: int, payload: dict = Body(...)):

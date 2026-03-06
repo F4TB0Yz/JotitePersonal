@@ -320,3 +320,13 @@ class JTClient:
             extra_headers={"routeName": "Centerforplay"},
         )
 
+    def get_delivery_photos(self, waybill_no, scan_time, scan_by_code, img_type=2):
+        payload = {
+            "waybillNo": waybill_no,
+            "scanTime": scan_time,
+            "scanByCode": scan_by_code,
+            "imgType": img_type,
+            "countryId": self.config.get("countryId", "1"),
+        }
+        return self._post("/podTracking/img/path", payload)
+

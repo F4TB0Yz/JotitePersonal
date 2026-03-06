@@ -201,3 +201,66 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ── Fotos de entrega ── */
+.delivery-photos-section {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-color);
+}
+
+.delivery-photos-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.delivery-photos-header h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.photos-download-btn {
+    font-size: 0.78rem;
+    padding: 4px 10px;
+    text-decoration: none;
+}
+
+.photos-state {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin: 6px 0;
+}
+
+.photos-state.error {
+    color: var(--danger-color, #e74c3c);
+}
+
+.photos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.photo-thumb-link {
+    display: block;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    transition: opacity 0.15s;
+}
+
+.photo-thumb-link:hover {
+    opacity: 0.85;
+}
+
+.photo-thumb {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+}
+
