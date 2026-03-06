@@ -11,6 +11,7 @@ import WaybillQueryModal from './components/shared/WaybillQueryModal.js';
 import FloatingBarcodeScanner from './components/shared/FloatingBarcodeScanner.js';
 import FloatingReprintButton from './components/shared/FloatingReprintButton.js';
 import FloatingPhoneLookup from './components/shared/FloatingPhoneLookup.js';
+import FloatingMessageTemplates from './components/shared/FloatingMessageTemplates.js';
 import CommandPalette from './components/shared/CommandPalette.js';
 import { initNotificationSocket, stopNotificationSocket } from './services/notificationService.js';
 
@@ -89,7 +90,7 @@ export default function App() {
             <${BottomTabBar} activeView=${activeView} onChange=${setActiveView} />
             <${NovedadesModal} />
             <${WaybillQueryModal} />
-            ${activeView === 'reportes' ? html`<${FloatingPhoneLookup} /><${FloatingReprintButton} /><${FloatingBarcodeScanner} />` : null}
+            ${activeView === 'reportes' ? html`<${FloatingMessageTemplates} /><${FloatingPhoneLookup} /><${FloatingReprintButton} /><${FloatingBarcodeScanner} />` : null}
             <${CommandPalette} />
         </div>
     `;

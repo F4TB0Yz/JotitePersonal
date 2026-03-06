@@ -146,6 +146,25 @@
     color: #dbeafe;
 }
 
+.action-btn-message {
+    width: 100%;
+    margin-top: 6px;
+    background: rgba(16, 185, 129, 0.12);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    padding: 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.action-btn-message:hover {
+    background: rgba(16, 185, 129, 0.25);
+    color: #a7f3d0;
+}
+
 .card-phone-value {
     margin: 8px 0 0;
     color: var(--text-main);
@@ -206,6 +225,12 @@
     }
 
     .action-btn-phone {
+        min-height: var(--touch-target-min);
+        padding: 10px 6px;
+        font-size: 0.9em;
+    }
+
+    .action-btn-message {
         min-height: var(--touch-target-min);
         padding: 10px 6px;
         font-size: 0.9em;

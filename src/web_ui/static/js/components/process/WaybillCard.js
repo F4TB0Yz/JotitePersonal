@@ -114,6 +114,13 @@ export default function WaybillCard({ data, showArribo }) {
                 ${phoneState.error
             ? html`<p className="card-phone-error no-print">${phoneState.error}</p>`
             : null}
+                <button
+                    className="action-btn-message no-print"
+                    title="Generar mensaje para el cliente"
+                    onClick=${() => window.dispatchEvent(new CustomEvent('open-message-templates', { detail: { waybill_no: data.waybill_no, receiver: data.receiver, city: data.city, address: data.address, delivery_time: data.delivery_time, sender: data.sender || '' } }))}
+                >
+                    💬 Mensaje
+                </button>
                 <button 
                     className="action-btn-novedad no-print" 
                     title="Añadir Novedad"
