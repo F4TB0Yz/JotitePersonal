@@ -65,25 +65,24 @@ class WaybillReprintPayload(BaseModel):
 
 @app.post("/api/config/token")
 async def update_token(payload: TokenUpdate):
-    initialize_database()
     session = SessionLocal()
 
     try:
-        token_config = session.get(ConfigORM, "authToken")
+        token_record = session.query(ConfigORM).filter_by(key="authToken").first()
 
-        if token_config and token_config.value == payload.authToken:
-            return {"status": "unchanged", "message": "El token ya está actualizado"}
-
-        if token_config:
-            token_config.value = payload.authToken
+        if token_record:
+            if token_record.value == payload.authToken:
+                return {"status": "unchanged", "message": "El token ya está actualizado"}
+            token_record.value = payload.authToken
         else:
-            session.add(ConfigORM(key="authToken", value=payload.authToken))
+            new_token = ConfigORM(key="authToken", value=payload.authToken)
+            session.add(new_token)
 
         session.commit()
-        return {"status": "success", "message": "Token actualizado correctamente"}
+        return {"status": "success", "message": "Token guardado en Postgres como Dios manda"}
     except Exception as e:
         session.rollback()
-        raise HTTPException(status_code=500, detail=f"Error al actualizar el token: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()
 

@@ -1,26 +1,33 @@
+import os
 import requests
 import json
 
-from src.infrastructure.database.connection import SessionLocal, initialize_database
+from src.infrastructure.database.connection import SessionLocal
 from src.infrastructure.database.models import ConfigORM
 
 class JTClient:
     def __init__(self, config_path="config.json"):
-        with open(config_path, "r") as f:
-            self.config = json.load(f)
+        self.config = {
+            "baseUrl": "https://gw.jtexpress.co/operatingplatform",
+            "lang": "es"
+        }
 
-        db_auth_token = None
-        fallback_auth_token = self.config.get("authToken")
+        if os.path.exists(config_path):
+            with open(config_path, "r", encoding="utf-8") as f:
+                self.config.update(json.load(f))
+
+        token_record = None
+        session = None
         try:
-            initialize_database()
-            with SessionLocal() as session:
-                token_config = session.get(ConfigORM, "authToken")
-                if token_config and token_config.value:
-                    db_auth_token = token_config.value
+            session = SessionLocal()
+            token_record = session.query(ConfigORM).filter_by(key="authToken").first()
         except Exception:
-            db_auth_token = None
+            token_record = None
+        finally:
+            if session:
+                session.close()
 
-        auth_token = db_auth_token or fallback_auth_token
+        auth_token = token_record.value if token_record else self.config.get("authToken", "")
         
         self.base_url = self.config.get("baseUrl", "https://gw.jtexpress.co/operatingplatform")
         self.network_base_url = "https://gw.jtexpress.co/networkmanagement"
@@ -30,10 +37,10 @@ class JTClient:
             "Accept": "application/json, text/plain, */*",
             "Content-Type": "application/json;charset=UTF-8",
             "authToken": auth_token,
-            "lang": self.config["lang"],
-            "langType": self.config["lang"],
+            "lang": self.config.get("lang", "es"),
+            "langType": self.config.get("lang", "es"),
             "routeName": "trackingExpress",
-            "timezone": self.config["timezone"],
+            "timezone": self.config.get("timezone", "America/Bogota"),
             "Origin": "https://jms.jtexpress.co",
             "Referer": "https://jms.jtexpress.co/",
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
