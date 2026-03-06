@@ -543,6 +543,7 @@ async def get_waybills_details(payload: WaybillList):
         return {}
 
     client = JTClient()
+    report_service = ReportService(client)
     results = {}
 
     def extract_detail(wb):
@@ -581,6 +582,21 @@ async def get_waybills_details(payload: WaybillList):
                 or details.get("consigneePhone")
             )
 
+            sign_time = details.get("signTime") or order_info.get("signTime") or ""
+
+            # Fallback: extract date from "Paquete firmado" tracking event
+            if not sign_time:
+                try:
+                    events = report_service.get_timeline(wb, max_age_minutes=60)
+                    for event in events:
+                        type_lower = (event.type_name or "").lower()
+                        if "paquete firmado" in type_lower or "firmado" in type_lower:
+                            if event.time:
+                                sign_time = event.time
+                                break
+                except Exception:
+                    pass
+
             return wb, {
                 "waybillNo": wb,
                 "receiverName": receiver_name,
@@ -589,7 +605,7 @@ async def get_waybills_details(payload: WaybillList):
                 "receiverPhone": receiver_phone,
                 "status": status,
                 "weight": details.get("packageChargeWeight") or order_info.get("packageChargeWeight"),
-                "lastEventTime": details.get("signTime") or order_info.get("signTime")
+                "lastEventTime": sign_time
             }
         except Exception:
             return wb, None
