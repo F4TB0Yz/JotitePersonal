@@ -75,7 +75,7 @@ export default function WaybillQueryModal() {
 
     useEffect(() => {
         const waybillNo = result?.waybill_no;
-        if (!waybillNo) {
+        if (!waybillNo || !result?.is_delivered) {
             setPhotos([]);
             setPhotosError('');
             setPhotosLoading(false);
@@ -94,7 +94,7 @@ export default function WaybillQueryModal() {
                 setPhotosError(err?.message || 'No se pudieron cargar las fotos.');
             })
             .finally(() => setPhotosLoading(false));
-    }, [result?.waybill_no]);
+    }, [result?.waybill_no, result?.is_delivered]);
 
     const handleSearch = (targetWaybill = waybillInput) => {
         try {
@@ -302,13 +302,8 @@ export default function WaybillQueryModal() {
                                 </div>
                             ` : null}
 
-                            <${WaybillTimeline}
-                                events=${timeline}
-                                loading=${timelineLoading}
-                                error=${timelineError}
-                            />
-
-                            <section className="delivery-photos-section">
+                            ${result.is_delivered ? html`
+                                <section className="delivery-photos-section">
                                     <div className="delivery-photos-header">
                                         <h4>📸 Fotos de entrega</h4>
                                         ${photos.length > 0 ? html`
@@ -332,6 +327,13 @@ export default function WaybillQueryModal() {
                                     ` : null}
                                     ${!photosLoading && !photosError && photos.length === 0 ? html`<p className="photos-state">Sin fotos disponibles.</p>` : null}
                                 </section>
+                            ` : null}
+
+                            <${WaybillTimeline}
+                                events=${timeline}
+                                loading=${timelineLoading}
+                                error=${timelineError}
+                            />
                         </div>
                     ` : null}
 
