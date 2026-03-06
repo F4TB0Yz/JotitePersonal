@@ -582,21 +582,22 @@ async def get_waybills_details(payload: WaybillList):
             )
 
             sign_time = details.get("signTime") or order_info.get("signTime") or ""
+            signer_name = ""
 
-            # Fallback: extract date from "Paquete firmado" tracking event
-            if not sign_time:
-                try:
-                    tracking_resp = client.get_tracking_list(wb)
-                    tracking_data = tracking_resp.get("data", [])
-                    if tracking_data:
-                        for item in tracking_data[0].get("details", []):
-                            scan_type = (item.get("scanTypeName") or "").lower()
-                            if "paquete firmado" in scan_type or "firmado" in scan_type:
+            # Fallback: extract date and signer from "Paquete firmado" tracking event
+            try:
+                tracking_resp = client.get_tracking_list(wb)
+                tracking_data = tracking_resp.get("data", [])
+                if tracking_data:
+                    for item in tracking_data[0].get("details", []):
+                        scan_type = (item.get("scanTypeName") or "").lower()
+                        if "paquete firmado" in scan_type or "firmado" in scan_type:
+                            if not sign_time:
                                 sign_time = item.get("scanTime") or ""
-                                if sign_time:
-                                    break
-                except Exception as e:
-                    print(f"[waybills/details] Tracking fallback error for {wb}: {e}")
+                            signer_name = (item.get("remark3") or "").strip()
+                            break
+            except Exception as e:
+                print(f"[waybills/details] Tracking fallback error for {wb}: {e}")
 
             return wb, {
                 "waybillNo": wb,
@@ -606,7 +607,8 @@ async def get_waybills_details(payload: WaybillList):
                 "receiverPhone": receiver_phone,
                 "status": status,
                 "weight": details.get("packageChargeWeight") or order_info.get("packageChargeWeight"),
-                "lastEventTime": sign_time
+                "lastEventTime": sign_time,
+                "signerName": signer_name
             }
         except Exception:
             return wb, None

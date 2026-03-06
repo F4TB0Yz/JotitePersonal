@@ -23,7 +23,7 @@ Te contactamos para verificar tu envío {guia}. Por un ajuste en la logística e
 
     confirmacion_formal: `Estimado cliente: {destinatario}, le saludamos de J&T Express Colombia.
 
-Le contactamos porque el paquete con guía {guia} figura en nuestro sistema como entregado el día {fecha_entrega}, recibido bajo el nombre de {destinatario}. Sin embargo, tenemos un reporte de novedad por falta de entrega.
+Le contactamos porque el paquete con guía {guia} figura en nuestro sistema como entregado el día {fecha_entrega}, recibido bajo el nombre de {firmante}. Sin embargo, tenemos un reporte de novedad por falta de entrega.
 
 ¿Podría confirmarnos si ya tiene el paquete en sus manos o si desconoce la entrega? Esto nos ayuda a cerrar el caso o iniciar la investigación con el mensajero.
 
@@ -33,13 +33,13 @@ Quedamos atentos a su respuesta.`,
 
 Te saludamos de J&T Express Colombia.
 
-Te contactamos porque el paquete con guía {guia} figura en nuestro sistema como entregado el día {fecha_entrega}, recibido bajo el nombre de {destinatario}. Sin embargo, tenemos un reporte de novedad por falta de entrega.
+Te contactamos porque el paquete con guía {guia} figura en nuestro sistema como entregado el día {fecha_entrega}, recibido bajo el nombre de {firmante}. Sin embargo, tenemos un reporte de novedad por falta de entrega.
 
 Por favor, ¿podrías confirmarnos si ya tienes el paquete en tus manos o si desconoces la entrega? Esto nos ayuda a cerrar el caso o iniciar la investigación con el mensajero.`,
 
     confirmacion_simple_formal: `Estimado cliente: {destinatario}, le saludamos de J&T Express Colombia.
 
-Le contactamos para confirmar que el paquete con guía {guia} figura en nuestro sistema como entregado el día {fecha_entrega}, recibido bajo el nombre de {destinatario}.
+Le contactamos para confirmar que el paquete con guía {guia} figura en nuestro sistema como entregado el día {fecha_entrega}, recibido bajo el nombre de {firmante}.
 
 ¿Podría confirmarnos si ya tiene el paquete en sus manos? Esto nos permite validar la información en nuestro sistema.
 
@@ -49,7 +49,7 @@ Quedamos atentos a su respuesta, ¡muchas gracias!`,
 
 Te saludamos de J&T Express Colombia.
 
-Te contactamos para confirmar que el paquete con guía {guia} figura en nuestro sistema como entregado el día {fecha_entrega}, recibido bajo el nombre de {destinatario}.
+Te contactamos para confirmar que el paquete con guía {guia} figura en nuestro sistema como entregado el día {fecha_entrega}, recibido bajo el nombre de {firmante}.
 
 ¿Podrías confirmarnos si ya tienes el paquete? Esto nos permite validar la info en nuestro sistema.
 
@@ -126,6 +126,7 @@ function interpolate(template, vars) {
         .replace(/\{ciudad\}/g, vars.ciudad || '___')
         .replace(/\{direccion\}/g, vars.direccion || '___')
         .replace(/\{fecha_entrega\}/g, formatDate(vars.fecha_entrega) || '___')
+        .replace(/\{firmante\}/g, vars.firmante || '___')
         .replace(/\{remitente\}/g, vars.remitente || '___');
 }
 
@@ -157,6 +158,7 @@ export default function FloatingMessageTemplates() {
                 ciudad: d.city || '',
                 direccion: d.address || '',
                 fecha_entrega: (d.delivery_time && d.delivery_time !== 'N/A') ? d.delivery_time : '',
+                firmante: d.signer_name || '',
                 remitente: d.sender || ''
             });
             setWaybillInput(d.waybill_no || '');
@@ -174,7 +176,7 @@ export default function FloatingMessageTemplates() {
     const isCustom = templates[templateKey] !== DEFAULT_TEMPLATES[templateKey];
 
     const vars = waybillData || {
-        destinatario: '', guia: '', ciudad: '', direccion: '', fecha_entrega: '', remitente: ''
+        destinatario: '', guia: '', ciudad: '', direccion: '', fecha_entrega: '', firmante: '', remitente: ''
     };
     const previewText = interpolate(currentTemplate, vars);
 
@@ -205,6 +207,7 @@ export default function FloatingMessageTemplates() {
                 ciudad: detail.receiverCity || '',
                 direccion: detail.receiverAddress || '',
                 fecha_entrega: detail.lastEventTime || '',
+                firmante: detail.signerName || '',
                 remitente: ''
             });
         } catch (err) {
@@ -259,6 +262,7 @@ export default function FloatingMessageTemplates() {
         { tag: '{ciudad}', label: 'Ciudad' },
         { tag: '{direccion}', label: 'Dirección' },
         { tag: '{fecha_entrega}', label: 'Fecha entrega' },
+        { tag: '{firmante}', label: 'Quien recibió' },
         { tag: '{remitente}', label: 'Remitente' }
     ];
 
@@ -316,6 +320,7 @@ export default function FloatingMessageTemplates() {
                                     ${waybillData.destinatario ? html`<span className="msg-pill">👤 ${waybillData.destinatario}</span>` : null}
                                     ${waybillData.ciudad ? html`<span className="msg-pill">📍 ${waybillData.ciudad}</span>` : null}
                                     ${waybillData.fecha_entrega ? html`<span className="msg-pill">📅 ${formatDate(waybillData.fecha_entrega)}</span>` : null}
+                                    ${waybillData.firmante ? html`<span className="msg-pill">✍️ ${waybillData.firmante}</span>` : null}
                                 </div>
                             ` : null}
                         </div>
