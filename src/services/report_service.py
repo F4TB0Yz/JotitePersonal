@@ -13,6 +13,17 @@ class ReportService:
         initialize_database()
 
     @staticmethod
+    def _is_signed_event(event: "TrackingEvent") -> bool:
+        """Detecta evento de entrega/firma sin importar si viene en 'status' o 'type_name'."""
+        status = (event.status or "").lower()
+        type_name = (event.type_name or "").lower()
+        return (
+            "firmado" in status
+            or "paquete firmado" in type_name
+            or "firmado" in type_name
+        )
+
+    @staticmethod
     def _parse_tracking_events(tracking_json: dict) -> list[TrackingEvent]:
         tracking_data = tracking_json.get("data", [])
         events = []
@@ -130,7 +141,7 @@ class ReportService:
 
         # Consolidar (Tomar el evento más reciente)
         last_event = events[0] if events else None
-        is_delivered = last_event.status == "Firmado" if last_event else False
+        is_delivered = self._is_signed_event(last_event) if last_event else False
         
         # Buscar fechas específicas
         arrival_punto6 = "N/A"
@@ -141,7 +152,7 @@ class ReportService:
             if "Cund-Punto6" in event.network_name and "Descarga" in event.type_name:
                 arrival_punto6 = event.time
             # Fecha de entrega (Firmado)
-            if event.status == "Firmado":
+            if self._is_signed_event(event):
                 delivery_date = event.time
 
         return ConsolidatedReportRow(
