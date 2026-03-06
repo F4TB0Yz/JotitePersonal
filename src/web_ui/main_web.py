@@ -543,7 +543,6 @@ async def get_waybills_details(payload: WaybillList):
         return {}
 
     client = JTClient()
-    report_service = ReportService(client)
     results = {}
 
     def extract_detail(wb):
@@ -587,15 +586,17 @@ async def get_waybills_details(payload: WaybillList):
             # Fallback: extract date from "Paquete firmado" tracking event
             if not sign_time:
                 try:
-                    events = report_service.get_timeline(wb, max_age_minutes=60)
-                    for event in events:
-                        type_lower = (event.type_name or "").lower()
-                        if "paquete firmado" in type_lower or "firmado" in type_lower:
-                            if event.time:
-                                sign_time = event.time
-                                break
-                except Exception:
-                    pass
+                    tracking_resp = client.get_tracking_list(wb)
+                    tracking_data = tracking_resp.get("data", [])
+                    if tracking_data:
+                        for item in tracking_data[0].get("details", []):
+                            scan_type = (item.get("scanTypeName") or "").lower()
+                            if "paquete firmado" in scan_type or "firmado" in scan_type:
+                                sign_time = item.get("scanTime") or ""
+                                if sign_time:
+                                    break
+                except Exception as e:
+                    print(f"[waybills/details] Tracking fallback error for {wb}: {e}")
 
             return wb, {
                 "waybillNo": wb,
