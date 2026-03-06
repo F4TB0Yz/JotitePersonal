@@ -1,5 +1,5 @@
 import { html, useState, useEffect, useRef } from '../../lib/ui.js';
-import { apiFetch } from '../../services/http.js';
+import { post } from '../../services/http.js';
 
 /* ─── Default templates: 3 categories × 2 tones ─── */
 const DEFAULT_TEMPLATES = {
@@ -166,11 +166,7 @@ export default function FloatingMessageTemplates() {
         setLoadingData(true);
         setDataError('');
         try {
-            const resp = await apiFetch('/api/waybills/details', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ waybills: [wb] })
-            });
+            const resp = await post('/api/waybills/details', { waybills: [wb] });
             const detail = resp[wb];
             if (!detail) { setDataError('No se encontraron datos para esta guía.'); return; }
             setWaybillData({
