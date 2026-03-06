@@ -173,6 +173,7 @@ export default function FloatingMessageTemplates() {
                 post('/api/waybills/details', { waybills: [d.waybill_no] })
                     .then((resp) => {
                         const detail = resp?.[d.waybill_no];
+                        console.log('[MessageTemplates] auto-fetch detail:', detail);
                         if (!detail) return;
                         setWaybillData((prev) => ({
                             ...prev,
@@ -215,7 +216,9 @@ export default function FloatingMessageTemplates() {
         setDataError('');
         try {
             const resp = await post('/api/waybills/details', { waybills: [wb] });
+            console.log('[MessageTemplates] /api/waybills/details response:', resp);
             const detail = resp[wb];
+            console.log('[MessageTemplates] detail for', wb, ':', detail);
             if (!detail) { setDataError('No se encontraron datos para esta guía.'); return; }
             setWaybillData({
                 destinatario: detail.receiverName || '',

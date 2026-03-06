@@ -584,18 +584,30 @@ async def get_waybills_details(payload: WaybillList):
             sign_time = details.get("signTime") or order_info.get("signTime") or ""
             signer_name = ""
 
-            # Fallback: extract date and signer from "Paquete firmado" tracking event
+            # Fallback: extract date and signer from tracking events
             try:
                 tracking_resp = client.get_tracking_list(wb)
                 tracking_data = tracking_resp.get("data", [])
                 if tracking_data:
-                    for item in tracking_data[0].get("details", []):
+                    tracking_items = tracking_data[0].get("details", [])
+                    # First pass: look for a "firmado" event (preferred)
+                    for item in tracking_items:
                         scan_type = (item.get("scanTypeName") or "").lower()
-                        if "paquete firmado" in scan_type or "firmado" in scan_type:
+                        if "firmado" in scan_type:
                             if not sign_time:
                                 sign_time = item.get("scanTime") or ""
                             signer_name = (item.get("remark3") or "").strip()
                             break
+                    # Second pass: if still no signer, use the last item with a non-empty remark3
+                    if not signer_name:
+                        for item in reversed(tracking_items):
+                            candidate = (item.get("remark3") or "").strip()
+                            if candidate:
+                                signer_name = candidate
+                                if not sign_time:
+                                    sign_time = item.get("scanTime") or ""
+                                break
+                print(f"[waybills/details] {wb}: sign_time={sign_time!r}, signer_name={signer_name!r}")
             except Exception as e:
                 print(f"[waybills/details] Tracking fallback error for {wb}: {e}")
 
