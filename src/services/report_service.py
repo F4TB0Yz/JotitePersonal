@@ -141,23 +141,33 @@ class ReportService:
 
         # Consolidar (Tomar el evento más reciente)
         last_event = events[0] if events else None
-        is_delivered = self._is_signed_event(last_event) if last_event else False
-        
+        # is_delivered es True si CUALQUIER evento es de firma, no solo el primero
+        is_delivered = any(self._is_signed_event(e) for e in events)
+
         # Buscar fechas específicas
         arrival_punto6 = "N/A"
         delivery_date = "N/A"
-        
+        signing_event = None
+
         for event in events:
             # Arribo a Punto 6 (Descarga TR1/2 en Cund-Punto6)
             if "Cund-Punto6" in event.network_name and "Descarga" in event.type_name:
                 arrival_punto6 = event.time
-            # Fecha de entrega (Firmado)
-            if self._is_signed_event(event):
+            # Fecha de entrega (Firmado) — guardar el evento de firma
+            if self._is_signed_event(event) and signing_event is None:
                 delivery_date = event.time
+                signing_event = event
+
+        # El status mostrado debe reflejar la firma si existe
+        display_status = (
+            signing_event.type_name if signing_event
+            else (last_event.status or last_event.type_name) if last_event
+            else "Desconocido"
+        )
 
         return ConsolidatedReportRow(
             waybill_no=waybill_no,
-            status=last_event.status if last_event else "Desconocido",
+            status=display_status,
             order_source=details.get("orderSourceName", "N/A"),
             sender=details.get("senderName", "N/A"),
             receiver=details.get("receiverName", "N/A"),
