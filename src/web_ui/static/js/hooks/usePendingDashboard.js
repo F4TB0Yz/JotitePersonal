@@ -30,7 +30,11 @@ function getRecordDateValue(record, mode) {
             'deliveryScanTimeLatest',
             'dispatchTime',
             'assignTime',
+            'deliveryTime',
             'operateTime',
+            'destArrivalTime',
+            'dateTime',
+            'deadLineTime',
             'createTime',
             'updateTime',
             'scanTime'

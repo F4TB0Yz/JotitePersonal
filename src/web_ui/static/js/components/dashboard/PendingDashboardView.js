@@ -54,7 +54,11 @@ function getPackageDateByMode(record, dateMode, dateModes) {
             'deliveryScanTimeLatest',
             'dispatchTime',
             'assignTime',
+            'deliveryTime',
             'operateTime',
+            'destArrivalTime',
+            'dateTime',
+            'deadLineTime',
             'createTime',
             'updateTime',
             'scanTime'
