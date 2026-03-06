@@ -21,6 +21,7 @@ class TrackingEvent:
     staff_contact: Optional[str] = None
     status: str = ""
     content: str = ""
+    code: Optional[int] = None
 
 @dataclass
 class AbnormalScan:

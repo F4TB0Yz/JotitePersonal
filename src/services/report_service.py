@@ -14,13 +14,19 @@ class ReportService:
 
     @staticmethod
     def _is_signed_event(event: "TrackingEvent") -> bool:
-        """Detecta evento de entrega/firma sin importar si viene en 'status' o 'type_name'."""
+        """Detecta evento de entrega/firma sin importar idioma del status.
+        code=100 es el código universal de J&T para 'Paquete firmado'.
+        """
+        if event.code == 100:
+            return True
         status = (event.status or "").lower()
         type_name = (event.type_name or "").lower()
         return (
             "firmado" in status
             or "paquete firmado" in type_name
             or "firmado" in type_name
+            # Código chino para firmado por si acaso
+            or "签收" in (event.status or "")
         )
 
     @staticmethod
@@ -36,7 +42,8 @@ class ReportService:
                     staff_name=item.get("staffName") or item.get("scanByName"),
                     staff_contact=item.get("staffContact"),
                     status=item.get("status") or "",
-                    content=item.get("waybillTrackingContent") or ""
+                    content=item.get("waybillTrackingContent") or "",
+                    code=item.get("code"),
                 ))
         return events
 

@@ -596,7 +596,14 @@ async def get_waybills_details(payload: WaybillList):
                     # First pass: look for a "firmado" event (preferred)
                     for item in tracking_items:
                         scan_type = (item.get("scanTypeName") or "").lower()
-                        if "firmado" in scan_type:
+                        item_status = (item.get("status") or "")
+                        is_signed = (
+                            item.get("code") == 100
+                            or "firmado" in scan_type
+                            or "签收" in item_status
+                            or "firmado" in item_status.lower()
+                        )
+                        if is_signed:
                             if not sign_time:
                                 sign_time = item.get("scanTime") or ""
                             signer_name = (item.get("remark3") or "").strip()
@@ -1162,17 +1169,22 @@ _PHOTO_ALLOWED_DOMAINS = frozenset({
 
 
 def _find_signing_event(tracking_data: list) -> tuple[str | None, str | None]:
-    """Retorna (scanTime, scanByCode) del primer evento de firma/entrega."""
+    """Retorna (scanTime, scanByCode) del primer evento de firma/entrega.
+    Usa code==100 como detección principal (language-agnostic).
+    """
     for item in (tracking_data[0].get("details") or [] if tracking_data else []):
         scan_by = (
             item.get("scanByCode")
             or item.get("staffCode")
             or item.get("scanBy")
         )
+        code = item.get("code")
         status = (item.get("status") or "").lower()
         type_name = (item.get("scanTypeName") or "").lower()
         if scan_by and (
-            "firmado" in status
+            code == 100
+            or "firmado" in status
+            or "签收" in (item.get("status") or "")
             or "signing" in type_name
             or "firmado" in type_name
         ):
