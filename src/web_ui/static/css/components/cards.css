@@ -127,6 +127,40 @@
     transition: all 0.2s;
 }
 
+.action-btn-phone {
+    width: 100%;
+    margin-top: 10px;
+    background: rgba(59, 130, 246, 0.12);
+    color: #93c5fd;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    padding: 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.action-btn-phone:hover {
+    background: rgba(59, 130, 246, 0.25);
+    color: #dbeafe;
+}
+
+.card-phone-value {
+    margin: 8px 0 0;
+    color: var(--text-main);
+    font-size: 0.9em;
+    font-weight: 600;
+    text-align: center;
+}
+
+.card-phone-error {
+    margin: 8px 0 0;
+    color: #ff7b72;
+    font-size: 0.85em;
+    text-align: center;
+}
+
 .action-btn-novedad:hover {
     background: var(--accent-color);
     color: white;
@@ -166,6 +200,12 @@
 
     /* Proper touch target for novedad button */
     .action-btn-novedad {
+        min-height: var(--touch-target-min);
+        padding: 10px 6px;
+        font-size: 0.9em;
+    }
+
+    .action-btn-phone {
         min-height: var(--touch-target-min);
         padding: 10px 6px;
         font-size: 0.9em;

@@ -1,6 +1,14 @@
-import { html } from '../../lib/ui.js';
+import { html, useState } from '../../lib/ui.js';
+import { fetchWaybillPhones } from '../../services/addressService.js';
 
 export default function WaybillCard({ data, showArribo }) {
+    const [phoneState, setPhoneState] = useState({
+        loading: false,
+        value: '',
+        visible: false,
+        error: ''
+    });
+
     const isDelivered = data.is_delivered;
     const isError = data.status === 'Error';
     const cardFilterClass = isError ? 'card-error' : isDelivered ? 'card-delivered' : 'card-pending';
@@ -21,6 +29,35 @@ export default function WaybillCard({ data, showArribo }) {
             </div>
         `;
     }
+
+    const handlePhoneClick = () => {
+        if (phoneState.loading) return;
+
+        if (phoneState.value) {
+            setPhoneState((prev) => ({ ...prev, visible: !prev.visible, error: '' }));
+            return;
+        }
+
+        setPhoneState({ loading: true, value: '', visible: false, error: '' });
+        fetchWaybillPhones([data.waybill_no])
+            .then((response) => {
+                const phone = response?.[data.waybill_no] || '';
+                setPhoneState({
+                    loading: false,
+                    value: phone,
+                    visible: Boolean(phone),
+                    error: phone ? '' : 'Teléfono no disponible'
+                });
+            })
+            .catch((err) => {
+                setPhoneState({
+                    loading: false,
+                    value: '',
+                    visible: false,
+                    error: err.message || 'No se pudo consultar teléfono'
+                });
+            });
+    };
 
     const arriboDate = data.arrival_punto6_time && data.arrival_punto6_time !== 'N/A' ? data.arrival_punto6_time.split(' ')[0] : '';
 
@@ -60,6 +97,23 @@ export default function WaybillCard({ data, showArribo }) {
                     : null}
             </div>
             <div className="card-footer-actions">
+                <button
+                    className="action-btn-phone no-print"
+                    title="Ver teléfono del destinatario"
+                    onClick=${handlePhoneClick}
+                >
+                    ${phoneState.loading
+            ? 'Consultando teléfono…'
+            : phoneState.visible
+                ? '📞 Ocultar teléfono'
+                : '📞 Ver teléfono'}
+                </button>
+                ${phoneState.visible && phoneState.value
+            ? html`<p className="card-phone-value no-print">${phoneState.value}</p>`
+            : null}
+                ${phoneState.error
+            ? html`<p className="card-phone-error no-print">${phoneState.error}</p>`
+            : null}
                 <button 
                     className="action-btn-novedad no-print" 
                     title="Añadir Novedad"
