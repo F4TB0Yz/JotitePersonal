@@ -98,3 +98,10 @@ class SettlementORM(Base):
     status = Column(String, nullable=False, default="borrador")
     detail_json = Column(Text, nullable=True)
     generated_at = Column(DateTime, server_default=func.current_timestamp(), nullable=False)
+
+
+class ConfigORM(Base):
+    __tablename__ = "configuracion"
+
+    key = Column(String, primary_key=True)
+    value = Column(String, nullable=False)

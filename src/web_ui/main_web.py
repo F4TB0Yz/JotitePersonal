@@ -20,6 +20,8 @@ from src.services.notification_service import notification_manager
 from src.services.novedades_service import novedades_service
 from src.services.settlement_service import SettlementService
 from src.services.kpi_service import kpi_service
+from src.infrastructure.database.connection import SessionLocal, initialize_database
+from src.infrastructure.database.models import ConfigORM
 
 app = FastAPI(title="J&T Express Web Reporter")
 
@@ -63,25 +65,27 @@ class WaybillReprintPayload(BaseModel):
 
 @app.post("/api/config/token")
 async def update_token(payload: TokenUpdate):
-    config_path = "config.json" 
-    if not os.path.exists(config_path):
-        raise HTTPException(status_code=404, detail="El archivo config.json no existe")
-        
+    initialize_database()
+    session = SessionLocal()
+
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
-            config_data = json.load(f)
-            
-        if "authToken" in config_data and config_data["authToken"] == payload.authToken:
+        token_config = session.get(ConfigORM, "authToken")
+
+        if token_config and token_config.value == payload.authToken:
             return {"status": "unchanged", "message": "El token ya está actualizado"}
-            
-        config_data["authToken"] = payload.authToken
-        
-        with open(config_path, "w", encoding="utf-8") as f:
-            json.dump(config_data, f, indent=4)
-            
+
+        if token_config:
+            token_config.value = payload.authToken
+        else:
+            session.add(ConfigORM(key="authToken", value=payload.authToken))
+
+        session.commit()
         return {"status": "success", "message": "Token actualizado correctamente"}
     except Exception as e:
+        session.rollback()
         raise HTTPException(status_code=500, detail=f"Error al actualizar el token: {str(e)}")
+    finally:
+        session.close()
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 templates_dir = os.path.join(os.path.dirname(__file__), "templates")

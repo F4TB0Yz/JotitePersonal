@@ -12,6 +12,8 @@ DEFAULT_DATABASE_URL = f"sqlite:///{DEFAULT_SQLITE_PATH}"
 def get_database_url() -> str:
     env_url = os.getenv("DATABASE_URL")
     if env_url:
+        if env_url.startswith("postgres://"):
+            env_url = env_url.replace("postgres://", "postgresql://", 1)
         return env_url
 
     config_path = os.path.join(PROJECT_ROOT, "config.json")

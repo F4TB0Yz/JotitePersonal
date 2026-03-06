@@ -1,10 +1,26 @@
 import requests
 import json
 
+from src.infrastructure.database.connection import SessionLocal, initialize_database
+from src.infrastructure.database.models import ConfigORM
+
 class JTClient:
     def __init__(self, config_path="config.json"):
         with open(config_path, "r") as f:
             self.config = json.load(f)
+
+        db_auth_token = None
+        fallback_auth_token = self.config.get("authToken")
+        try:
+            initialize_database()
+            with SessionLocal() as session:
+                token_config = session.get(ConfigORM, "authToken")
+                if token_config and token_config.value:
+                    db_auth_token = token_config.value
+        except Exception:
+            db_auth_token = None
+
+        auth_token = db_auth_token or fallback_auth_token
         
         self.base_url = self.config.get("baseUrl", "https://gw.jtexpress.co/operatingplatform")
         self.network_base_url = "https://gw.jtexpress.co/networkmanagement"
@@ -13,7 +29,7 @@ class JTClient:
         self.headers = {
             "Accept": "application/json, text/plain, */*",
             "Content-Type": "application/json;charset=UTF-8",
-            "authToken": self.config["authToken"],
+            "authToken": auth_token,
             "lang": self.config["lang"],
             "langType": self.config["lang"],
             "routeName": "trackingExpress",
