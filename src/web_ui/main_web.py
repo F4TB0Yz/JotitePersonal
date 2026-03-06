@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body, Form, UploadFile, File
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body, Form, UploadFile, File, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import os
@@ -10,6 +10,8 @@ import shutil
 import re
 import asyncio
 import unicodedata
+import secrets
+import hmac
 from datetime import datetime
 
 from src.jt_api.client import JTClient
@@ -25,6 +27,65 @@ from src.infrastructure.database.models import ConfigORM
 
 app = FastAPI(title="J&T Express Web Reporter")
 
+SESSION_COOKIE_NAME = "jt_session"
+ACTIVE_SESSIONS: set[str] = set()
+AUTH_USERNAME = os.getenv("DASHBOARD_USER") or os.getenv("ADMIN_USER") or "admin"
+
+
+def _is_public_path(path: str) -> bool:
+    if path in {"/login", "/api/auth/login", "/api/auth/logout", "/favicon.ico"}:
+        return True
+    return path.startswith("/static/")
+
+
+def _resolve_dashboard_password() -> str | None:
+    env_password = (
+        os.getenv("DASHBOARD_PASSWORD")
+        or os.getenv("ADMIN_PASSWORD")
+        or os.getenv("APP_PASSWORD")
+    )
+    if env_password:
+        return env_password
+
+    session = None
+    try:
+        session = SessionLocal()
+        token_record = session.query(ConfigORM).filter_by(key="authToken").first()
+        if token_record and token_record.value:
+            return token_record.value
+    except Exception:
+        return None
+    finally:
+        if session:
+            session.close()
+
+    return None
+
+
+def _is_authenticated_request(request: Request) -> bool:
+    token = request.cookies.get(SESSION_COOKIE_NAME, "")
+    return bool(token and token in ACTIVE_SESSIONS)
+
+
+def _is_authenticated_websocket(websocket: WebSocket) -> bool:
+    token = websocket.cookies.get(SESSION_COOKIE_NAME, "")
+    return bool(token and token in ACTIVE_SESSIONS)
+
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    path = request.url.path
+    if _is_public_path(path):
+        return await call_next(request)
+
+    if _is_authenticated_request(request):
+        return await call_next(request)
+
+    if path.startswith("/api/"):
+        return JSONResponse(status_code=401, content={"detail": "No autenticado"})
+
+    return RedirectResponse(url="/login", status_code=303)
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -37,6 +98,11 @@ async def shutdown_event():
 
 class TokenUpdate(BaseModel):
     authToken: str
+
+
+class LoginPayload(BaseModel):
+    username: str
+    password: str
 
 
 class RatePayload(BaseModel):
@@ -89,6 +155,53 @@ async def update_token(payload: TokenUpdate):
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 templates_dir = os.path.join(os.path.dirname(__file__), "templates")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+
+@app.get("/login")
+async def serve_login(request: Request):
+    if _is_authenticated_request(request):
+        return RedirectResponse(url="/", status_code=303)
+    return FileResponse(os.path.join(templates_dir, "login.html"))
+
+
+@app.post("/api/auth/login")
+async def login(payload: LoginPayload):
+    expected_password = _resolve_dashboard_password()
+    if not expected_password:
+        raise HTTPException(
+            status_code=503,
+            detail="Login no configurado. Define DASHBOARD_PASSWORD o guarda authToken.",
+        )
+
+    valid_user = hmac.compare_digest(payload.username, AUTH_USERNAME)
+    valid_password = hmac.compare_digest(payload.password, expected_password)
+    if not (valid_user and valid_password):
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
+
+    session_token = secrets.token_urlsafe(32)
+    ACTIVE_SESSIONS.add(session_token)
+
+    response = JSONResponse(content={"status": "success"})
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=session_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=60 * 60 * 12,
+    )
+    return response
+
+
+@app.post("/api/auth/logout")
+async def logout(request: Request):
+    session_token = request.cookies.get(SESSION_COOKIE_NAME, "")
+    if session_token:
+        ACTIVE_SESSIONS.discard(session_token)
+
+    response = JSONResponse(content={"status": "success"})
+    response.delete_cookie(SESSION_COOKIE_NAME)
+    return response
 
 @app.get("/")
 async def serve_index():
@@ -475,6 +588,10 @@ async def get_waybill_timeline(waybill_no: str, max_age_minutes: int = 30):
 # WebSocket endpoint para procesamiento en tiempo real
 @app.websocket("/ws/process")
 async def websocket_process(websocket: WebSocket):
+    if not _is_authenticated_websocket(websocket):
+        await websocket.close(code=1008)
+        return
+
     await websocket.accept()
     
     try:
@@ -761,6 +878,10 @@ async def get_kpis_overview(
 
 @app.websocket("/ws/notifications")
 async def websocket_notifications(websocket: WebSocket):
+    if not _is_authenticated_websocket(websocket):
+        await websocket.close(code=1008)
+        return
+
     await notification_manager.connect(websocket)
     heartbeat_task = None
     try:
