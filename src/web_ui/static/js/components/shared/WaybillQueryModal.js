@@ -75,7 +75,7 @@ export default function WaybillQueryModal() {
 
     useEffect(() => {
         const waybillNo = result?.waybill_no;
-        if (!waybillNo || !result?.is_delivered) {
+        if (!waybillNo) {
             setPhotos([]);
             setPhotosError('');
             setPhotosLoading(false);
@@ -94,7 +94,7 @@ export default function WaybillQueryModal() {
                 setPhotosError(err?.message || 'No se pudieron cargar las fotos.');
             })
             .finally(() => setPhotosLoading(false));
-    }, [result?.waybill_no, result?.is_delivered]);
+    }, [result?.waybill_no]);
 
     const handleSearch = (targetWaybill = waybillInput) => {
         try {
@@ -308,8 +308,7 @@ export default function WaybillQueryModal() {
                                 error=${timelineError}
                             />
 
-                            ${result.is_delivered ? html`
-                                <section className="delivery-photos-section">
+                            <section className="delivery-photos-section">
                                     <div className="delivery-photos-header">
                                         <h4>📸 Fotos de entrega</h4>
                                         ${photos.length > 0 ? html`
@@ -333,7 +332,6 @@ export default function WaybillQueryModal() {
                                     ` : null}
                                     ${!photosLoading && !photosError && photos.length === 0 ? html`<p className="photos-state">Sin fotos disponibles.</p>` : null}
                                 </section>
-                            ` : null}
                         </div>
                     ` : null}
 
