@@ -1,0 +1,60 @@
+/* =========================================================
+   Autocomplete — Dropdown de autocompletado
+   ========================================================= */
+.autocomplete-wrapper {
+    position: relative;
+}
+
+.autocomplete-dropdown {
+    position: absolute;
+    top: calc(100% - 12px);
+    left: 0;
+    right: 0;
+    background: var(--sidebar-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    list-style: none;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: var(--card-shadow);
+    display: block;
+}
+
+.autocomplete-dropdown.hidden {
+    display: none !important;
+}
+
+.autocomplete-dropdown li {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+    font-size: 13px;
+    transition: background 0.1s;
+}
+
+.autocomplete-dropdown li:hover,
+.autocomplete-dropdown li.autocomplete-active {
+    background: rgba(230, 28, 36, 0.2);
+    color: white;
+}
+
+/* ── Mobile responsive ── */
+@media (max-width: 768px) {
+    .autocomplete-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        width: auto;
+        max-height: 50vh;
+        z-index: 500;
+    }
+
+    .autocomplete-dropdown li {
+        padding: 14px 12px;
+        min-height: var(--touch-target-min);
+        font-size: 14px;
+    }
+}

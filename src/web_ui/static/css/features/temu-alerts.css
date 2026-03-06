@@ -1,0 +1,405 @@
+/* =========================================================
+   Temu Alert Center — Centro de alertas Temu
+   ========================================================= */
+
+/* Layout principal */
+.temu-alert-main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 30px;
+    background: radial-gradient(circle at 10% 20%, rgba(230, 28, 36, 0.15), transparent 40%), var(--bg-color);
+}
+
+/* Hero section */
+.temu-alert-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 30px;
+    padding: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    background: linear-gradient(120deg, rgba(22, 27, 34, 0.95), rgba(22, 27, 34, 0.4));
+    box-shadow: var(--card-shadow);
+    margin-bottom: 25px;
+}
+
+.temu-alert-kicker {
+    text-transform: uppercase;
+    font-size: 13px;
+    letter-spacing: 0.18rem;
+    color: var(--accent-color);
+    margin-bottom: 8px;
+}
+
+.temu-alert-hero h2 {
+    font-size: 32px;
+    margin-bottom: 10px;
+}
+
+/* Controles */
+.temu-alert-controls {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    width: 420px;
+}
+
+.temu-alert-controls label {
+    display: flex;
+    flex-direction: column;
+    font-size: 13px;
+    color: var(--text-muted);
+    gap: 6px;
+}
+
+.temu-alert-controls input[type="number"] {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.temu-alert-toggle {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 10px;
+}
+
+.temu-alert-toggle input {
+    width: 20px;
+    height: 20px;
+}
+
+.temu-alert-updated {
+    align-self: center;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+/* Tarjetas de resumen */
+.temu-alert-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.temu-alert-card {
+    padding: 18px;
+    border-radius: 14px;
+    background: var(--card-bg);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.temu-alert-card .card-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.temu-alert-card .card-value {
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.temu-alert-card.danger {
+    border-color: rgba(230, 28, 36, 0.4);
+    background: rgba(230, 28, 36, 0.1);
+}
+
+.temu-alert-card.muted {
+    opacity: 0.8;
+}
+
+.temu-alert-card.outline {
+    border-style: dashed;
+}
+
+/* Error */
+.temu-alert-error {
+    background: rgba(230, 28, 36, 0.15);
+    border: 1px solid rgba(230, 28, 36, 0.3);
+    color: #ffb3b8;
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+/* Paneles */
+.temu-alert-panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 24px;
+    margin-bottom: 30px;
+}
+
+.temu-alert-panel {
+    border-radius: 20px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: linear-gradient(145deg, rgba(15, 18, 27, 0.95), rgba(15, 18, 27, 0.4));
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.temu-alert-panel.critical {
+    border-color: rgba(230, 28, 36, 0.4);
+}
+
+.temu-alert-panel.warning {
+    border-color: rgba(210, 153, 34, 0.4);
+}
+
+.temu-alert-panel header {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.temu-alert-panel-kicker {
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--text-muted);
+}
+
+.temu-alert-panel h3 {
+    font-size: 22px;
+    margin: 6px 0;
+}
+
+.temu-alert-panel p {
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.temu-alert-panel-count {
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.temu-alert-panel-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+}
+
+/* Panel body con scrollbar custom */
+.temu-alert-panel-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: 460px;
+    overflow-y: auto;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(230, 28, 36, 0.5) transparent;
+}
+
+.temu-alert-panel-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.temu-alert-panel-body::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+}
+
+.temu-alert-panel-body::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(230, 28, 36, 0.7), rgba(210, 153, 34, 0.7));
+    border-radius: 10px;
+}
+
+/* Entradas de alerta */
+.temu-alert-entry {
+    border-radius: 18px;
+    padding: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(7, 9, 15, 0.75);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: relative;
+    animation: cardFade 0.35s ease;
+}
+
+.temu-alert-entry::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 18px;
+    pointer-events: none;
+    border: 1px dashed transparent;
+}
+
+.temu-alert-entry.severity-critical::after {
+    border-color: rgba(230, 28, 36, 0.3);
+}
+
+.temu-alert-entry.severity-warning::after {
+    border-color: rgba(210, 153, 34, 0.25);
+}
+
+.temu-alert-entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.temu-alert-entry h4 {
+    font-size: 20px;
+}
+
+.temu-alert-entry-label {
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+}
+
+/* Chips */
+.temu-alert-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.temu-alert-chip {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    font-size: 12px;
+}
+
+.temu-alert-chip.outline {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+}
+
+/* Grid de datos */
+.temu-alert-entry-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+}
+
+.temu-alert-entry-grid dt {
+    text-transform: uppercase;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+}
+
+.temu-alert-entry-grid dd {
+    margin-top: 4px;
+}
+
+.temu-alert-entry-grid strong {
+    font-size: 14px;
+}
+
+.temu-alert-entry-grid span {
+    font-weight: 600;
+}
+
+.temu-alert-entry-grid small {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+/* Botón de barcode */
+.temu-alert-barcode-btn {
+    align-self: flex-start;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: transparent;
+    color: white;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.temu-alert-barcode-btn:hover {
+    background: rgba(230, 28, 36, 0.25);
+    border-color: rgba(230, 28, 36, 0.6);
+}
+
+/* Badges */
+.temu-alert-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+}
+
+.temu-alert-warning {
+    background: rgba(210, 153, 34, 0.2);
+    color: var(--warning);
+}
+
+.temu-alert-breached {
+    background: rgba(230, 28, 36, 0.22);
+    color: var(--accent-color);
+}
+
+.temu-alert-empty {
+    text-align: center;
+    padding: 25px;
+    color: var(--text-muted);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+}
+
+/* ── Mobile responsive ── */
+@media (max-width: 768px) {
+    .temu-alert-main {
+        padding: 16px;
+    }
+
+    .temu-alert-hero {
+        flex-direction: column;
+        gap: 16px;
+        padding: 16px;
+    }
+
+    .temu-alert-controls {
+        width: 100%;
+        grid-template-columns: auto 1fr;
+    }
+
+    .temu-alert-controls input[type="number"] {
+        width: 70px;
+    }
+
+    /* Button and updated-label span both columns */
+    .temu-alert-controls .primary-btn,
+    .temu-alert-updated {
+        grid-column: 1 / -1;
+    }
+
+    .temu-alert-panels {
+        grid-template-columns: 1fr;
+    }
+
+    .temu-alert-cards {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+}

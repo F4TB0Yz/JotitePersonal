@@ -1,0 +1,138 @@
+/* =========================================================
+   Sidebar — Panel lateral izquierdo del procesador
+   ========================================================= */
+.sidebar {
+    width: 330px; /* overridden on mobile */
+    background-color: var(--sidebar-bg);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    z-index: 10;
+    overflow-y: auto;
+}
+
+.sidebar-title {
+    font-size: 16px;
+    color: white;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.logo-container h1 {
+    color: white;
+    font-weight: 700;
+    font-size: 28px;
+}
+
+.logo-container h1 span {
+    color: var(--accent-color);
+}
+
+.logo-container p {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-bottom: 25px;
+}
+
+.sidebar-helper {
+    font-size: 12px;
+    color: var(--text-muted);
+    display: block;
+    margin: 12px 0 6px;
+}
+
+/* Sidebar inputs */
+.sidebar-input {
+    width: 100%;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    border-radius: 6px;
+    padding: 10px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    margin-bottom: 15px;
+}
+
+.sidebar-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+/* Input section */
+.input-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.input-section label {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* Actions section */
+.actions-section {
+    margin-top: auto;
+    border-top: 1px solid var(--border-color);
+    padding-top: 20px;
+}
+
+.actions-section h3 {
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+/* Selector dinámico para ocultar Arribo P6 */
+.hide-arribo .arribo-row {
+    display: none !important;
+}
+
+/* ── Mobile responsive ── */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        padding: var(--spacing-mobile);
+        overflow-y: visible;
+    }
+
+    .sidebar-input {
+        font-size: 16px; /* prevent iOS auto-zoom */
+    }
+
+    /* Limit textarea height so it doesn't push content too far down */
+    .input-section textarea {
+        min-height: 80px;
+        max-height: 120px;
+        font-size: 16px;
+    }
+
+    .input-section {
+        margin-bottom: 12px;
+        gap: 8px;
+    }
+
+    .input-section label {
+        font-size: 13px;
+    }
+
+    .actions-section {
+        margin-top: 14px; /* no push-to-bottom needed in stacked layout */
+        padding-top: 14px;
+    }
+
+    .actions-section h3 {
+        margin-bottom: 6px;
+    }
+
+    .sidebar-title {
+        font-size: 14px;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+    }
+}

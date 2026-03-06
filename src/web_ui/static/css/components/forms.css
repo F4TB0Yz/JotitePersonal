@@ -1,0 +1,153 @@
+/* =========================================================
+   Forms — Inputs, textareas y elementos de formulario
+   ========================================================= */
+textarea {
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    border-radius: 6px;
+    padding: 10px;
+    height: 150px;
+    resize: none;
+    font-family: monospace;
+    font-size: 13px;
+}
+
+textarea:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.form-input {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 10px;
+    border-radius: 6px;
+    width: 100%;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.form-input.textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Form groups */
+.novedad-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-group.row {
+    display: flex;
+    gap: 15px;
+}
+
+.input-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.form-group label {
+    font-size: 0.9em;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+    display: block;
+}
+
+/* File uploads */
+.file-input {
+    color: var(--text-main);
+}
+
+.file-preview-list {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.file-badge {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* Date inputs */
+.date-inputs {
+    display: flex;
+    gap: 8px;
+}
+
+.date-inputs input {
+    flex: 1;
+}
+
+/* Date filter */
+.date-filter.single-range label {
+    font-size: 13px;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.date-filter.dual {
+    display: flex;
+    gap: 10px;
+}
+
+.date-filter.dual label {
+    font-size: 13px;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* ── Mobile responsive ── */
+@media (max-width: 768px) {
+    /* Prevent iOS auto-zoom on focus */
+    input,
+    textarea,
+    select {
+        font-size: 16px !important;
+    }
+
+    /* Stack side-by-side form rows */
+    .form-group.row {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    /* Stack dual date inputs */
+    .date-inputs,
+    .date-filter.dual {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    /* Full-width date filters */
+    .date-filter.single-range,
+    .date-filter.dual {
+        width: 100%;
+    }
+}

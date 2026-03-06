@@ -1,0 +1,123 @@
+/* =========================================================
+   Buttons — Botones reutilizables del sistema
+   ========================================================= */
+.primary-btn {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.primary-btn:hover {
+    background-color: var(--accent-hover);
+}
+
+.primary-btn:disabled {
+    background-color: #555;
+    cursor: not-allowed;
+}
+
+.secondary-btn {
+    width: 100%;
+    background-color: #f0f6fc;
+    color: #000;
+    border: none;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.secondary-btn:hover {
+    background-color: #c9d1d9;
+}
+
+/* Filter buttons (sidebar) */
+.filter-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    padding: 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-btn.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border-color: white;
+}
+
+/* Filter pills (messenger admin) */
+.filter-pill {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+    color: var(--text-main);
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-pill.active {
+    background: rgba(230, 28, 36, 0.15);
+    border-color: var(--accent-color);
+    color: white;
+}
+
+/* Form buttons */
+.form-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+}
+
+.form-btn.primary {
+    background: var(--accent-color);
+    color: white;
+}
+
+.form-btn.primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.form-btn.outline {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+}
+
+.form-btn.outline:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* ── Mobile responsive ── */
+@media (max-width: 768px) {
+    /* Ensure adequate touch targets across all button types */
+    .primary-btn,
+    .secondary-btn,
+    .filter-pill,
+    .form-btn {
+        min-height: var(--touch-target-min);
+    }
+
+    .filter-btn {
+        min-height: var(--touch-target-min);
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+}

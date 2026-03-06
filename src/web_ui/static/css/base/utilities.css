@@ -1,0 +1,80 @@
+/* =========================================================
+   Utilities — Clases utilitarias reutilizables
+   ========================================================= */
+
+/* Visibilidad */
+.hidden {
+    display: none !important;
+}
+
+.hidden-screen {
+    display: none !important;
+}
+
+.no-print {
+    /* Se activa en print: ver print-cards.css */
+}
+
+/* Texto semántico */
+.success-text {
+    color: var(--success);
+}
+
+.warning-text {
+    color: var(--warning);
+}
+
+.mono {
+    font-family: monospace;
+    color: var(--text-muted);
+}
+
+/* Elementos de UI */
+.checkbox-row {
+    font-size: 13px;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    cursor: pointer;
+}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+    .checkbox-row {
+        min-height: var(--touch-target-min);
+        font-size: 14px;
+        margin-bottom: 4px;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+    }
+}
+
+.card-divider {
+    border: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    margin: 6px 0;
+}
+
+.card-error-message {
+    color: var(--accent-color);
+    font-size: 13px;
+}
+
+/* Print root containers */
+#print-root {
+    display: none;
+    margin: 0;
+    padding: 0;
+}
+
+#print-table-report {
+    display: block;
+    margin: 0;
+    padding: 0;
+}

@@ -1,0 +1,134 @@
+/* =========================================================
+   Bottom Tab Bar — Navegación móvil fija en la parte inferior
+   ========================================================= */
+.bottom-tab-bar {
+    display: none; /* hidden on desktop */
+}
+
+/* Mobile hamburger in navbar — hidden on desktop */
+.navbar-mobile-menu-wrap {
+    display: none;
+    position: relative;
+}
+
+.navbar-desktop-only {
+    /* always visible on desktop, hidden on mobile (see @media below) */
+}
+
+/* ── Mobile breakpoint ── */
+@media (max-width: 768px) {
+    /* Show the bar */
+    .bottom-tab-bar {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: var(--bottom-bar-height);
+        background-color: var(--sidebar-bg);
+        border-top: 1px solid var(--border-color);
+        z-index: 50;
+        /* Safe area for iPhones with Home Indicator */
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    /* Show hamburger, hide desktop-only action buttons */
+    .navbar-mobile-menu-wrap {
+        display: block;
+    }
+
+    .navbar-desktop-only {
+        display: none !important;
+    }
+
+    /* Each tab button */
+    .bottom-tab {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 6px 4px;
+        min-height: var(--touch-target-min);
+        transition: color 0.15s;
+    }
+
+    .bottom-tab.active {
+        color: var(--accent-color);
+    }
+
+    .bottom-tab:active {
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    .bottom-tab-icon {
+        font-size: 20px;
+        line-height: 1;
+    }
+
+    .bottom-tab-label {
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+    }
+
+    /* Mobile hamburger button */
+    .navbar-mobile-hamburger {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+        color: var(--text-main);
+        width: 38px;
+        height: 38px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        touch-action: manipulation;
+    }
+
+    /* Dropdown from hamburger */
+    .navbar-mobile-dropdown {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        background: var(--sidebar-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        z-index: 200;
+        min-width: 200px;
+        overflow: hidden;
+    }
+
+    .navbar-mobile-action {
+        display: block;
+        width: 100%;
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-main);
+        padding: 14px 16px;
+        text-align: left;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        min-height: var(--touch-target-min);
+        touch-action: manipulation;
+    }
+
+    .navbar-mobile-action:last-child {
+        border-bottom: none;
+    }
+
+    .navbar-mobile-action:active {
+        background: rgba(255, 255, 255, 0.06);
+    }
+}

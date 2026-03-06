@@ -1,0 +1,97 @@
+.timeline-wrapper {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.timeline-title {
+    margin: 0 0 12px;
+    font-size: 0.95rem;
+    color: var(--text-main);
+}
+
+.timeline-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.timeline-item {
+    display: grid;
+    grid-template-columns: 14px 1fr;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.timeline-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    margin-top: 9px;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
+}
+
+.timeline-dot.delivered {
+    background: var(--success);
+}
+
+.timeline-dot.issue {
+    background: var(--accent-color);
+}
+
+.timeline-dot.in-transit {
+    background: var(--warning);
+}
+
+.timeline-card {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.timeline-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--text-main);
+    font-size: 0.86rem;
+}
+
+.timeline-head span {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.timeline-meta {
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 0.74rem;
+}
+
+.timeline-content {
+    margin: 8px 0 0;
+    color: var(--text-main);
+    font-size: 0.8rem;
+    line-height: 1.35;
+}
+
+.timeline-staff {
+    margin-top: 8px;
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+}
+
+.timeline-state {
+    margin-top: 12px;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.timeline-state.error {
+    color: var(--accent-color);
+}

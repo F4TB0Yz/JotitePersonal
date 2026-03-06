@@ -1,0 +1,50 @@
+from dataclasses import dataclass, field
+from typing import List, Optional
+
+@dataclass
+class JTWaybillDetail:
+    waybill_no: str
+    order_source: str
+    sender_name: str
+    receiver_name: str
+    receiver_city: str
+    weight: float
+    input_time: str
+    dispatch_network: str
+
+@dataclass
+class TrackingEvent:
+    time: str
+    type_name: str
+    network_name: str
+    staff_name: Optional[str] = None
+    staff_contact: Optional[str] = None
+    status: str = ""
+    content: str = ""
+
+@dataclass
+class AbnormalScan:
+    time: str
+    type_name: str
+    remark: Optional[str] = None
+    operator_name: Optional[str] = None
+
+@dataclass
+class ConsolidatedReportRow:
+    waybill_no: str
+    status: str
+    order_source: str
+    sender: str
+    receiver: str
+    city: str
+    weight: float
+    last_event_time: str
+    last_network: str
+    last_staff: str
+    staff_contact: str
+    is_delivered: bool = False
+    arrival_punto6_time: str = "N/A"
+    delivery_time: str = "N/A"
+    address: str = "N/A"
+    exceptions: str = ""
+    last_remark: str = ""

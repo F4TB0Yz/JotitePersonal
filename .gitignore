@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Data
+data/
+*.csv
+*.db
+*.sqlite3
+
+# Config con credenciales
+config.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Patches
+*.patch
+
+# Uploads
+src/web_ui/static/uploads/

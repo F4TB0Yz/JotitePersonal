@@ -1,0 +1,111 @@
+/* =========================================================
+   Tables — Estilos de tabla reutilizables
+   ========================================================= */
+.table-container {
+    background: var(--card-bg);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+    padding: 18px;
+}
+
+.table-container table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-container th,
+.table-container td {
+    padding: 15px;
+    text-align: left;
+}
+
+.table-container thead {
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.table-placeholder {
+    padding: 40px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.table-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: 12px 15px;
+}
+
+.table-scroll {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.table-scroll table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-scroll th,
+.table-scroll td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ── Mobile responsive: table → stacked cards ──
+   Add class "mobile-card-table" to <table> elements
+   that should transform into cards on mobile.
+   Every <td> must have a data-label attribute for the column name.
+   ========================================================= */
+@media (max-width: 768px) {
+    /* Horizontal scroll tables (for tables that DON'T use mobile-card-table) */
+    .table-scroll {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Card transformation */
+    .mobile-card-table thead {
+        display: none;
+    }
+
+    .mobile-card-table tbody tr {
+        display: block;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        margin-bottom: 10px;
+        padding: 10px 14px;
+    }
+
+    .mobile-card-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        font-size: 13px;
+        min-height: 36px;
+    }
+
+    .mobile-card-table td:last-child {
+        border-bottom: none;
+    }
+
+    /* Column label (from data-label attribute) */
+    .mobile-card-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--text-muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        flex-shrink: 0;
+        margin-right: 12px;
+    }
+}

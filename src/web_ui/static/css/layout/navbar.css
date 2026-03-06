@@ -1,0 +1,116 @@
+/* =========================================================
+   Top Navbar — Barra de navegación superior + SPA nav links
+   ========================================================= */
+.top-navbar {
+    height: 60px;
+    background-color: var(--sidebar-bg);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    z-index: 20;
+}
+
+.logo-container-nav h1 {
+    color: white;
+    font-weight: 700;
+    font-size: 22px;
+}
+
+.logo-container-nav h1 span {
+    color: var(--accent-color);
+}
+
+.navbar-title h2 {
+    font-size: 16px;
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
+/* Contenedor derecho del navbar (botones de acción) */
+.navbar-empty {
+    display: flex;
+    gap: 10px;
+    width: auto;
+    min-width: 150px;
+}
+
+/* SPA Navigation Links */
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 15px;
+}
+
+.nav-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.nav-btn:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-btn.active {
+    color: var(--accent-color);
+    background: rgba(230, 28, 36, 0.1);
+}
+
+/* Trigger buttons del navbar */
+.query-trigger-btn,
+.novedades-trigger-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.query-trigger-btn:hover,
+.novedades-trigger-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--text-muted);
+}
+
+.novedades-trigger-btn {
+    color: var(--warning);
+}
+
+/* ── Mobile responsive ── */
+@media (max-width: 768px) {
+    .top-navbar {
+        height: var(--navbar-height-mobile);
+        padding: 0 12px;
+    }
+
+    .logo-container-nav h1 {
+        font-size: 18px;
+    }
+
+    /* Hide desktop navigation — handled by BottomTabBar */
+    .nav-links {
+        display: none;
+    }
+
+    .navbar-empty {
+        gap: 8px;
+        min-width: unset;
+    }
+}

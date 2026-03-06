@@ -1,0 +1,59 @@
+/* =========================================================
+   Animations — Keyframes reutilizables
+   ========================================================= */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes cardFade {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pageFlip {
+    from {
+        opacity: 0;
+        transform: rotateX(-15deg) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: rotateX(0deg) scale(1);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes zoomFromLupa {
+    from {
+        opacity: 0;
+        transform: scale(0.1) translate(0, 0);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translate(0, 0);
+    }
+}
+
+.animate-in {
+    animation: slideUp 0.3s ease-out;
+}

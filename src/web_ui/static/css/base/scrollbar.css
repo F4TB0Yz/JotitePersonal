@@ -1,0 +1,29 @@
+/* =========================================================
+   Scrollbar — Estilos personalizados de scrollbar
+   ========================================================= */
+.sidebar,
+.main-content,
+.view-section {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+}
+
+.sidebar::-webkit-scrollbar,
+.main-content::-webkit-scrollbar,
+.view-section::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.sidebar::-webkit-scrollbar-track,
+.main-content::-webkit-scrollbar-track,
+.view-section::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar::-webkit-scrollbar-thumb,
+.main-content::-webkit-scrollbar-thumb,
+.view-section::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 6px;
+}

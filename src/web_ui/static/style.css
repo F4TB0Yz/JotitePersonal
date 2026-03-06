@@ -1,0 +1,58 @@
+/* =========================================================
+   J&T Express Web UI — CSS Index
+   Arquitectura modular por capas (Clean Architecture)
+
+   Orden de cascada:
+   1. Base     → tokens, reset, scrollbar, utilidades
+   2. Layout   → navbar, app-shell, sidebar
+   3. Components → buttons, cards, modals, forms, autocomplete, stats, tables
+   4. Features → processor, dashboard, temu-alerts, barcode, messenger-admin, novedades, query-modal
+   5. Vendors  → flatpickr overrides
+   6. Print    → print-cards, print-table
+   7. Cross    → animations, responsive
+   ========================================================= */
+
+/* Base */
+@import url('./css/base/variables.css');
+@import url('./css/base/reset.css');
+@import url('./css/base/scrollbar.css');
+@import url('./css/base/utilities.css');
+
+/* Layout */
+@import url('./css/layout/navbar.css');
+@import url('./css/layout/app-shell.css');
+@import url('./css/layout/sidebar.css');
+@import url('./css/layout/bottom-bar.css');
+
+/* Components */
+@import url('./css/components/buttons.css');
+@import url('./css/components/cards.css');
+@import url('./css/components/modals.css');
+@import url('./css/components/forms.css');
+@import url('./css/components/autocomplete.css');
+@import url('./css/components/stats-panel.css');
+@import url('./css/components/tables.css');
+@import url('./css/components/notifications.css');
+
+/* Features */
+@import url('./css/features/processor.css');
+@import url('./css/features/dashboard.css');
+@import url('./css/features/temu-alerts.css');
+@import url('./css/features/barcode.css');
+@import url('./css/features/messenger-admin.css');
+@import url('./css/features/novedades.css');
+@import url('./css/features/query-modal.css');
+@import url('./css/features/timeline.css');
+@import url('./css/features/command-palette.css');
+@import url('./css/features/kpi-dashboard.css');
+
+/* Vendors */
+@import url('./css/vendors/flatpickr.css');
+
+/* Print */
+@import url('./css/print/print-cards.css');
+@import url('./css/print/print-table.css');
+
+/* Cross-cutting */
+@import url('./css/animations.css');
+@import url('./css/responsive.css');

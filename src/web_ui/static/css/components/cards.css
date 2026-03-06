@@ -1,0 +1,177 @@
+/* =========================================================
+   Waybill Cards — Tarjetas de guías (Glassmorphism UI)
+   ========================================================= */
+.waybill-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--card-shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.waybill-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+/* Barra de estado superior */
+.card-status-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+}
+
+.status-delivered .card-status-bar {
+    background-color: var(--success);
+}
+
+.status-pending .card-status-bar {
+    background-color: var(--warning);
+}
+
+.status-error .card-status-bar {
+    background-color: var(--accent-color);
+}
+
+/* Header de la tarjeta */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 10px;
+}
+
+.wb-number {
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+}
+
+.wb-status-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+}
+
+.status-delivered .wb-status-badge {
+    background: rgba(35, 134, 54, 0.2);
+    color: #56d364;
+}
+
+.status-pending .wb-status-badge {
+    background: rgba(210, 153, 34, 0.2);
+    color: #e3b341;
+}
+
+.status-error .wb-status-badge {
+    background: rgba(230, 28, 36, 0.2);
+    color: #ff7b72;
+}
+
+/* Cuerpo de la tarjeta */
+.card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+}
+
+.info-label {
+    color: var(--text-muted);
+    width: 35%;
+}
+
+.info-value {
+    color: var(--text-main);
+    font-weight: 600;
+    width: 65%;
+    text-align: right;
+    word-break: break-word;
+}
+
+.info-value.important {
+    color: white;
+}
+
+/* Footer de la tarjeta */
+.card-footer-actions {
+    padding: 0 15px 10px;
+}
+
+.action-btn-novedad {
+    width: 100%;
+    margin-top: 10px;
+    background: rgba(230, 28, 36, 0.1);
+    color: var(--accent-color);
+    border: 1px solid rgba(230, 28, 36, 0.3);
+    padding: 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.action-btn-novedad:hover {
+    background: var(--accent-color);
+    color: white;
+}
+
+/* ── Mobile responsive ── */
+@media (max-width: 768px) {
+    .waybill-card {
+        padding: 14px 14px 10px;
+    }
+
+    .card-header {
+        margin-bottom: 10px;
+    }
+
+    .wb-number {
+        font-size: 15px;
+    }
+
+    .info-row {
+        font-size: 14px;
+        gap: 6px;
+    }
+
+    /* Wider label on small screens */
+    .info-label {
+        width: 40%;
+    }
+
+    .info-value {
+        width: 60%;
+    }
+
+    .card-body {
+        gap: 10px;
+    }
+
+    /* Proper touch target for novedad button */
+    .action-btn-novedad {
+        min-height: var(--touch-target-min);
+        padding: 10px 6px;
+        font-size: 0.9em;
+    }
+
+    .card-footer-actions {
+        padding: 0 4px 4px;
+    }
+}

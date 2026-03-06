@@ -1,0 +1,59 @@
+/* =========================================================
+   Responsive — Cross-cutting media queries
+   (Feature/component-specific queries live in their own files.)
+   ========================================================= */
+
+/* ── Tablet / large phone (≤ 768px) ── */
+@media (max-width: 768px) {
+    /* Section headings */
+    h2 { font-size: 1.25rem; }
+    h3 { font-size: 1.1rem; }
+
+    /* Ensure every scrollable view respects the Bottom Tab Bar */
+    .view-section.active {
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    /* Global helper: force full width in flex rows on mobile */
+    .mobile-full-width {
+        width: 100% !important;
+        flex: none !important;
+    }
+}
+
+/* ── Phone (≤ 480px) ── */
+@media (max-width: 480px) {
+    /* Tighter padding everywhere */
+    .admin-main,
+    .temu-alert-main {
+        padding: 10px 8px;
+    }
+
+    /* Single-column KPI grids on very small screens */
+    .dashboard-grid,
+    .kpi-cards {
+        grid-template-columns: 1fr;
+    }
+
+    /* Settlement summary: single column */
+    .settlement-summary {
+        grid-template-columns: 1fr;
+    }
+
+    /* Temu alert controls: single column */
+    .temu-alert-controls {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Extra-small (≤ 375px) ── */
+@media (max-width: 375px) {
+    .bottom-tab-label {
+        font-size: 8px;
+    }
+
+    .bottom-tab-icon {
+        font-size: 18px;
+    }
+}
+

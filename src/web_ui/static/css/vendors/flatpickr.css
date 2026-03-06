@@ -1,0 +1,58 @@
+/* =========================================================
+   Flatpickr — Overrides del date picker
+   ========================================================= */
+.flatpickr-interactive-input {
+    min-width: 230px !important;
+    cursor: pointer !important;
+    text-align: center;
+    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%238b949e" viewBox="0 0 16 16"><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/></svg>') no-repeat right 12px center;
+    background-color: var(--bg-color) !important;
+}
+
+.flatpickr-calendar.dark {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange,
+.flatpickr-day.selected.inRange,
+.flatpickr-day.startRange.inRange,
+.flatpickr-day.endRange.inRange,
+.flatpickr-day.selected:focus,
+.flatpickr-day.startRange:focus,
+.flatpickr-day.endRange:focus,
+.flatpickr-day.selected:hover,
+.flatpickr-day.startRange:hover,
+.flatpickr-day.endRange:hover,
+.flatpickr-day.selected.prevMonthDay,
+.flatpickr-day.startRange.prevMonthDay,
+.flatpickr-day.endRange.prevMonthDay,
+.flatpickr-day.selected.nextMonthDay,
+.flatpickr-day.startRange.nextMonthDay,
+.flatpickr-day.endRange.nextMonthDay {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+.flatpickr-calendar.dark .flatpickr-months .flatpickr-month {
+    color: #fff;
+    fill: #fff;
+}
+
+.flatpickr-calendar.dark .flatpickr-current-month .flatpickr-monthDropdown-months {
+    background: var(--card-bg);
+}
+
+.flatpickr-calendar.dark .flatpickr-weekday {
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.flatpickr-day.inRange {
+    background: rgba(230, 28, 36, 0.15) !important;
+    border-color: rgba(230, 28, 36, 0.15) !important;
+    box-shadow: none !important;
+}

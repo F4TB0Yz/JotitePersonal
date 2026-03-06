@@ -1,0 +1,103 @@
+/* =========================================================
+   Processor — Vista de procesamiento de guías
+   ========================================================= */
+
+/* Área de contenido principal */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    background: radial-gradient(circle at top right, #1a1a2e, var(--bg-color));
+}
+
+.header {
+    padding: 20px 30px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.header .subtitle {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+/* Grid de tarjetas */
+.cards-grid {
+    padding: 30px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    align-content: start;
+}
+
+.empty-state {
+    grid-column: 1 / -1;
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+}
+
+/* Filter controls */
+.filter-controls {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 15px;
+}
+
+/* Wrapper pegajoso para botón de imprimir */
+.print-btn-wrapper {
+    position: sticky;
+    bottom: -20px;
+    padding: 15px 0 20px 0;
+    background: linear-gradient(to top, var(--sidebar-bg) 70%, rgba(22, 27, 34, 0));
+    margin-top: 10px;
+    z-index: 5;
+}
+
+/* ── Mobile responsive ── */
+@media (max-width: 768px) {
+    .main-content {
+        height: auto;
+    }
+
+    .header {
+        padding: 14px 12px;
+    }
+
+    .header h2 {
+        font-size: 1.1rem;
+    }
+
+    .cards-grid {
+        grid-template-columns: 1fr;
+        padding: 10px;
+        gap: 10px;
+    }
+
+    .empty-state {
+        height: 180px;
+        font-size: 14px;
+    }
+
+    .print-btn-wrapper {
+        position: static;
+        padding: 10px 0 14px;
+        background: none;
+    }
+
+    /* Filter buttons fill row evenly */
+    .filter-controls {
+        gap: 6px;
+    }
+
+    .filter-controls .filter-btn {
+        flex: 1;
+        font-size: 13px;
+        text-align: center;
+    }
+}

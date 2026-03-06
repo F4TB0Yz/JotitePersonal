@@ -1,0 +1,350 @@
+/* =========================================================
+   Barcode — Overlay de códigos de barras + floating scanner
+   ========================================================= */
+
+/* Overlay */
+.barcode-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 6, 10, 0.9);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    animation: fadeIn 0.3s ease;
+}
+
+/* Ventana principal */
+.barcode-window {
+    width: min(90vw, 720px);
+    border-radius: 24px;
+    padding: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: radial-gradient(circle at top, rgba(230, 28, 36, 0.25), rgba(5, 6, 10, 0.95));
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.65);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.barcode-window header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.barcode-window header p {
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+}
+
+.barcode-close {
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* Carousel */
+.barcode-carousel {
+    background: #f9f9f9;
+    border-radius: 20px;
+    padding: 20px;
+    min-height: 360px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.barcode-slide {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    animation: pageFlip 0.45s ease;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 16px 20px;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.barcode-metadata {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: #4a4a4a;
+}
+
+.barcode-svg {
+    width: 100%;
+    height: 140px;
+}
+
+.barcode-value {
+    font-size: 32px;
+    letter-spacing: 0.2em;
+    font-weight: 700;
+    color: #111;
+}
+
+.barcode-meta-foot {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    color: #4a4a4a;
+}
+
+/* Navegación */
+.barcode-nav {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.barcode-nav:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.barcode-window footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+}
+
+.barcode-empty {
+    color: var(--text-muted);
+}
+
+/* ---- Floating barcode generator ---- */
+.floating-barcode-wrapper {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 210;
+}
+
+.floating-barcode-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent-color);
+    color: #fff;
+    font-size: 24px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.floating-barcode-btn:hover {
+    transform: translateY(-2px);
+    background: var(--accent-hover);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
+}
+
+.barcode-window.quick {
+    width: min(90vw, 520px);
+}
+
+.barcode-carousel.quick {
+    min-height: 220px;
+}
+
+.floating-barcode-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.floating-barcode-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.floating-barcode-input-row .form-input {
+    flex: 1;
+}
+
+.barcode-error {
+    color: #ff5a60;
+    font-size: 0.85em;
+}
+
+.floating-reprint-wrapper {
+    position: fixed;
+    right: 20px;
+    bottom: 84px;
+    z-index: 211;
+}
+
+.floating-reprint-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent-color);
+    color: #fff;
+    font-size: 22px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.floating-reprint-btn:hover {
+    transform: translateY(-2px);
+    background: var(--accent-hover);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
+}
+
+.reprint-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 6, 10, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 220;
+}
+
+.reprint-window {
+    width: min(90vw, 520px);
+    border-radius: 16px;
+    padding: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: radial-gradient(circle at top, rgba(230, 28, 36, 0.16), rgba(5, 6, 10, 0.95));
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.reprint-window header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.reprint-textarea {
+    width: 100%;
+    min-height: 120px;
+    resize: vertical;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-color);
+    color: var(--text-main);
+    padding: 10px;
+}
+
+.reprint-input-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    align-items: stretch;
+}
+
+.reprint-cards {
+    max-height: 280px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 2px;
+}
+
+.reprint-card {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.reprint-code {
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: #e6edf3;
+    word-break: break-all;
+}
+
+.reprint-card-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.reprint-card-actions .reprint-btn {
+    width: auto;
+    padding: 8px 10px;
+}
+
+.reprint-btn {
+    width: auto;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.reprint-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.reprint-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.reprint-btn-primary {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: #fff;
+}
+
+.reprint-btn-primary:hover {
+    background: var(--accent-hover);
+}
+
+.reprint-btn-danger {
+    background: rgba(230, 28, 36, 0.12);
+    border-color: rgba(230, 28, 36, 0.45);
+    color: #ffb3b8;
+}
+
+.reprint-btn-danger:hover {
+    background: rgba(230, 28, 36, 0.2);
+}
+
+/* ── Mobile: lift floating buttons above Bottom Tab Bar ── */
+@media (max-width: 768px) {
+    .floating-barcode-wrapper {
+        bottom: calc(var(--bottom-bar-height) + 16px);
+    }
+
+    .floating-reprint-wrapper {
+        bottom: calc(var(--bottom-bar-height) + 80px);
+    }
+}
