@@ -33,14 +33,22 @@ class ReportService:
         if not events:
             return
         now = datetime.utcnow()
+        seen_identity: set[tuple[str, str]] = set()
         with SessionLocal() as session:
             for event in events:
+                event_time = event.time or ""
+                event_type = event.type_name or "Desconocido"
+                identity = (event_time, event_type)
+                if identity in seen_identity:
+                    continue
+                seen_identity.add(identity)
+
                 exists = (
                     session.query(TrackingEventORM)
                     .filter(
                         TrackingEventORM.waybill_no == waybill_no,
-                        TrackingEventORM.time == (event.time or ""),
-                        TrackingEventORM.type_name == (event.type_name or "Desconocido"),
+                        TrackingEventORM.time == event_time,
+                        TrackingEventORM.type_name == event_type,
                     )
                     .first()
                 )
@@ -55,8 +63,8 @@ class ReportService:
 
                 session.add(TrackingEventORM(
                     waybill_no=waybill_no,
-                    time=event.time or "",
-                    type_name=event.type_name or "Desconocido",
+                    time=event_time,
+                    type_name=event_type,
                     network_name=event.network_name,
                     staff_name=event.staff_name,
                     staff_contact=event.staff_contact,
