@@ -1,5 +1,12 @@
 async function handleJson(response) {
     if (!response.ok) {
+        if (response.status === 401) {
+            if (window.location.pathname !== '/login') {
+                window.location.assign('/login');
+            }
+            throw new Error('No autenticado');
+        }
+
         let detail = 'Error desconocido';
         try {
             const data = await response.json();
@@ -13,13 +20,17 @@ async function handleJson(response) {
 }
 
 export function get(url) {
-    return fetch(url, { headers: { 'Accept': 'application/json' } }).then(handleJson);
+    return fetch(url, {
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin'
+    }).then(handleJson);
 }
 
 export function post(url, body) {
     return fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
+        credentials: 'same-origin'
     }).then(handleJson);
 }
