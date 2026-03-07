@@ -149,13 +149,6 @@ export default function WaybillCard({ data, showArribo }) {
                 >
                     💬 Mensaje
                 </button>
-                <button 
-                    className="action-btn-novedad no-print" 
-                    title="Añadir Novedad"
-                    onClick=${() => window.dispatchEvent(new CustomEvent('open-novedades-modal', { detail: { waybill: data.waybill_no } }))}
-                >
-                    ⚠️ Reportar Novedad
-                </button>
                 ${isDelivered ? html`
                     <button
                         className="action-btn-photos no-print"
@@ -171,7 +164,7 @@ export default function WaybillCard({ data, showArribo }) {
                             ${!photosState.loading && photosState.photos.length > 0 ? html`
                                 <div className="photos-grid">
                                     ${photosState.photos.map((url, i) => html`
-                                        <a key=${i} href=${url} target="_blank" rel="noopener noreferrer" className="photo-thumb-link">
+                                        <a key=${i} href=${url} className="photo-thumb-link">
                                             <img src=${url} alt=${'Foto ' + (i + 1)} className="photo-thumb" loading="lazy" />
                                         </a>
                                     `)}
