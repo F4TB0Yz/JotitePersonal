@@ -1,6 +1,6 @@
 import { html, useState } from '../../lib/ui.js';
 import { fetchWaybillPhones } from '../../services/addressService.js';
-import { fetchWaybillPhotos, getPhotosDownloadUrl } from '../../services/photosService.js';
+import { fetchWaybillPhotos, getPhotosDownloadUrl, getPhotoProxyDownloadUrl } from '../../services/photosService.js';
 
 export default function WaybillCard({ data, showArribo }) {
     const [phoneState, setPhoneState] = useState({
@@ -205,7 +205,7 @@ export default function WaybillCard({ data, showArribo }) {
                         >›</button>
                     </div>
                     <a
-                        href=${photosState.photos[lightbox.index]}
+                        href=${getPhotoProxyDownloadUrl(photosState.photos[lightbox.index], `${data.waybill_no}_foto_${lightbox.index + 1}.jpeg`)}
                         download
                         className="lightbox-download"
                         onClick=${(e) => e.stopPropagation()}

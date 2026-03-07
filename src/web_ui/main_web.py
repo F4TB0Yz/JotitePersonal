@@ -1277,6 +1277,30 @@ async def download_waybill_photos(waybill_no: str):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+@app.get("/api/photos/proxy")
+async def proxy_photo(url: str, filename: str = "foto.jpeg"):
+    """Descarga una foto externa y la sirve como attachment (evita restricción cross-origin del browser)."""
+    import requests as _requests
+
+    parsed = urlparse(url)
+    if parsed.hostname not in _PHOTO_ALLOWED_DOMAINS:
+        raise HTTPException(status_code=403, detail="Dominio no permitido")
+
+    safe_filename = re.sub(r"[^\w\.\-]", "_", filename)[:80]
+
+    try:
+        resp = _requests.get(url, timeout=20)
+        resp.raise_for_status()
+        content_type = resp.headers.get("Content-Type", "image/jpeg").split(";")[0].strip()
+        return StreamingResponse(
+            io.BytesIO(resp.content),
+            media_type=content_type,
+            headers={"Content-Disposition": f'attachment; filename="{safe_filename}"'},
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
 @app.put("/api/novedades/{novedad_id}/status")
 async def update_novedad_status(novedad_id: int, payload: dict = Body(...)):
     try:

@@ -1,6 +1,6 @@
 import { html, useState, useEffect, useRef } from '../../lib/ui.js';
 import { fetchWaybillTimeline } from '../../services/timelineService.js';
-import { fetchWaybillPhotos, getPhotosDownloadUrl } from '../../services/photosService.js';
+import { fetchWaybillPhotos, getPhotosDownloadUrl, getPhotoProxyDownloadUrl } from '../../services/photosService.js';
 import WaybillTimeline from './WaybillTimeline.js';
 
 export default function WaybillQueryModal() {
@@ -319,7 +319,7 @@ export default function WaybillQueryModal() {
                                     ${!photosLoading && photos.length > 0 ? html`
                                         <div className="photos-grid">
                                             ${photos.map((url, i) => html`
-                                                <a key=${i} href=${url} target="_blank" rel="noopener noreferrer" className="photo-thumb-link">
+                                                <a key=${i} href=${getPhotoProxyDownloadUrl(url, `${result.waybill_no}_foto_${i+1}.jpeg`)} download className="photo-thumb-link">
                                                     <img src=${url} alt=${'Foto ' + (i + 1)} className="photo-thumb" loading="lazy" />
                                                 </a>
                                             `)}
