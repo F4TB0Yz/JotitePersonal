@@ -185,6 +185,50 @@
     color: white;
 }
 
+.action-btn-photos {
+    width: 100%;
+    padding: 8px 6px;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    border-radius: 8px;
+    color: #a5b4fc;
+    font-size: 0.82em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.action-btn-photos:hover {
+    background: rgba(99, 102, 241, 0.28);
+    color: #c7d2fe;
+}
+
+.card-photos-panel {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+}
+
+.card-photos-panel .photos-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.photos-download-link {
+    display: block;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding: 4px 0;
+}
+
+.photos-download-link:hover {
+    color: var(--text-primary);
+    text-decoration: underline;
+}
+
 /* ── Mobile responsive ── */
 @media (max-width: 768px) {
     .waybill-card {

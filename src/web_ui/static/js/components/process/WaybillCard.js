@@ -1,11 +1,18 @@
 import { html, useState } from '../../lib/ui.js';
 import { fetchWaybillPhones } from '../../services/addressService.js';
+import { fetchWaybillPhotos, getPhotosDownloadUrl } from '../../services/photosService.js';
 
 export default function WaybillCard({ data, showArribo }) {
     const [phoneState, setPhoneState] = useState({
         loading: false,
         value: '',
         visible: false,
+        error: ''
+    });
+    const [photosState, setPhotosState] = useState({
+        open: false,
+        loading: false,
+        photos: [],
         error: ''
     });
 
@@ -60,6 +67,27 @@ export default function WaybillCard({ data, showArribo }) {
     };
 
     const arriboDate = data.arrival_punto6_time && data.arrival_punto6_time !== 'N/A' ? data.arrival_punto6_time.split(' ')[0] : '';
+
+    const handlePhotosClick = () => {
+        if (photosState.open) {
+            setPhotosState({ open: false, loading: false, photos: [], error: '' });
+            return;
+        }
+        if (photosState.photos.length > 0) {
+            setPhotosState((prev) => ({ ...prev, open: true }));
+            return;
+        }
+        setPhotosState({ open: true, loading: true, photos: [], error: '' });
+        fetchWaybillPhotos(data.waybill_no)
+            .then((payload) => {
+                const photos = payload?.photos || [];
+                const error = photos.length === 0 ? (payload?.error || 'Sin fotos disponibles') : '';
+                setPhotosState({ open: true, loading: false, photos, error });
+            })
+            .catch((err) => {
+                setPhotosState({ open: true, loading: false, photos: [], error: err.message || 'Error al cargar fotos' });
+            });
+    };
 
     return html`
         <div className=${`waybill-card ${statusClass} ${cardFilterClass}`}
@@ -128,6 +156,35 @@ export default function WaybillCard({ data, showArribo }) {
                 >
                     ⚠️ Reportar Novedad
                 </button>
+                ${isDelivered ? html`
+                    <button
+                        className="action-btn-photos no-print"
+                        title="Ver fotos de entrega"
+                        onClick=${handlePhotosClick}
+                    >
+                        📸 ${photosState.open ? 'Ocultar fotos' : 'Ver fotos'}
+                    </button>
+                    ${photosState.open ? html`
+                        <div className="card-photos-panel no-print">
+                            ${photosState.loading ? html`<p className="photos-state">Cargando fotos...</p>` : null}
+                            ${photosState.error && !photosState.loading ? html`<p className="photos-state error">${photosState.error}</p>` : null}
+                            ${!photosState.loading && photosState.photos.length > 0 ? html`
+                                <div className="photos-grid">
+                                    ${photosState.photos.map((url, i) => html`
+                                        <a key=${i} href=${url} target="_blank" rel="noopener noreferrer" className="photo-thumb-link">
+                                            <img src=${url} alt=${'Foto ' + (i + 1)} className="photo-thumb" loading="lazy" />
+                                        </a>
+                                    `)}
+                                </div>
+                                <a
+                                    href=${getPhotosDownloadUrl(data.waybill_no)}
+                                    download
+                                    className="photos-download-link no-print"
+                                >⬇ Descargar todas</a>
+                            ` : null}
+                        </div>
+                    ` : null}
+                ` : null}
             </div>
         </div>
     `;
