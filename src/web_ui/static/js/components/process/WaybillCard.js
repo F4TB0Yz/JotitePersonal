@@ -16,6 +16,7 @@ export default function WaybillCard({ data, showArribo }) {
         error: ''
     });
     const [lightbox, setLightbox] = useState({ open: false, index: 0 });
+    const [downloadName, setDownloadName] = useState('JTC0000');
 
     const isDelivered = data.is_delivered;
     const isError = data.status === 'Error';
@@ -204,8 +205,18 @@ export default function WaybillCard({ data, showArribo }) {
                             onClick=${() => setLightbox((prev) => ({ ...prev, index: prev.index + 1 }))}
                         >›</button>
                     </div>
+                    <div className="lightbox-name-row" onClick=${(e) => e.stopPropagation()}>
+                        <span className="lightbox-name-label">📝 Nombre:</span>
+                        <input
+                            type="text"
+                            className="lightbox-name-field"
+                            value=${downloadName}
+                            onInput=${(e) => setDownloadName(e.target.value)}
+                            placeholder="JTC0000"
+                        />
+                    </div>
                     <a
-                        href=${getPhotoProxyDownloadUrl(photosState.photos[lightbox.index], `${data.waybill_no}_foto_${lightbox.index + 1}.jpeg`)}
+                        href=${getPhotoProxyDownloadUrl(photosState.photos[lightbox.index], `${downloadName}.jpeg`)}
                         download
                         className="lightbox-download"
                         onClick=${(e) => e.stopPropagation()}

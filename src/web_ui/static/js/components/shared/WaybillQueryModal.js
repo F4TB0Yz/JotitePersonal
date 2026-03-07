@@ -15,6 +15,8 @@ export default function WaybillQueryModal() {
     const [photos, setPhotos] = useState([]);
     const [photosLoading, setPhotosLoading] = useState(false);
     const [photosError, setPhotosError] = useState('');
+    const [lightbox, setLightbox] = useState({ open: false, index: 0 });
+    const [downloadName, setDownloadName] = useState('JTC0000');
     const socketRef = useRef(null);
 
     useEffect(() => {
@@ -71,6 +73,11 @@ export default function WaybillQueryModal() {
                 setTimelineError(err?.message || 'No se pudo cargar el timeline.');
             })
             .finally(() => setTimelineLoading(false));
+    }, [result?.waybill_no]);
+
+    useEffect(() => {
+        setDownloadName('JTC0000');
+        setLightbox({ open: false, index: 0 });
     }, [result?.waybill_no]);
 
     useEffect(() => {
@@ -216,6 +223,8 @@ export default function WaybillQueryModal() {
         setPhotos([]);
         setPhotosError('');
         setPhotosLoading(false);
+        setLightbox({ open: false, index: 0 });
+        setDownloadName('JTC0000');
         if (socketRef.current) {
             socketRef.current.close();
             socketRef.current = null;
@@ -319,9 +328,9 @@ export default function WaybillQueryModal() {
                                     ${!photosLoading && photos.length > 0 ? html`
                                         <div className="photos-grid">
                                             ${photos.map((url, i) => html`
-                                                <a key=${i} href=${getPhotoProxyDownloadUrl(url, `${result.waybill_no}_foto_${i+1}.jpeg`)} download className="photo-thumb-link">
+                                                <div key=${i} className="photo-thumb-link" onClick=${() => setLightbox({ open: true, index: i })}>
                                                     <img src=${url} alt=${'Foto ' + (i + 1)} className="photo-thumb" loading="lazy" />
-                                                </a>
+                                                </div>
                                             `)}
                                         </div>
                                     ` : null}
@@ -346,5 +355,47 @@ export default function WaybillQueryModal() {
                 </div>
             </div>
         </div>
+
+        ${lightbox.open && photos.length > 0 ? html`
+            <div className="photo-lightbox-overlay" onClick=${() => setLightbox((prev) => ({ ...prev, open: false }))}>
+                <div className="photo-lightbox-box" onClick=${(e) => e.stopPropagation()}>
+                    <button className="lightbox-close" onClick=${() => setLightbox((prev) => ({ ...prev, open: false }))}>×</button>
+                    <img
+                        src=${photos[lightbox.index]}
+                        alt=${'Foto ' + (lightbox.index + 1)}
+                        className="lightbox-img"
+                    />
+                    <div className="lightbox-controls">
+                        <button
+                            className="lightbox-nav"
+                            disabled=${lightbox.index === 0}
+                            onClick=${() => setLightbox((prev) => ({ ...prev, index: prev.index - 1 }))}
+                        >‹</button>
+                        <span className="lightbox-counter">${lightbox.index + 1} / ${photos.length}</span>
+                        <button
+                            className="lightbox-nav"
+                            disabled=${lightbox.index === photos.length - 1}
+                            onClick=${() => setLightbox((prev) => ({ ...prev, index: prev.index + 1 }))}
+                        >›</button>
+                    </div>
+                    <div className="lightbox-name-row" onClick=${(e) => e.stopPropagation()}>
+                        <span className="lightbox-name-label">📝 Nombre:</span>
+                        <input
+                            type="text"
+                            className="lightbox-name-field"
+                            value=${downloadName}
+                            onInput=${(e) => setDownloadName(e.target.value)}
+                            placeholder="JTC0000"
+                        />
+                    </div>
+                    <a
+                        href=${getPhotoProxyDownloadUrl(photos[lightbox.index], `${downloadName}.jpeg`)}
+                        download
+                        className="lightbox-download"
+                        onClick=${(e) => e.stopPropagation()}
+                    >⬇ Descargar esta foto</a>
+                </div>
+            </div>
+        ` : null}
     `;
 }
