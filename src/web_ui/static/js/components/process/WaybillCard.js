@@ -15,6 +15,7 @@ export default function WaybillCard({ data, showArribo }) {
         photos: [],
         error: ''
     });
+    const [lightbox, setLightbox] = useState({ open: false, index: 0 });
 
     const isDelivered = data.is_delivered;
     const isError = data.status === 'Error';
@@ -164,9 +165,9 @@ export default function WaybillCard({ data, showArribo }) {
                             ${!photosState.loading && photosState.photos.length > 0 ? html`
                                 <div className="photos-grid">
                                     ${photosState.photos.map((url, i) => html`
-                                        <a key=${i} href=${url} className="photo-thumb-link">
+                                        <div key=${i} className="photo-thumb-link" onClick=${() => setLightbox({ open: true, index: i })}>
                                             <img src=${url} alt=${'Foto ' + (i + 1)} className="photo-thumb" loading="lazy" />
-                                        </a>
+                                        </div>
                                     `)}
                                 </div>
                                 <a
@@ -180,5 +181,37 @@ export default function WaybillCard({ data, showArribo }) {
                 ` : null}
             </div>
         </div>
+
+        ${lightbox.open && photosState.photos.length > 0 ? html`
+            <div className="photo-lightbox-overlay no-print" onClick=${() => setLightbox({ open: false, index: 0 })}>
+                <div className="photo-lightbox-box" onClick=${(e) => e.stopPropagation()}>
+                    <button className="lightbox-close" onClick=${() => setLightbox({ open: false, index: 0 })}>×</button>
+                    <img
+                        src=${photosState.photos[lightbox.index]}
+                        alt=${'Foto ' + (lightbox.index + 1)}
+                        className="lightbox-img"
+                    />
+                    <div className="lightbox-controls">
+                        <button
+                            className="lightbox-nav"
+                            disabled=${lightbox.index === 0}
+                            onClick=${() => setLightbox((prev) => ({ ...prev, index: prev.index - 1 }))}
+                        >‹</button>
+                        <span className="lightbox-counter">${lightbox.index + 1} / ${photosState.photos.length}</span>
+                        <button
+                            className="lightbox-nav"
+                            disabled=${lightbox.index === photosState.photos.length - 1}
+                            onClick=${() => setLightbox((prev) => ({ ...prev, index: prev.index + 1 }))}
+                        >›</button>
+                    </div>
+                    <a
+                        href=${photosState.photos[lightbox.index]}
+                        download
+                        className="lightbox-download"
+                        onClick=${(e) => e.stopPropagation()}
+                    >⬇ Descargar esta foto</a>
+                </div>
+            </div>
+        ` : null}
     `;
 }
