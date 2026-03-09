@@ -31,4 +31,17 @@
        tablet:  ≤ 768px
        phone:   ≤ 480px
        xs:      ≤ 375px  */
+
+    /* ── Button design tokens ── */
+    --btn-radius: 6px;
+    --btn-radius-pill: 999px;
+    --btn-padding: 6px 12px;
+    --btn-padding-sm: 5px 10px;
+    --btn-font-size: 13px;
+    --btn-font-size-sm: 12px;
+    --btn-font-weight: 600;
+    --btn-transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    --btn-border-ghost: 1px dashed var(--border-color);
+    --btn-border-solid: 1px solid var(--border-color);
+    --btn-disabled-opacity: 0.4;
 }

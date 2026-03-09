@@ -48,49 +48,51 @@
     background: transparent;
     border: none;
     color: var(--text-muted);
-    font-size: 15px;
-    font-weight: 600;
+    font-size: var(--btn-font-size);
+    font-weight: var(--btn-font-weight);
     cursor: pointer;
-    padding: 8px 12px;
-    border-radius: 6px;
-    transition: all 0.2s;
+    padding: var(--btn-padding);
+    border-radius: var(--btn-radius);
+    transition: var(--btn-transition);
 }
 
 .nav-btn:hover {
-    color: white;
-    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.04);
 }
 
 .nav-btn.active {
-    color: var(--accent-color);
-    background: rgba(230, 28, 36, 0.1);
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.07);
 }
 
 /* Trigger buttons del navbar */
 .query-trigger-btn,
 .novedades-trigger-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    color: var(--text-main);
-    padding: 6px 12px;
-    border-radius: 6px;
+    background: transparent;
+    border: var(--btn-border-ghost);
+    color: var(--text-muted);
+    padding: var(--btn-padding-sm);
+    border-radius: var(--btn-radius);
     cursor: pointer;
-    font-weight: 600;
-    font-size: 14px;
-    transition: all 0.2s;
+    font-size: var(--btn-font-size-sm);
+    font-weight: var(--btn-font-weight);
+    transition: var(--btn-transition);
     display: flex;
     align-items: center;
     gap: 5px;
+    white-space: nowrap;
 }
 
 .query-trigger-btn:hover,
 .novedades-trigger-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
     border-color: var(--text-muted);
+    background: var(--card-bg);
 }
 
 .novedades-trigger-btn {
-    color: var(--warning);
+    color: var(--text-muted);
 }
 
 /* ── Mobile responsive ── */

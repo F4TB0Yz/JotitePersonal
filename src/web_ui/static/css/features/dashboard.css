@@ -82,40 +82,46 @@
 
 .dash-date-toggle-btn {
     width: auto;
-    background: var(--card-bg);
-    color: var(--text-main);
-    border: 1px solid var(--border-color);
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-weight: 600;
+    background: transparent;
+    color: var(--text-muted);
+    border: var(--btn-border-ghost);
+    padding: var(--btn-padding);
+    border-radius: var(--btn-radius);
+    font-size: var(--btn-font-size);
+    font-weight: var(--btn-font-weight);
     cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease;
+    transition: var(--btn-transition);
+    white-space: nowrap;
 }
 
 .dash-date-toggle-btn:hover {
-    background: var(--bg-color);
-    border-color: var(--border-color);
+    color: var(--text-main);
+    border-color: var(--text-muted);
+    background: var(--card-bg);
 }
 
 .dash-clear-filter-btn {
     width: auto;
     background: transparent;
     color: var(--text-muted);
-    border: 1px solid var(--border-color);
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-weight: 600;
+    border: var(--btn-border-ghost);
+    padding: var(--btn-padding);
+    border-radius: var(--btn-radius);
+    font-size: var(--btn-font-size);
+    font-weight: var(--btn-font-weight);
     cursor: pointer;
-    transition: background 0.2s ease, color 0.2s ease;
+    transition: var(--btn-transition);
+    white-space: nowrap;
 }
 
 .dash-clear-filter-btn:hover:not(:disabled) {
-    background: var(--bg-color);
     color: var(--text-main);
+    border-color: var(--text-muted);
+    background: var(--card-bg);
 }
 
 .dash-clear-filter-btn:disabled {
-    opacity: 0.5;
+    opacity: var(--btn-disabled-opacity);
     cursor: not-allowed;
 }
 
@@ -350,13 +356,22 @@
 
 .dash-export-btn {
     width: auto;
-    background: var(--card-bg);
-    color: var(--text-main);
-    border: 1px solid var(--border-color);
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-weight: 600;
+    background: transparent;
+    color: var(--text-muted);
+    border: var(--btn-border-ghost);
+    padding: var(--btn-padding);
+    border-radius: var(--btn-radius);
+    font-size: var(--btn-font-size);
+    font-weight: var(--btn-font-weight);
     cursor: pointer;
+    transition: var(--btn-transition);
+    white-space: nowrap;
+}
+
+.dash-export-btn:hover {
+    color: var(--text-main);
+    border-color: var(--text-muted);
+    background: var(--card-bg);
 }
 
 .dash-export-menu {

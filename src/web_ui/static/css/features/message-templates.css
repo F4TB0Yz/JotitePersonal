@@ -14,22 +14,23 @@
     width: 52px;
     height: 52px;
     border-radius: 50%;
-    border: none;
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: #fff;
+    border: 1px solid rgba(16, 185, 129, 0.45);
+    background: rgba(16, 185, 129, 0.1);
+    color: #6ee7b7;
     font-size: 22px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
 .floating-messages-btn:hover {
     transform: translateY(-2px);
-    background: linear-gradient(135deg, #059669, #047857);
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
+    background: rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.7);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.2);
 }
 
 /* ── Modal overrides ── */
@@ -84,14 +85,14 @@
 
 .msg-tpl-toggle-btn {
     flex: 1;
-    padding: 8px 12px;
+    padding: var(--btn-padding-sm);
     border: none;
-    background: rgba(255, 255, 255, 0.04);
+    background: transparent;
     color: var(--text-muted);
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: var(--btn-font-size-sm);
+    font-weight: var(--btn-font-weight);
     cursor: pointer;
-    transition: background 0.2s, color 0.2s;
+    transition: var(--btn-transition);
 }
 
 .msg-tpl-toggle-btn:first-child {
@@ -99,12 +100,13 @@
 }
 
 .msg-tpl-toggle-btn.active {
-    background: rgba(16, 185, 129, 0.2);
-    color: #34d399;
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-main);
 }
 
 .msg-tpl-toggle-btn:hover:not(.active) {
-    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.04);
 }
 
 /* ── Category tabs ── */
@@ -115,26 +117,29 @@
 }
 
 .msg-tpl-cat-btn {
-    padding: 8px 14px;
-    border-radius: 10px;
-    border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.04);
+    padding: var(--btn-padding-sm);
+    border-radius: var(--btn-radius);
+    border: var(--btn-border-ghost);
+    background: transparent;
     color: var(--text-muted);
-    font-size: 0.82rem;
-    font-weight: 600;
+    font-size: var(--btn-font-size-sm);
+    font-weight: var(--btn-font-weight);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: var(--btn-transition);
     white-space: nowrap;
 }
 
 .msg-tpl-cat-btn.active {
-    background: rgba(16, 185, 129, 0.15);
-    border-color: rgba(16, 185, 129, 0.4);
-    color: #34d399;
+    background: rgba(255, 255, 255, 0.07);
+    border-color: var(--text-muted);
+    border-style: solid;
+    color: var(--text-main);
 }
 
 .msg-tpl-cat-btn:hover:not(.active) {
-    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-main);
+    border-color: var(--text-muted);
+    background: var(--card-bg);
 }
 
 /* ── Preview area ── */
@@ -161,16 +166,19 @@
 }
 
 .msg-copy-btn {
-    background: linear-gradient(135deg, #10b981, #059669) !important;
-    border-color: #059669 !important;
+    background: transparent !important;
+    color: var(--text-main) !important;
+    border: var(--btn-border-ghost) !important;
 }
 
 .msg-copy-btn:hover {
-    background: linear-gradient(135deg, #059669, #047857) !important;
+    color: #6ee7b7 !important;
+    border-color: rgba(16, 185, 129, 0.5) !important;
+    background: rgba(16, 185, 129, 0.08) !important;
 }
 
 .msg-restore-btn {
-    color: #fbbf24 !important;
+    color: var(--text-muted) !important;
 }
 
 /* ── Edit mode ── */

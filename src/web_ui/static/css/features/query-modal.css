@@ -223,9 +223,22 @@
 }
 
 .photos-download-btn {
-    font-size: 0.78rem;
-    padding: 4px 10px;
+    font-size: var(--btn-font-size-sm);
+    padding: var(--btn-padding-sm);
     text-decoration: none;
+    background: transparent;
+    color: var(--text-muted);
+    border: var(--btn-border-ghost);
+    border-radius: var(--btn-radius);
+    font-weight: var(--btn-font-weight);
+    cursor: pointer;
+    transition: var(--btn-transition);
+}
+
+.photos-download-btn:hover {
+    color: var(--text-main);
+    border-color: var(--text-muted);
+    background: var(--card-bg);
 }
 
 .photos-state {

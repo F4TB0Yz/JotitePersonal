@@ -116,53 +116,55 @@
 .action-btn-novedad {
     width: 100%;
     margin-top: 10px;
-    background: rgba(230, 28, 36, 0.1);
-    color: var(--accent-color);
-    border: 1px solid rgba(230, 28, 36, 0.3);
-    padding: 6px;
-    border-radius: 4px;
+    background: transparent;
+    color: var(--text-muted);
+    border: var(--btn-border-ghost);
+    padding: var(--btn-padding-sm);
+    border-radius: var(--btn-radius);
     cursor: pointer;
-    font-size: 0.85em;
-    font-weight: 600;
-    transition: all 0.2s;
+    font-size: var(--btn-font-size-sm);
+    font-weight: var(--btn-font-weight);
+    transition: var(--btn-transition);
 }
 
 .action-btn-phone {
     width: 100%;
     margin-top: 10px;
-    background: rgba(59, 130, 246, 0.12);
-    color: #93c5fd;
-    border: 1px solid rgba(59, 130, 246, 0.35);
-    padding: 6px;
-    border-radius: 4px;
+    background: transparent;
+    color: var(--text-muted);
+    border: var(--btn-border-ghost);
+    padding: var(--btn-padding-sm);
+    border-radius: var(--btn-radius);
     cursor: pointer;
-    font-size: 0.85em;
-    font-weight: 600;
-    transition: all 0.2s;
+    font-size: var(--btn-font-size-sm);
+    font-weight: var(--btn-font-weight);
+    transition: var(--btn-transition);
 }
 
 .action-btn-phone:hover {
-    background: rgba(59, 130, 246, 0.25);
-    color: #dbeafe;
+    color: #93c5fd;
+    border-color: rgba(59, 130, 246, 0.5);
+    background: rgba(59, 130, 246, 0.08);
 }
 
 .action-btn-message {
     width: 100%;
     margin-top: 6px;
-    background: rgba(16, 185, 129, 0.12);
-    color: #6ee7b7;
-    border: 1px solid rgba(16, 185, 129, 0.35);
-    padding: 6px;
-    border-radius: 4px;
+    background: transparent;
+    color: var(--text-muted);
+    border: var(--btn-border-ghost);
+    padding: var(--btn-padding-sm);
+    border-radius: var(--btn-radius);
     cursor: pointer;
-    font-size: 0.85em;
-    font-weight: 600;
-    transition: all 0.2s;
+    font-size: var(--btn-font-size-sm);
+    font-weight: var(--btn-font-weight);
+    transition: var(--btn-transition);
 }
 
 .action-btn-message:hover {
-    background: rgba(16, 185, 129, 0.25);
-    color: #a7f3d0;
+    color: #6ee7b7;
+    border-color: rgba(16, 185, 129, 0.5);
+    background: rgba(16, 185, 129, 0.08);
 }
 
 .card-phone-value {
@@ -181,27 +183,29 @@
 }
 
 .action-btn-novedad:hover {
-    background: var(--accent-color);
-    color: white;
+    color: var(--accent-color);
+    border-color: rgba(230, 28, 36, 0.5);
+    background: rgba(230, 28, 36, 0.08);
 }
 
 .action-btn-photos {
     width: 100%;
     margin-top: 8px;
-    padding: 8px 6px;
-    background: rgba(99, 102, 241, 0.12);
-    border: 1px solid rgba(99, 102, 241, 0.35);
-    border-radius: 8px;
-    color: #a5b4fc;
-    font-size: 0.82em;
-    font-weight: 600;
+    background: transparent;
+    border: var(--btn-border-ghost);
+    border-radius: var(--btn-radius);
+    color: var(--text-muted);
+    font-size: var(--btn-font-size-sm);
+    font-weight: var(--btn-font-weight);
+    padding: var(--btn-padding-sm);
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: var(--btn-transition);
 }
 
 .action-btn-photos:hover {
-    background: rgba(99, 102, 241, 0.28);
-    color: #c7d2fe;
+    color: #a5b4fc;
+    border-color: rgba(99, 102, 241, 0.5);
+    background: rgba(99, 102, 241, 0.08);
 }
 
 .card-photos-panel {

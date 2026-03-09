@@ -247,18 +247,42 @@
 
 .settlement-secondary-btn {
     width: auto;
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--text-main);
-    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-muted);
+    border: var(--btn-border-ghost);
+    padding: var(--btn-padding);
+    border-radius: var(--btn-radius);
+    font-size: var(--btn-font-size);
+    font-weight: var(--btn-font-weight);
+    cursor: pointer;
+    transition: var(--btn-transition);
     box-shadow: none;
+    white-space: nowrap;
 }
 
 .settlement-secondary-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
+    color: var(--text-main);
+    border-color: var(--text-muted);
+    background: var(--card-bg);
 }
 
 .settlement-primary-btn {
     width: auto;
+    background: transparent;
+    color: var(--accent-color);
+    border: 1px solid rgba(230, 28, 36, 0.5);
+    padding: var(--btn-padding);
+    border-radius: var(--btn-radius);
+    font-size: var(--btn-font-size);
+    font-weight: var(--btn-font-weight);
+    cursor: pointer;
+    transition: var(--btn-transition);
+    white-space: nowrap;
+}
+
+.settlement-primary-btn:hover {
+    background: rgba(230, 28, 36, 0.12);
+    border-color: var(--accent-color);
 }
 
 .settlement-summary {
@@ -293,16 +317,16 @@
 
 .secondary-btn.danger-btn {
     width: auto;
-    padding: 8px 12px;
-    background: rgba(230, 28, 36, 0.14);
+    padding: var(--btn-padding);
+    background: transparent;
     color: #ffb3b8;
-    border: 1px solid rgba(230, 28, 36, 0.45);
+    border: 1px solid rgba(230, 28, 36, 0.4);
     box-shadow: none;
 }
 
 .secondary-btn.danger-btn:hover {
-    background: rgba(230, 28, 36, 0.22);
-    border-color: rgba(230, 28, 36, 0.8);
+    background: rgba(230, 28, 36, 0.1);
+    border-color: rgba(230, 28, 36, 0.7);
     color: #ffd2d5;
 }
 

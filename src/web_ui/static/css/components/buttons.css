@@ -1,108 +1,161 @@
 /* =========================================================
-   Buttons — Botones reutilizables del sistema
+   Buttons — Sistema unificado de botones
+   Estilo base: ghost / transparente con borde sutil
    ========================================================= */
+
+/* ── Primary action (accent/CTA) ── */
 .primary-btn {
-    background-color: var(--accent-color);
-    color: white;
-    border: none;
-    padding: 12px;
-    border-radius: 6px;
-    font-weight: 600;
+    background: transparent;
+    color: var(--accent-color);
+    border: 1px solid rgba(230, 28, 36, 0.5);
+    padding: var(--btn-padding);
+    border-radius: var(--btn-radius);
+    font-size: var(--btn-font-size);
+    font-weight: var(--btn-font-weight);
     cursor: pointer;
-    transition: background 0.2s;
+    transition: var(--btn-transition);
+    white-space: nowrap;
 }
 
 .primary-btn:hover {
-    background-color: var(--accent-hover);
+    background: rgba(230, 28, 36, 0.12);
+    border-color: var(--accent-color);
+    color: var(--accent-hover);
 }
 
 .primary-btn:disabled {
-    background-color: #555;
+    opacity: var(--btn-disabled-opacity);
     cursor: not-allowed;
 }
 
+/* ── Secondary / default action ── */
 .secondary-btn {
     width: 100%;
-    background-color: #f0f6fc;
-    color: #000;
-    border: none;
-    padding: 12px;
-    border-radius: 6px;
-    font-weight: 600;
+    background: transparent;
+    color: var(--text-muted);
+    border: var(--btn-border-ghost);
+    padding: var(--btn-padding);
+    border-radius: var(--btn-radius);
+    font-size: var(--btn-font-size);
+    font-weight: var(--btn-font-weight);
     cursor: pointer;
-    transition: background 0.2s;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    transition: var(--btn-transition);
+    white-space: nowrap;
 }
 
 .secondary-btn:hover {
-    background-color: #c9d1d9;
+    color: var(--text-main);
+    border-color: var(--text-muted);
+    background: var(--card-bg);
 }
 
-/* Filter buttons (sidebar) */
+.secondary-btn:disabled {
+    opacity: var(--btn-disabled-opacity);
+    cursor: not-allowed;
+}
+
+/* ── Filter buttons (sidebar) ── */
 .filter-btn {
     flex: 1;
     background: transparent;
-    border: 1px solid var(--border-color);
+    border: var(--btn-border-ghost);
     color: var(--text-muted);
-    padding: 6px;
-    border-radius: 4px;
-    font-size: 12px;
+    padding: var(--btn-padding-sm);
+    border-radius: var(--btn-radius);
+    font-size: var(--btn-font-size-sm);
+    font-weight: var(--btn-font-weight);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: var(--btn-transition);
+}
+
+.filter-btn:hover {
+    color: var(--text-main);
+    border-color: var(--text-muted);
+    background: var(--card-bg);
 }
 
 .filter-btn.active {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.07);
     color: white;
-    border-color: white;
+    border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
-/* Filter pills (messenger admin) */
+/* ── Filter pills (messenger admin) ── */
 .filter-pill {
-    border: 1px solid rgba(255, 255, 255, 0.2);
     background: transparent;
-    color: var(--text-main);
-    padding: 8px 14px;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 600;
+    color: var(--text-muted);
+    border: var(--btn-border-solid);
+    padding: 6px 14px;
+    border-radius: var(--btn-radius-pill);
+    font-size: var(--btn-font-size);
+    font-weight: var(--btn-font-weight);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: var(--btn-transition);
+    white-space: nowrap;
+}
+
+.filter-pill:hover {
+    color: var(--text-main);
+    border-color: var(--text-muted);
+    background: var(--card-bg);
 }
 
 .filter-pill.active {
-    background: rgba(230, 28, 36, 0.15);
-    border-color: var(--accent-color);
-    color: white;
+    background: rgba(230, 28, 36, 0.1);
+    border-color: rgba(230, 28, 36, 0.5);
+    color: var(--accent-color);
 }
 
-/* Form buttons */
+/* ── Form buttons ── */
 .form-btn {
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-weight: 600;
+    padding: var(--btn-padding);
+    border-radius: var(--btn-radius);
+    font-size: var(--btn-font-size);
+    font-weight: var(--btn-font-weight);
     cursor: pointer;
     border: none;
+    transition: var(--btn-transition);
+    white-space: nowrap;
 }
 
 .form-btn.primary {
-    background: var(--accent-color);
-    color: white;
+    background: transparent;
+    color: var(--accent-color);
+    border: 1px solid rgba(230, 28, 36, 0.5);
+}
+
+.form-btn.primary:hover {
+    background: rgba(230, 28, 36, 0.12);
+    border-color: var(--accent-color);
 }
 
 .form-btn.primary:disabled {
-    opacity: 0.5;
+    opacity: var(--btn-disabled-opacity);
     cursor: not-allowed;
+}
+
+.form-btn.secondary {
+    background: transparent;
+    color: var(--text-muted);
+    border: var(--btn-border-ghost);
+}
+
+.form-btn.secondary:hover {
+    color: var(--text-main);
+    border-color: var(--text-muted);
+    background: var(--card-bg);
 }
 
 .form-btn.outline {
     background: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--text-main);
+    border: var(--btn-border-ghost);
+    color: var(--text-muted);
 }
 
 .form-btn.outline:hover {
-    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+    border-color: var(--text-muted);
+    background: var(--card-bg);
 }
 
 /* ── Mobile responsive ── */

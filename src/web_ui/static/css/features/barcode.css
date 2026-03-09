@@ -141,22 +141,23 @@
     width: 52px;
     height: 52px;
     border-radius: 50%;
-    border: none;
-    background: var(--accent-color);
-    color: #fff;
+    border: 1px solid rgba(230, 28, 36, 0.5);
+    background: rgba(230, 28, 36, 0.1);
+    color: var(--accent-color);
     font-size: 24px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
 .floating-barcode-btn:hover {
     transform: translateY(-2px);
-    background: var(--accent-hover);
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
+    background: rgba(230, 28, 36, 0.2);
+    border-color: var(--accent-color);
+    box-shadow: 0 8px 25px rgba(230, 28, 36, 0.25);
 }
 
 .barcode-window.quick {
@@ -205,22 +206,23 @@
     width: 52px;
     height: 52px;
     border-radius: 50%;
-    border: none;
-    background: var(--accent-color);
-    color: #fff;
+    border: 1px solid rgba(230, 28, 36, 0.5);
+    background: rgba(230, 28, 36, 0.1);
+    color: var(--accent-color);
     font-size: 22px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
 .floating-phone-btn:hover {
     transform: translateY(-2px);
-    background: var(--accent-hover);
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
+    background: rgba(230, 28, 36, 0.2);
+    border-color: var(--accent-color);
+    box-shadow: 0 8px 25px rgba(230, 28, 36, 0.25);
 }
 
 .floating-phone-body {
@@ -247,22 +249,23 @@
     width: 52px;
     height: 52px;
     border-radius: 50%;
-    border: none;
-    background: var(--accent-color);
-    color: #fff;
+    border: 1px solid rgba(230, 28, 36, 0.5);
+    background: rgba(230, 28, 36, 0.1);
+    color: var(--accent-color);
     font-size: 22px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
 .floating-reprint-btn:hover {
     transform: translateY(-2px);
-    background: var(--accent-hover);
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
+    background: rgba(230, 28, 36, 0.2);
+    border-color: var(--accent-color);
+    box-shadow: 0 8px 25px rgba(230, 28, 36, 0.25);
 }
 
 .reprint-overlay {
@@ -349,42 +352,51 @@
 
 .reprint-btn {
     width: auto;
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--text-main);
-    border: 1px solid var(--border-color);
-    padding: 8px 12px;
-    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    border: var(--btn-border-ghost);
+    padding: var(--btn-padding);
+    border-radius: var(--btn-radius);
     cursor: pointer;
-    font-weight: 600;
+    font-size: var(--btn-font-size);
+    font-weight: var(--btn-font-weight);
+    transition: var(--btn-transition);
+    white-space: nowrap;
 }
 
 .reprint-btn:hover {
-    background: rgba(255, 255, 255, 0.14);
+    color: var(--text-main);
+    border-color: var(--text-muted);
+    background: var(--card-bg);
 }
 
 .reprint-btn:disabled {
-    opacity: 0.55;
+    opacity: var(--btn-disabled-opacity);
     cursor: not-allowed;
 }
 
 .reprint-btn-primary {
-    background: var(--accent-color);
-    border-color: var(--accent-color);
-    color: #fff;
+    background: transparent;
+    color: var(--accent-color);
+    border: 1px solid rgba(230, 28, 36, 0.5);
 }
 
 .reprint-btn-primary:hover {
-    background: var(--accent-hover);
+    background: rgba(230, 28, 36, 0.12);
+    border-color: var(--accent-color);
+    color: var(--accent-hover);
 }
 
 .reprint-btn-danger {
-    background: rgba(230, 28, 36, 0.12);
-    border-color: rgba(230, 28, 36, 0.45);
+    background: transparent;
+    border: 1px solid rgba(230, 28, 36, 0.4);
     color: #ffb3b8;
 }
 
 .reprint-btn-danger:hover {
-    background: rgba(230, 28, 36, 0.2);
+    background: rgba(230, 28, 36, 0.1);
+    border-color: rgba(230, 28, 36, 0.7);
+    color: #ffd2d5;
 }
 
 /* ── Mobile: lift floating buttons above Bottom Tab Bar ── */

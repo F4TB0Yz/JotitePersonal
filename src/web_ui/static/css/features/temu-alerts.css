@@ -322,21 +322,23 @@
 /* Botón de barcode */
 .temu-alert-barcode-btn {
     align-self: flex-start;
-    padding: 8px 14px;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: var(--btn-padding-sm);
+    border-radius: var(--btn-radius-pill);
+    border: var(--btn-border-ghost);
     background: transparent;
-    color: white;
-    font-size: 12px;
-    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    font-size: var(--btn-font-size-sm);
+    font-weight: var(--btn-font-weight);
+    letter-spacing: 0.05em;
     text-transform: uppercase;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: var(--btn-transition);
 }
 
 .temu-alert-barcode-btn:hover {
-    background: rgba(230, 28, 36, 0.25);
-    border-color: rgba(230, 28, 36, 0.6);
+    color: var(--text-main);
+    border-color: var(--text-muted);
+    background: var(--card-bg);
 }
 
 /* Badges */
