@@ -1,33 +1,12 @@
-import os
 import requests
-import json
 
-from src.infrastructure.database.connection import SessionLocal
-from src.infrastructure.database.models import ConfigORM
+from src.domain.exceptions import APIError
 
 class JTClient:
-    def __init__(self, config_path="config.json"):
-        self.config = {
-            "baseUrl": "https://gw.jtexpress.co/operatingplatform",
-            "lang": "es"
-        }
+    def __init__(self, config: dict):
+        self.config = config
 
-        if os.path.exists(config_path):
-            with open(config_path, "r", encoding="utf-8") as f:
-                self.config.update(json.load(f))
-
-        token_record = None
-        session = None
-        try:
-            session = SessionLocal()
-            token_record = session.query(ConfigORM).filter_by(key="authToken").first()
-        except Exception:
-            token_record = None
-        finally:
-            if session:
-                session.close()
-
-        auth_token = token_record.value if token_record else self.config.get("authToken", "")
+        auth_token = self.config.get("authToken", "")
         
         self.base_url = self.config.get("baseUrl", "https://gw.jtexpress.co/operatingplatform")
         self.network_base_url = "https://gw.jtexpress.co/networkmanagement"
@@ -54,9 +33,13 @@ class JTClient:
         if extra_headers:
             request_headers.update(extra_headers)
             
-        response = requests.post(url, headers=request_headers, json=data)
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = requests.post(url, headers=request_headers, json=data)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            status_code = e.response.status_code if e.response is not None else None
+            raise APIError(message=str(e), status_code=status_code)
 
     def get_order_detail(self, waybill_no):
         payload = {
@@ -223,9 +206,13 @@ class JTClient:
         url = f"{self.servicequality_base_url}/thirdService/waybill/commonWaybillListByWaybillNos/receiverPhone"
         headers = self.headers.copy()
         headers["routeName"] = "recordSheet"
-        response = requests.get(url, headers=headers, params={"waybillNos": joined})
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = requests.get(url, headers=headers, params={"waybillNos": joined})
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            status_code = e.response.status_code if e.response is not None else None
+            raise APIError(message=str(e), status_code=status_code)
 
     def get_temu_monitor_summary(
         self,
