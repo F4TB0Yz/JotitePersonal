@@ -368,10 +368,22 @@
     color: var(--text-main);
 }
 
+.dash-export-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
 .dash-export-run-btn {
     width: 100%;
     padding: 8px;
     font-size: 12px;
+}
+
+.dash-export-error {
+    margin: 6px 0 0;
+    font-size: 11px;
+    color: var(--danger-text, #f87171);
 }
 
 .dash-detail-header h3 {

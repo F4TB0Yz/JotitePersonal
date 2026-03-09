@@ -645,19 +645,8 @@ export default function PendingDashboardView() {
                         <button type="submit" className="primary-btn" disabled=${loading}>
                             ${loading ? 'Cargando…' : 'Consultar API'}
                         </button>
-                        <button
-                            type="button"
-                            className="secondary-btn"
-                            disabled=${loading || exportJsonLoading || filteredRecords.length === 0}
-                            onClick=${handleExportDashboardJson}
-                        >
-                            ${exportJsonLoading ? 'Generando JSON…' : 'Exportar JSON IA'}
-                        </button>
                     </form>
                 </div>
-                ${exportJsonError && !selectedCell
-                    ? html`<div className="dash-error">${exportJsonError}</div>`
-                    : null}
                 <div className="dashboard-cards">
                     <div className="dashboard-card">
                         <span className="card-value">${summary.total}</span>
@@ -768,11 +757,11 @@ export default function PendingDashboardView() {
                                         className="dash-export-btn"
                                         onClick=${() => setShowExportMenu((prev) => !prev)}
                                     >
-                                        Opciones PDF
+                                        Exportar ▾
                                     </button>
                                     ${showExportMenu
                                         ? html`<div className="dash-export-menu">
-                                            <p className="dash-export-title">Campos a incluir</p>
+                                            <p className="dash-export-title">Campos para PDF</p>
                                             <div className="dash-export-options">
                                                 ${EXPORTABLE_FIELDS.map((field) => html`
                                                     <label key=${field.key}>
@@ -785,31 +774,33 @@ export default function PendingDashboardView() {
                                                     </label>
                                                 `)}
                                             </div>
-                                            <button
-                                                type="button"
-                                                className="primary-btn dash-export-run-btn"
-                                                onClick=${handleExportPdf}
-                                            >
-                                                Exportar PDF
-                                            </button>
+                                            <div className="dash-export-actions">
+                                                <button
+                                                    type="button"
+                                                    className="primary-btn dash-export-run-btn"
+                                                    onClick=${handleExportPdf}
+                                                >
+                                                    Descargar PDF
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="secondary-btn dash-export-run-btn"
+                                                    disabled=${exportJsonLoading}
+                                                    onClick=${handleExportJson}
+                                                >
+                                                    ${exportJsonLoading ? 'Generando…' : 'Descargar JSON'}
+                                                </button>
+                                            </div>
+                                            ${exportJsonError ? html`<p className="dash-export-error">${exportJsonError}</p>` : null}
                                         </div>`
                                         : null}
                                 </div>
-                                <button
-                                    type="button"
-                                    className="secondary-btn"
-                                    disabled=${exportJsonLoading || detailRows.length === 0}
-                                    onClick=${handleExportJson}
-                                >
-                                    ${exportJsonLoading ? 'Generando JSON…' : 'Descargar JSON IA'}
-                                </button>
                                 <button type="button" className="secondary-btn" onClick=${() => setSelectedCell(null)}>Cerrar detalle</button>
                             </div>
                         </div>
                         <div className="dash-detail-body">
                             ${detailLoading ? html`<p className="dash-detail-hint">Consultando información precisa de las guías…</p>` : null}
                             ${detailError ? html`<div className="dash-error dash-detail-error">${detailError}</div>` : null}
-                            ${exportJsonError ? html`<div className="dash-error dash-detail-error">${exportJsonError}</div>` : null}
                             <div className="dash-detail-scroll">
                                 ${detailRows.length === 0
                                     ? html`<div className="dash-placeholder">Sin paquetes para mostrar.</div>`
