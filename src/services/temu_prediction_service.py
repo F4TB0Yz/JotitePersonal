@@ -9,6 +9,7 @@ from sqlalchemy import or_
 
 from src.infrastructure.database.connection import SessionLocal, initialize_database
 from src.infrastructure.database.models import TemuPredictionORM
+from src.infrastructure.repositories.config_repository import ConfigRepository
 from src.jt_api.client import JTClient
 from src.services.notification_service import notification_manager
 
@@ -120,7 +121,10 @@ class TemuPredictionService:
             await asyncio.sleep(wait_seconds)
 
     async def _tick(self) -> None:
-        client = JTClient()
+        with SessionLocal() as session:
+            config_repo = ConfigRepository(session)
+            config = config_repo.load_config()
+        client = JTClient(config=config)
         tzinfo = self._parse_timezone(client.config.get("timezone"))
         now = datetime.now(tzinfo)
 
