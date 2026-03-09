@@ -645,6 +645,15 @@ export default function PendingDashboardView() {
                         <button type="submit" className="primary-btn" disabled=${loading}>
                             ${loading ? 'Cargando…' : 'Consultar API'}
                         </button>
+                        <button
+                            type="button"
+                            className="dash-json-export-btn"
+                            disabled=${loading || exportJsonLoading || filteredRecords.length === 0}
+                            onClick=${handleExportDashboardJson}
+                            title="Exportar todos los paquetes visibles en JSON para análisis con IA"
+                        >
+                            ${exportJsonLoading ? '⌛ JSON…' : '↓ JSON'}
+                        </button>
                     </form>
                 </div>
                 <div className="dashboard-cards">

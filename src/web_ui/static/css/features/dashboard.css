@@ -119,6 +119,31 @@
     cursor: not-allowed;
 }
 
+.dash-json-export-btn {
+    width: auto;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px dashed var(--border-color);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    white-space: nowrap;
+}
+
+.dash-json-export-btn:hover:not(:disabled) {
+    color: var(--text-main);
+    border-color: var(--text-muted);
+    background: var(--card-bg);
+}
+
+.dash-json-export-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 /* Tarjetas KPI del dashboard */
 .dashboard-cards {
     display: flex;
