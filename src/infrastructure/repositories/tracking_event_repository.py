@@ -1,5 +1,6 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
+from sqlalchemy import insert
 from typing import List, Tuple, Optional
 from src.infrastructure.database.models import TrackingEventORM
 from src.models.waybill import TrackingEvent
@@ -14,6 +15,9 @@ class TrackingEventRepository:
 
         now = datetime.utcnow()
         seen_identity = set()
+
+        # Usar la conexión directa para inserts (saltar flush conflicts)
+        connection = self.session.connection()
 
         for event in events:
             event_time = event.time or ""
@@ -41,17 +45,19 @@ class TrackingEventRepository:
                 exists.content = event.content
                 exists.fetched_at = now
             else:
-                self.session.add(TrackingEventORM(
-                    waybill_no=waybill_no,
-                    time=event_time,
-                    type_name=event_type,
-                    network_name=event.network_name,
-                    staff_name=event.staff_name,
-                    staff_contact=event.staff_contact,
-                    status=event.status,
-                    content=event.content,
-                    fetched_at=now,
-                ))
+                connection.execute(
+                    insert(TrackingEventORM).values(
+                        waybill_no=waybill_no,
+                        time=event_time,
+                        type_name=event_type,
+                        network_name=event.network_name,
+                        staff_name=event.staff_name,
+                        staff_contact=event.staff_contact,
+                        status=event.status,
+                        content=event.content,
+                        fetched_at=now,
+                    )
+                )
 
         self.session.commit()
 
