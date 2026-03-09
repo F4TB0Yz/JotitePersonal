@@ -1,10 +1,9 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body, Form, UploadFile, File, Request, BackgroundTasks
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body, Form, UploadFile, File, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import os
-import uuid
 import io
 import json
 import zipfile
@@ -37,9 +36,6 @@ from src.infrastructure.database.connection import SessionLocal, initialize_data
 from src.infrastructure.database.models import ConfigORM
 
 app = FastAPI(title="J&T Express Web Reporter")
-
-# Mapeo en memoria para BackgroundTasks de waybills: { task_id: {"status": "pending|completed|error", "data": {...}, "error": "..."} }
-waybills_tasks = {}
 
 SESSION_COOKIE_NAME = "jt_session"
 SESSION_TTL_SECONDS = 60 * 60 * 12
@@ -906,8 +902,8 @@ async def websocket_process(websocket: WebSocket):
             pass
 
 
-@app.post("/api/network/waybills", status_code=202)
-async def get_network_waybills(background_tasks: BackgroundTasks, req: dict = Body(...)):
+@app.post("/api/network/waybills")
+async def get_network_waybills(req: dict = Body(...)):
     """
     Endpoint para obtener las guías globales del punto de red.
     Payload esperado:
@@ -974,99 +970,91 @@ async def get_network_waybills(background_tasks: BackgroundTasks, req: dict = Bo
 
         return latest_value
 
-    def _process_waybills_bg(task_id: str):
-        try:
-            config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
-            report_service = ReportService(client, TrackingEventRepository(SessionLocal()))
-            response = client.get_network_signing_detail(
-                network_code=network_code,
-                start_time=start_time,
-                end_time=end_time,
-                sign_type=sign_type
-            )
+    def _compute_waybills():
+        config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+        report_service = ReportService(client, TrackingEventRepository(SessionLocal()))
+        response = client.get_network_signing_detail(
+            network_code=network_code,
+            start_time=start_time,
+            end_time=end_time,
+            sign_type=sign_type
+        )
 
-            records = response.get("data", {}).get("records", [])
-            if not records:
-                waybills_tasks[task_id] = {"status": "completed", "data": {"records": []}}
-                return
+        records = response.get("data", {}).get("records", [])
+        if not records:
+            return {"records": []}
 
-            unique_waybills = []
-            seen_waybills = set()
-            for record in records:
-                wb = (
-                    record.get("waybillNo")
-                    or record.get("billCode")
-                    or record.get("orderId")
-                    or ""
-                ).strip()
-                if not wb or wb in seen_waybills:
-                    continue
-                seen_waybills.add(wb)
-                unique_waybills.append(wb)
+        unique_waybills = []
+        seen_waybills = set()
+        for record in records:
+            wb = (
+                record.get("waybillNo")
+                or record.get("billCode")
+                or record.get("orderId")
+                or ""
+            ).strip()
+            if not wb or wb in seen_waybills:
+                continue
+            seen_waybills.add(wb)
+            unique_waybills.append(wb)
 
-            scan_data_map = {}
+        scan_data_map = {}
 
-            def fetch_delivery_scan_time(waybill_no: str):
-                try:
-                    events = report_service.get_timeline(waybill_no, max_age_minutes=60)
-                    latest_delivery_time = _extract_latest_scan_time_by_keywords(
-                        events,
-                        ("escaneo de entrega",)
-                    )
-                    latest_return_time = _extract_latest_scan_time_by_keywords(
-                        events,
-                        ("escaneo de devolucion", "escaneo devolucion", "devolucion")
-                    )
-                    return waybill_no, {
-                        "delivery": latest_delivery_time,
-                        "return": latest_return_time,
-                    }
-                except Exception:
-                    return waybill_no, {
-                        "delivery": "",
-                        "return": "",
-                    }
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-                futures = {
-                    executor.submit(fetch_delivery_scan_time, wb): wb
-                    for wb in unique_waybills
+        def fetch_delivery_scan_time(waybill_no: str):
+            try:
+                events = report_service.get_timeline(waybill_no, max_age_minutes=60)
+                latest_delivery_time = _extract_latest_scan_time_by_keywords(
+                    events,
+                    ("escaneo de entrega",)
+                )
+                latest_return_time = _extract_latest_scan_time_by_keywords(
+                    events,
+                    ("escaneo de devolucion", "escaneo devolucion", "devolucion")
+                )
+                return waybill_no, {
+                    "delivery": latest_delivery_time,
+                    "return": latest_return_time,
                 }
-                for future in concurrent.futures.as_completed(futures):
-                    wb, scan_data = future.result()
-                    scan_data_map[wb] = scan_data
+            except Exception:
+                return waybill_no, {
+                    "delivery": "",
+                    "return": "",
+                }
 
-            enriched_records = []
-            for record in records:
-                wb = (
-                    record.get("waybillNo")
-                    or record.get("billCode")
-                    or record.get("orderId")
-                    or ""
-                ).strip()
-                scan_data = scan_data_map.get(wb, {}) if wb else {}
-                if scan_data.get("return"):
-                    continue
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+            futures = {
+                executor.submit(fetch_delivery_scan_time, wb): wb
+                for wb in unique_waybills
+            }
+            for future in concurrent.futures.as_completed(futures):
+                wb, scan_data = future.result()
+                scan_data_map[wb] = scan_data
 
-                enriched = dict(record)
-                enriched["deliveryScanTimeLatest"] = scan_data.get("delivery", "")
-                enriched_records.append(enriched)
+        enriched_records = []
+        for record in records:
+            wb = (
+                record.get("waybillNo")
+                or record.get("billCode")
+                or record.get("orderId")
+                or ""
+            ).strip()
+            scan_data = scan_data_map.get(wb, {}) if wb else {}
+            if scan_data.get("return"):
+                continue
 
-            waybills_tasks[task_id] = {"status": "completed", "data": {"records": enriched_records}}
-        except Exception as e:
-            waybills_tasks[task_id] = {"status": "error", "error": str(e)}
+            enriched = dict(record)
+            enriched["deliveryScanTimeLatest"] = scan_data.get("delivery", "")
+            enriched_records.append(enriched)
 
-    task_id = str(uuid.uuid4())
-    waybills_tasks[task_id] = {"status": "pending"}
-    background_tasks.add_task(_process_waybills_bg, task_id)
-    return {"job_id": task_id, "status": "pending"}
+        return {"records": enriched_records}
 
-@app.get("/api/network/waybills/task/{task_id}")
-async def get_network_waybills_task(task_id: str):
-    task_info = waybills_tasks.get(task_id)
-    if not task_info:
-        raise HTTPException(status_code=404, detail="Tarea no encontrada o expirada")
-    return task_info
+    try:
+        loop = asyncio.get_event_loop()
+        # Ejecutar en hilo externo para no bloquear el event loop de asyncio
+        result = await loop.run_in_executor(None, _compute_waybills)
+        return result
+    except Exception as e:
+        return {"records": [], "error": str(e)}
 
 
 @app.get("/api/alerts/temu")
