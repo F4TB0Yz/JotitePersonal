@@ -644,6 +644,137 @@ async def get_waybills_details(payload: WaybillList):
     return results
 
 
+@app.post("/api/waybills/intelligence-export")
+async def get_waybills_intelligence_export(payload: WaybillList):
+    """
+    Devuelve un payload enriquecido por guía para análisis externo,
+    incluyendo detalle oficial y la línea de tiempo completa de movimientos.
+    """
+    unique_waybills = []
+    seen = set()
+    for raw_waybill in payload.waybills:
+        normalized = (raw_waybill or "").strip().upper()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        unique_waybills.append(normalized)
+
+    if not unique_waybills:
+        return {"generatedAt": datetime.utcnow().isoformat(), "results": {}}
+
+    client = JTClient()
+    report_service = ReportService(client)
+    results = {}
+
+    def extract_export_payload(waybill_no: str):
+        payload_item = {
+            "waybillNo": waybill_no,
+            "detail": None,
+            "timeline": [],
+            "timelineSummary": {
+                "eventCount": 0,
+                "lastEventTime": "",
+                "lastStatus": "",
+            },
+            "raw": {
+                "details": None,
+                "orderInfo": None,
+            },
+            "errors": [],
+        }
+
+        try:
+            detail_response = client.get_order_detail(waybill_no)
+            if detail_response.get("code") == 1:
+                data = detail_response.get("data", {}) or {}
+                details = data.get("details", {}) or {}
+                order_info = data.get("orderInfo") or data.get("waybillInfo") or {}
+                payload_item["raw"] = {
+                    "details": details,
+                    "orderInfo": order_info,
+                }
+                payload_item["detail"] = {
+                    "waybillNo": waybill_no,
+                    "receiverName": (
+                        details.get("receiverName")
+                        or order_info.get("receiverName")
+                        or details.get("receiver")
+                    ),
+                    "receiverCity": (
+                        details.get("receiverCityName")
+                        or order_info.get("receiverCityName")
+                        or details.get("receiverCity")
+                    ),
+                    "receiverAddress": (
+                        details.get("receiverDetailedAddress")
+                        or details.get("receiverAddress")
+                        or order_info.get("receiverDetailedAddress")
+                    ),
+                    "receiverPhone": (
+                        details.get("receiverPhone")
+                        or order_info.get("receiverPhone")
+                        or details.get("consigneePhone")
+                    ),
+                    "status": (
+                        details.get("waybillStatusName")
+                        or details.get("statusName")
+                        or details.get("status")
+                        or order_info.get("waybillStatusName")
+                    ),
+                    "weight": details.get("packageChargeWeight") or order_info.get("packageChargeWeight"),
+                    "signTime": details.get("signTime") or order_info.get("signTime") or "",
+                }
+            else:
+                payload_item["errors"].append(
+                    detail_response.get("msg") or "No se pudo consultar el detalle oficial."
+                )
+        except Exception as exc:
+            payload_item["errors"].append(f"detail: {exc}")
+
+        try:
+            events = report_service.get_timeline(waybill_no, max_age_minutes=60)
+            timeline = [
+                {
+                    "time": event.time,
+                    "typeName": event.type_name,
+                    "networkName": event.network_name,
+                    "staffName": event.staff_name,
+                    "staffContact": event.staff_contact,
+                    "status": event.status,
+                    "content": event.content,
+                }
+                for event in events
+            ]
+            payload_item["timeline"] = timeline
+            payload_item["timelineSummary"] = {
+                "eventCount": len(timeline),
+                "lastEventTime": timeline[0]["time"] if timeline else "",
+                "lastStatus": (
+                    timeline[0].get("status")
+                    or timeline[0].get("typeName")
+                    or ""
+                ) if timeline else "",
+            }
+        except Exception as exc:
+            payload_item["errors"].append(f"timeline: {exc}")
+
+        return waybill_no, payload_item
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+        futures = {
+            executor.submit(extract_export_payload, wb): wb
+            for wb in unique_waybills
+        }
+        for future in concurrent.futures.as_completed(futures):
+            waybill_no, item = future.result()
+            results[waybill_no] = item
+
+    return {
+        "generatedAt": datetime.utcnow().isoformat(),
+        "results": results,
+    }
+
+
 @app.get("/api/waybills/{waybill_no}/timeline")
 async def get_waybill_timeline(waybill_no: str, max_age_minutes: int = 30):
     normalized_wb = (waybill_no or "").strip().upper()

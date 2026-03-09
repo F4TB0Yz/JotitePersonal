@@ -192,6 +192,7 @@ export function usePendingDashboard() {
         error,
         subtitle,
         summary,
+        filteredRecords,
         tableData,
         getRecordsByCell,
         getRecordsByStaff,

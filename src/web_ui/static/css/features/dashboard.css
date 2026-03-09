@@ -596,6 +596,7 @@
     }
 
     .dashboard-filters .primary-btn,
+    .dashboard-filters .secondary-btn,
     .dash-date-toggle-btn {
         width: 100%;
         min-height: 44px;

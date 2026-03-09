@@ -1,7 +1,7 @@
 import { html, useState, useEffect } from '../../lib/ui.js';
 import { usePendingDashboard } from '../../hooks/usePendingDashboard.js';
 import { formatShortDate } from '../../utils/formatters.js';
-import { fetchWaybillDetails, fetchWaybillPhones } from '../../services/addressService.js';
+import { fetchWaybillDetails, fetchWaybillIntelligenceExport, fetchWaybillPhones } from '../../services/addressService.js';
 import { fetchMessengerContact } from '../../services/messengerService.js';
 import DateRangePicker from '../shared/DateRangePicker.js';
 
@@ -88,6 +88,28 @@ function getPhoneButtonLabel(info) {
     return '📞 Ver teléfono';
 }
 
+function safeFileNamePart(value, fallback = 'sin-valor') {
+    const normalized = String(value || '')
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9_-]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .toLowerCase();
+    return normalized || fallback;
+}
+
+function downloadJsonFile(fileName, payload) {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+}
+
 const EXPORTABLE_FIELDS = [
     { key: 'waybillNo', label: 'Guía' },
     { key: 'receiverName', label: 'Destinatario' },
@@ -118,6 +140,7 @@ export default function PendingDashboardView() {
         error,
         subtitle,
         summary,
+        filteredRecords,
         tableData,
         getRecordsByCell,
         getRecordsByStaff,
@@ -134,6 +157,8 @@ export default function PendingDashboardView() {
     const [phoneState, setPhoneState] = useState({});
     const [messengerContacts, setMessengerContacts] = useState({});
     const [showExportMenu, setShowExportMenu] = useState(false);
+    const [exportJsonLoading, setExportJsonLoading] = useState(false);
+    const [exportJsonError, setExportJsonError] = useState('');
     const [exportFields, setExportFields] = useState(() => ({
         waybillNo: true,
         receiverName: true,
@@ -150,6 +175,7 @@ export default function PendingDashboardView() {
             setSelectedCell(null);
             setMessengerContacts({});
             setShowExportMenu(false);
+            setExportJsonError('');
         }
     }, [loading]);
 
@@ -163,6 +189,7 @@ export default function PendingDashboardView() {
             setDetailError('');
             setDetailLoading(false);
             setPhoneState({});
+            setExportJsonError('');
             return;
         }
         const ids = Array.from(
@@ -359,6 +386,36 @@ export default function PendingDashboardView() {
         }));
     };
 
+    const buildIntelligencePackages = (records, exportResults, staffLabelResolver) => records.map((pkg, index) => {
+        const waybillNo = pkg.waybillNo || '';
+        const detail = waybillNo ? (detailMap[waybillNo] || exportResults[waybillNo]?.detail || null) : null;
+        const intelligence = waybillNo ? exportResults[waybillNo] : null;
+
+        return {
+            rowIndex: index + 1,
+            waybillNo: waybillNo || null,
+            visibleSnapshot: {
+                receiverName: detail?.receiverName || getReceiverName(pkg),
+                receiverCity: detail?.receiverCity || getReceiverCity(pkg),
+                receiverAddress: detail?.receiverAddress || getReceiverAddress(pkg),
+                receiverPhone: detail?.receiverPhone || null,
+                status: detail?.status || getPackageStatus(pkg),
+                staff: staffLabelResolver(pkg),
+                referenceDate: getPackageDateByMode(pkg, dateMode, dateModes)
+            },
+            sourceRecord: pkg,
+            officialDetail: intelligence?.detail || detail,
+            rawOfficialData: intelligence?.raw || null,
+            movements: intelligence?.timeline || [],
+            movementSummary: intelligence?.timelineSummary || {
+                eventCount: 0,
+                lastEventTime: '',
+                lastStatus: ''
+            },
+            errors: intelligence?.errors || []
+        };
+    });
+
     const getExportCellValue = (pkg, detail, fieldKey) => {
         if (fieldKey === 'waybillNo') return pkg.waybillNo || 'N/A';
         if (fieldKey === 'receiverName') return detail?.receiverName || getReceiverName(pkg);
@@ -437,6 +494,100 @@ export default function PendingDashboardView() {
         }, 300);
     };
 
+    const exportRecordsAsJson = async ({ records, fileLabel, scope, detailDay = null, detailDayLabel = null, staffLabelResolver }) => {
+        if (!records || records.length === 0) return;
+
+        const waybills = Array.from(
+            new Set(
+                records
+                    .map((pkg) => pkg.waybillNo)
+                    .filter((waybillNo) => typeof waybillNo === 'string' && waybillNo.trim().length > 0)
+            )
+        );
+
+        if (waybills.length === 0) {
+            window.alert('No hay guías válidas para exportar.');
+            return;
+        }
+
+        setExportJsonLoading(true);
+        setExportJsonError('');
+
+        try {
+            const exportResponse = await fetchWaybillIntelligenceExport(waybills);
+            const exportResults = exportResponse?.results || {};
+            const packages = buildIntelligencePackages(records, exportResults, staffLabelResolver);
+
+            const payload = {
+                exportedAt: new Date().toISOString(),
+                generatedAt: exportResponse?.generatedAt || '',
+                source: 'dashboard-pendientes',
+                scope,
+                filters: {
+                    networkCode,
+                    startDate,
+                    endDate,
+                    dateMode,
+                    dateLabel: activeDateLabel,
+                    selectedStaff,
+                    detailDay,
+                    detailDayLabel
+                },
+                summary: {
+                    packageCount: packages.length,
+                    waybillCount: waybills.length,
+                    exportedMovementCount: packages.reduce(
+                        (total, item) => total + (item.movements?.length || 0),
+                        0
+                    )
+                },
+                packages
+            };
+
+            const fileName = [
+                'dashboard-pendientes',
+                safeFileNamePart(networkCode, 'red'),
+                safeFileNamePart(fileLabel, 'filtro')
+            ].join('-') + '.json';
+
+            downloadJsonFile(fileName, payload);
+        } catch (err) {
+            setExportJsonError(err?.message || 'No se pudo generar el JSON.');
+        } finally {
+            setExportJsonLoading(false);
+        }
+    };
+
+    const handleExportDashboardJson = async () => {
+        await exportRecordsAsJson({
+            records: filteredRecords,
+            fileLabel: selectedStaff === 'ALL' ? 'tabla-completa' : `tabla-${selectedStaff}`,
+            scope: 'dashboard-table',
+            detailDay: 'ALL',
+            detailDayLabel: 'Todos los días visibles',
+            staffLabelResolver: (pkg) => pkg.deliveryUser || 'Sin enrutar'
+        });
+    };
+
+    const handleExportJson = async () => {
+        if (!selectedCell || detailRows.length === 0) return;
+        const selectedStaffLabel = selectedCell.staff || 'Sin enrutar';
+        const periodLabel = selectedCell.day === 'ALL'
+            ? 'Todos los días'
+            : selectedCell.day === 'Sin Fecha'
+                ? 'Sin fecha registrada'
+                : formatShortDate(selectedCell.day);
+
+        await exportRecordsAsJson({
+            records: detailRows,
+            fileLabel: `${selectedStaffLabel}-${selectedCell.day === 'ALL' ? 'todos' : selectedCell.day}`,
+            scope: 'detail-panel',
+            detailDay: selectedCell.day,
+            detailDayLabel: periodLabel,
+            staffLabelResolver: () => selectedStaffLabel
+        });
+    };
+
     const detailRows = selectedCell
         ? [...selectedCell.records].sort((a, b) => {
             const bValue = getPackageDateByMode(b, dateMode, dateModes);
@@ -494,8 +645,19 @@ export default function PendingDashboardView() {
                         <button type="submit" className="primary-btn" disabled=${loading}>
                             ${loading ? 'Cargando…' : 'Consultar API'}
                         </button>
+                        <button
+                            type="button"
+                            className="secondary-btn"
+                            disabled=${loading || exportJsonLoading || filteredRecords.length === 0}
+                            onClick=${handleExportDashboardJson}
+                        >
+                            ${exportJsonLoading ? 'Generando JSON…' : 'Exportar JSON IA'}
+                        </button>
                     </form>
                 </div>
+                ${exportJsonError && !selectedCell
+                    ? html`<div className="dash-error">${exportJsonError}</div>`
+                    : null}
                 <div className="dashboard-cards">
                     <div className="dashboard-card">
                         <span className="card-value">${summary.total}</span>
@@ -633,12 +795,21 @@ export default function PendingDashboardView() {
                                         </div>`
                                         : null}
                                 </div>
+                                <button
+                                    type="button"
+                                    className="secondary-btn"
+                                    disabled=${exportJsonLoading || detailRows.length === 0}
+                                    onClick=${handleExportJson}
+                                >
+                                    ${exportJsonLoading ? 'Generando JSON…' : 'Descargar JSON IA'}
+                                </button>
                                 <button type="button" className="secondary-btn" onClick=${() => setSelectedCell(null)}>Cerrar detalle</button>
                             </div>
                         </div>
                         <div className="dash-detail-body">
                             ${detailLoading ? html`<p className="dash-detail-hint">Consultando información precisa de las guías…</p>` : null}
                             ${detailError ? html`<div className="dash-error dash-detail-error">${detailError}</div>` : null}
+                            ${exportJsonError ? html`<div className="dash-error dash-detail-error">${exportJsonError}</div>` : null}
                             <div className="dash-detail-scroll">
                                 ${detailRows.length === 0
                                     ? html`<div className="dash-placeholder">Sin paquetes para mostrar.</div>`
