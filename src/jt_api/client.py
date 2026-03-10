@@ -2,8 +2,22 @@ import os
 import requests
 import json
 
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
 from src.infrastructure.database.connection import SessionLocal
 from src.infrastructure.database.models import ConfigORM
+
+_REQUEST_TIMEOUT = (10, 30)  # (connect, read) en segundos
+
+_retry_strategy = Retry(
+    total=3,
+    backoff_factor=1,
+    status_forcelist=[502, 503, 504],
+    allowed_methods=["POST", "GET"],
+    raise_on_status=False,
+)
+_adapter = HTTPAdapter(max_retries=_retry_strategy, pool_connections=10, pool_maxsize=20)
 
 class JTClient:
     def __init__(self, config_path="config.json"):
@@ -46,6 +60,11 @@ class JTClient:
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
         }
 
+        self.session = requests.Session()
+        self.session.mount("https://", _adapter)
+        self.session.mount("http://", _adapter)
+        self.session.headers.update(self.headers)
+
     def _post(self, endpoint, data, base=None, extra_headers=None):
         base_url = base if base else self.base_url
         url = f"{base_url}{endpoint}"
@@ -54,7 +73,7 @@ class JTClient:
         if extra_headers:
             request_headers.update(extra_headers)
             
-        response = requests.post(url, headers=request_headers, json=data)
+        response = self.session.post(url, headers=request_headers, json=data, timeout=_REQUEST_TIMEOUT)
         response.raise_for_status()
         return response.json()
 
@@ -223,7 +242,7 @@ class JTClient:
         url = f"{self.servicequality_base_url}/thirdService/waybill/commonWaybillListByWaybillNos/receiverPhone"
         headers = self.headers.copy()
         headers["routeName"] = "recordSheet"
-        response = requests.get(url, headers=headers, params={"waybillNos": joined})
+        response = self.session.get(url, headers=headers, params={"waybillNos": joined}, timeout=_REQUEST_TIMEOUT)
         response.raise_for_status()
         return response.json()
 

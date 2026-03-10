@@ -50,13 +50,26 @@ def _is_public_path(path: str) -> bool:
     return path.startswith("/static/")
 
 
+_cached_password: str | None = None
+_cached_password_ts: float = 0
+_CACHE_TTL = 60  # segundos
+
+
 def _resolve_dashboard_password() -> str | None:
+    global _cached_password, _cached_password_ts
+
+    now = time.monotonic()
+    if _cached_password is not None and (now - _cached_password_ts) < _CACHE_TTL:
+        return _cached_password
+
     env_password = (
         os.getenv("DASHBOARD_PASSWORD")
         or os.getenv("ADMIN_PASSWORD")
         or os.getenv("APP_PASSWORD")
     )
     if env_password:
+        _cached_password = env_password
+        _cached_password_ts = now
         return env_password
 
     session = None
@@ -64,6 +77,8 @@ def _resolve_dashboard_password() -> str | None:
         session = SessionLocal()
         token_record = session.query(ConfigORM).filter_by(key="authToken").first()
         if token_record and token_record.value:
+            _cached_password = token_record.value
+            _cached_password_ts = now
             return token_record.value
     except Exception:
         return None
@@ -195,26 +210,32 @@ class WaybillReprintPayload(BaseModel):
 
 @app.post("/api/config/token")
 async def update_token(payload: TokenUpdate):
-    session = SessionLocal()
+    global _cached_password, _cached_password_ts
 
-    try:
-        token_record = session.query(ConfigORM).filter_by(key="authToken").first()
+    def _update():
+        session = SessionLocal()
+        try:
+            token_record = session.query(ConfigORM).filter_by(key="authToken").first()
+            if token_record:
+                if token_record.value == payload.authToken:
+                    return {"status": "unchanged", "message": "El token ya está actualizado"}
+                token_record.value = payload.authToken
+            else:
+                new_token = ConfigORM(key="authToken", value=payload.authToken)
+                session.add(new_token)
+            session.commit()
+            return {"status": "success", "message": "Token guardado en Postgres como Dios manda"}
+        except Exception as e:
+            session.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            session.close()
 
-        if token_record:
-            if token_record.value == payload.authToken:
-                return {"status": "unchanged", "message": "El token ya está actualizado"}
-            token_record.value = payload.authToken
-        else:
-            new_token = ConfigORM(key="authToken", value=payload.authToken)
-            session.add(new_token)
-
-        session.commit()
-        return {"status": "success", "message": "Token guardado en Postgres como Dios manda"}
-    except Exception as e:
-        session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        session.close()
+    result = await asyncio.to_thread(_update)
+    # Invalidar caché de password para que surta efecto de inmediato
+    _cached_password = None
+    _cached_password_ts = 0
+    return result
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 templates_dir = os.path.join(os.path.dirname(__file__), "templates")
@@ -271,8 +292,11 @@ async def search_messengers(q: str):
     if not q or len(q) < 2:
         return []
     try:
-        client = JTClient()
-        response = client.search_messengers(q)
+        def _search():
+            client = JTClient()
+            return client.search_messengers(q)
+
+        response = await asyncio.to_thread(_search)
         if response.get("code") == 1 and "data" in response:
             return response["data"].get("records", []) if "records" in response["data"] else response["data"]
         return []
@@ -299,11 +323,12 @@ async def global_search(q: str, limit: int = 6):
         return {"waybills": [], "messengers": [], "novedades": []}
 
     max_items = max(1, min(limit, 20))
-    waybill_results = []
-    messenger_results = []
-    novedades_results = []
 
-    try:
+    def _search():
+        waybill_results = []
+        messenger_results = []
+        novedades_results = []
+
         client = JTClient()
 
         maybe_waybill = bool(re.fullmatch(r"[A-Za-z0-9\-]{6,32}", query))
@@ -337,6 +362,9 @@ async def global_search(q: str, limit: int = 6):
             "messengers": messenger_results[:max_items],
             "novedades": novedades_results[:max_items],
         }
+
+    try:
+        return await asyncio.to_thread(_search)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -345,7 +373,8 @@ async def global_search(q: str, limit: int = 6):
 async def get_messenger_contact(name: str, network_code: str | None = None, waybill: str | None = None):
     if not name or not name.strip():
         raise HTTPException(status_code=400, detail="Nombre requerido")
-    try:
+
+    def _fetch_contact():
         client = JTClient()
         target_network = 1009
         if network_code:
@@ -435,6 +464,9 @@ async def get_messenger_contact(name: str, network_code: str | None = None, wayb
             "networkName": network_name,
             "phone": final_phone
         }
+
+    try:
+        return await asyncio.to_thread(_fetch_contact)
     except HTTPException:
         raise
     except Exception as exc:
@@ -445,13 +477,15 @@ async def get_messenger_metrics(account_code: str, network_code: str, start_time
     if not account_code or not network_code or not start_time or not end_time:
         return {"error": "Missing parameters"}
     try:
-        client = JTClient()
-        detail = client.get_messenger_metrics(account_code, network_code, start_time, end_time)
-        summary = client.get_messenger_metrics_sum(account_code, network_code, start_time, end_time)
-        return {
-            "detail": detail.get("data", {}).get("records", []) if detail.get("code") == 1 else [],
-            "summary": summary.get("data", {}).get("records", []) if summary.get("code") == 1 else []
-        }
+        def _fetch():
+            client = JTClient()
+            detail = client.get_messenger_metrics(account_code, network_code, start_time, end_time)
+            summary = client.get_messenger_metrics_sum(account_code, network_code, start_time, end_time)
+            return {
+                "detail": detail.get("data", {}).get("records", []) if detail.get("code") == 1 else [],
+                "summary": summary.get("data", {}).get("records", []) if summary.get("code") == 1 else []
+            }
+        return await asyncio.to_thread(_fetch)
     except Exception as e:
         print(f"Error obteniendo métricas de mensajero: {e}")
         return {"error": str(e)}
@@ -461,8 +495,10 @@ async def get_messenger_waybills(account_code: str, network_code: str, start_tim
     if not account_code or not network_code or not start_time or not end_time:
         return {"error": "Missing parameters"}
     try:
-        client = JTClient()
-        return client.get_all_messenger_waybills_detail(account_code, network_code, start_time, end_time)
+        def _fetch():
+            client = JTClient()
+            return client.get_all_messenger_waybills_detail(account_code, network_code, start_time, end_time)
+        return await asyncio.to_thread(_fetch)
     except Exception as e:
         print(f"Error obteniendo paquetes de mensajero: {e}")
         return {"error": str(e)}
@@ -479,26 +515,29 @@ async def get_waybills_addresses(payload: WaybillList):
     if not payload.waybills:
         return {}
 
-    client = JTClient()
-    results = {}
+    def _fetch_all():
+        client = JTClient()
+        results = {}
 
-    def fetch_address(wb):
-        try:
-            resp = client.get_order_detail(wb)
-            if resp.get("code") == 1 and "data" in resp:
-                details = resp["data"].get("details", {})
-                return wb, details.get("receiverDetailedAddress", "Desconocida")
-            return wb, "Desconocida"
-        except Exception:
-            return wb, "Desconocida"
+        def fetch_address(wb):
+            try:
+                resp = client.get_order_detail(wb)
+                if resp.get("code") == 1 and "data" in resp:
+                    details = resp["data"].get("details", {})
+                    return wb, details.get("receiverDetailedAddress", "Desconocida")
+                return wb, "Desconocida"
+            except Exception:
+                return wb, "Desconocida"
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        futures = {executor.submit(fetch_address, wb): wb for wb in payload.waybills}
-        for future in concurrent.futures.as_completed(futures):
-            wb, address = future.result()
-            results[wb] = address
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {executor.submit(fetch_address, wb): wb for wb in payload.waybills}
+            for future in concurrent.futures.as_completed(futures):
+                wb, address = future.result()
+                results[wb] = address
 
-    return results
+        return results
+
+    return await asyncio.to_thread(_fetch_all)
 
 
 @app.post("/api/waybills/phones")
@@ -506,9 +545,12 @@ async def get_waybills_phones(payload: WaybillList):
     if not payload.waybills:
         return {}
 
-    client = JTClient()
+    def _fetch():
+        client = JTClient()
+        return client.get_waybill_receiver_phone(payload.waybills)
+
     try:
-        response = client.get_waybill_receiver_phone(payload.waybills)
+        response = await asyncio.to_thread(_fetch)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -545,103 +587,106 @@ async def get_waybills_details(payload: WaybillList):
     if not payload.waybills:
         return {}
 
-    client = JTClient()
-    results = {}
+    def _fetch_all():
+        client = JTClient()
+        results = {}
 
-    def extract_detail(wb):
-        try:
-            resp = client.get_order_detail(wb)
-            if resp.get("code") != 1:
-                return wb, None
-            data = resp.get("data", {})
-            details = data.get("details", {}) or {}
-            order_info = data.get("orderInfo") or data.get("waybillInfo") or {}
-
-            receiver_name = (
-                details.get("receiverName")
-                or order_info.get("receiverName")
-                or details.get("receiver")
-            )
-            receiver_city = (
-                details.get("receiverCityName")
-                or order_info.get("receiverCityName")
-                or details.get("receiverCity")
-            )
-            receiver_address = (
-                details.get("receiverDetailedAddress")
-                or details.get("receiverAddress")
-                or order_info.get("receiverDetailedAddress")
-            )
-            status = (
-                details.get("waybillStatusName")
-                or details.get("statusName")
-                or details.get("status")
-                or order_info.get("waybillStatusName")
-            )
-            receiver_phone = (
-                details.get("receiverPhone")
-                or order_info.get("receiverPhone")
-                or details.get("consigneePhone")
-            )
-
-            sign_time = details.get("signTime") or order_info.get("signTime") or ""
-            signer_name = ""
-
-            # Fallback: extract date and signer from tracking events
+        def extract_detail(wb):
             try:
-                tracking_resp = client.get_tracking_list(wb)
-                tracking_data = tracking_resp.get("data", [])
-                if tracking_data:
-                    tracking_items = tracking_data[0].get("details", [])
-                    # First pass: look for a "firmado" event (preferred)
-                    for item in tracking_items:
-                        scan_type = (item.get("scanTypeName") or "").lower()
-                        item_status = (item.get("status") or "")
-                        is_signed = (
-                            item.get("code") == 100
-                            or "firmado" in scan_type
-                            or "签收" in item_status
-                            or "firmado" in item_status.lower()
-                        )
-                        if is_signed:
-                            if not sign_time:
-                                sign_time = item.get("scanTime") or ""
-                            signer_name = (item.get("remark3") or "").strip()
-                            break
-                    # Second pass: if still no signer, use the last item with a non-empty remark3
-                    if not signer_name:
-                        for item in reversed(tracking_items):
-                            candidate = (item.get("remark3") or "").strip()
-                            if candidate:
-                                signer_name = candidate
+                resp = client.get_order_detail(wb)
+                if resp.get("code") != 1:
+                    return wb, None
+                data = resp.get("data", {})
+                details = data.get("details", {}) or {}
+                order_info = data.get("orderInfo") or data.get("waybillInfo") or {}
+
+                receiver_name = (
+                    details.get("receiverName")
+                    or order_info.get("receiverName")
+                    or details.get("receiver")
+                )
+                receiver_city = (
+                    details.get("receiverCityName")
+                    or order_info.get("receiverCityName")
+                    or details.get("receiverCity")
+                )
+                receiver_address = (
+                    details.get("receiverDetailedAddress")
+                    or details.get("receiverAddress")
+                    or order_info.get("receiverDetailedAddress")
+                )
+                status = (
+                    details.get("waybillStatusName")
+                    or details.get("statusName")
+                    or details.get("status")
+                    or order_info.get("waybillStatusName")
+                )
+                receiver_phone = (
+                    details.get("receiverPhone")
+                    or order_info.get("receiverPhone")
+                    or details.get("consigneePhone")
+                )
+
+                sign_time = details.get("signTime") or order_info.get("signTime") or ""
+                signer_name = ""
+
+                # Fallback: extract date and signer from tracking events
+                try:
+                    tracking_resp = client.get_tracking_list(wb)
+                    tracking_data = tracking_resp.get("data", [])
+                    if tracking_data:
+                        tracking_items = tracking_data[0].get("details", [])
+                        # First pass: look for a "firmado" event (preferred)
+                        for item in tracking_items:
+                            scan_type = (item.get("scanTypeName") or "").lower()
+                            item_status = (item.get("status") or "")
+                            is_signed = (
+                                item.get("code") == 100
+                                or "firmado" in scan_type
+                                or "签收" in item_status
+                                or "firmado" in item_status.lower()
+                            )
+                            if is_signed:
                                 if not sign_time:
                                     sign_time = item.get("scanTime") or ""
+                                signer_name = (item.get("remark3") or "").strip()
                                 break
-                print(f"[waybills/details] {wb}: sign_time={sign_time!r}, signer_name={signer_name!r}")
-            except Exception as e:
-                print(f"[waybills/details] Tracking fallback error for {wb}: {e}")
+                        # Second pass: if still no signer, use the last item with a non-empty remark3
+                        if not signer_name:
+                            for item in reversed(tracking_items):
+                                candidate = (item.get("remark3") or "").strip()
+                                if candidate:
+                                    signer_name = candidate
+                                    if not sign_time:
+                                        sign_time = item.get("scanTime") or ""
+                                    break
+                    print(f"[waybills/details] {wb}: sign_time={sign_time!r}, signer_name={signer_name!r}")
+                except Exception as e:
+                    print(f"[waybills/details] Tracking fallback error for {wb}: {e}")
 
-            return wb, {
-                "waybillNo": wb,
-                "receiverName": receiver_name,
-                "receiverCity": receiver_city,
-                "receiverAddress": receiver_address,
-                "receiverPhone": receiver_phone,
-                "status": status,
-                "weight": details.get("packageChargeWeight") or order_info.get("packageChargeWeight"),
-                "lastEventTime": sign_time,
-                "signerName": signer_name
-            }
-        except Exception:
-            return wb, None
+                return wb, {
+                    "waybillNo": wb,
+                    "receiverName": receiver_name,
+                    "receiverCity": receiver_city,
+                    "receiverAddress": receiver_address,
+                    "receiverPhone": receiver_phone,
+                    "status": status,
+                    "weight": details.get("packageChargeWeight") or order_info.get("packageChargeWeight"),
+                    "lastEventTime": sign_time,
+                    "signerName": signer_name
+                }
+            except Exception:
+                return wb, None
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        futures = {executor.submit(extract_detail, wb): wb for wb in payload.waybills}
-        for future in concurrent.futures.as_completed(futures):
-            wb, detail = future.result()
-            results[wb] = detail
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {executor.submit(extract_detail, wb): wb for wb in payload.waybills}
+            for future in concurrent.futures.as_completed(futures):
+                wb, detail = future.result()
+                results[wb] = detail
 
-    return results
+        return results
+
+    return await asyncio.to_thread(_fetch_all)
 
 
 @app.post("/api/waybills/intelligence-export")
@@ -662,117 +707,120 @@ async def get_waybills_intelligence_export(payload: WaybillList):
     if not unique_waybills:
         return {"generatedAt": datetime.utcnow().isoformat(), "results": {}}
 
-    client = JTClient()
-    report_service = ReportService(client)
-    results = {}
+    def _fetch_all():
+        client = JTClient()
+        report_service = ReportService(client)
+        results = {}
 
-    def extract_export_payload(waybill_no: str):
-        payload_item = {
-            "waybillNo": waybill_no,
-            "detail": None,
-            "timeline": [],
-            "timelineSummary": {
-                "eventCount": 0,
-                "lastEventTime": "",
-                "lastStatus": "",
-            },
-            "raw": {
-                "details": None,
-                "orderInfo": None,
-            },
-            "errors": [],
-        }
-
-        try:
-            detail_response = client.get_order_detail(waybill_no)
-            if detail_response.get("code") == 1:
-                data = detail_response.get("data", {}) or {}
-                details = data.get("details", {}) or {}
-                order_info = data.get("orderInfo") or data.get("waybillInfo") or {}
-                payload_item["raw"] = {
-                    "details": details,
-                    "orderInfo": order_info,
-                }
-                payload_item["detail"] = {
-                    "waybillNo": waybill_no,
-                    "receiverName": (
-                        details.get("receiverName")
-                        or order_info.get("receiverName")
-                        or details.get("receiver")
-                    ),
-                    "receiverCity": (
-                        details.get("receiverCityName")
-                        or order_info.get("receiverCityName")
-                        or details.get("receiverCity")
-                    ),
-                    "receiverAddress": (
-                        details.get("receiverDetailedAddress")
-                        or details.get("receiverAddress")
-                        or order_info.get("receiverDetailedAddress")
-                    ),
-                    "receiverPhone": (
-                        details.get("receiverPhone")
-                        or order_info.get("receiverPhone")
-                        or details.get("consigneePhone")
-                    ),
-                    "status": (
-                        details.get("waybillStatusName")
-                        or details.get("statusName")
-                        or details.get("status")
-                        or order_info.get("waybillStatusName")
-                    ),
-                    "weight": details.get("packageChargeWeight") or order_info.get("packageChargeWeight"),
-                    "signTime": details.get("signTime") or order_info.get("signTime") or "",
-                }
-            else:
-                payload_item["errors"].append(
-                    detail_response.get("msg") or "No se pudo consultar el detalle oficial."
-                )
-        except Exception as exc:
-            payload_item["errors"].append(f"detail: {exc}")
-
-        try:
-            events = report_service.get_timeline(waybill_no, max_age_minutes=60)
-            timeline = [
-                {
-                    "time": event.time,
-                    "typeName": event.type_name,
-                    "networkName": event.network_name,
-                    "staffName": event.staff_name,
-                    "staffContact": event.staff_contact,
-                    "status": event.status,
-                    "content": event.content,
-                }
-                for event in events
-            ]
-            payload_item["timeline"] = timeline
-            payload_item["timelineSummary"] = {
-                "eventCount": len(timeline),
-                "lastEventTime": timeline[0]["time"] if timeline else "",
-                "lastStatus": (
-                    timeline[0].get("status")
-                    or timeline[0].get("typeName")
-                    or ""
-                ) if timeline else "",
+        def extract_export_payload(waybill_no: str):
+            payload_item = {
+                "waybillNo": waybill_no,
+                "detail": None,
+                "timeline": [],
+                "timelineSummary": {
+                    "eventCount": 0,
+                    "lastEventTime": "",
+                    "lastStatus": "",
+                },
+                "raw": {
+                    "details": None,
+                    "orderInfo": None,
+                },
+                "errors": [],
             }
-        except Exception as exc:
-            payload_item["errors"].append(f"timeline: {exc}")
 
-        return waybill_no, payload_item
+            try:
+                detail_response = client.get_order_detail(waybill_no)
+                if detail_response.get("code") == 1:
+                    data = detail_response.get("data", {}) or {}
+                    details = data.get("details", {}) or {}
+                    order_info = data.get("orderInfo") or data.get("waybillInfo") or {}
+                    payload_item["raw"] = {
+                        "details": details,
+                        "orderInfo": order_info,
+                    }
+                    payload_item["detail"] = {
+                        "waybillNo": waybill_no,
+                        "receiverName": (
+                            details.get("receiverName")
+                            or order_info.get("receiverName")
+                            or details.get("receiver")
+                        ),
+                        "receiverCity": (
+                            details.get("receiverCityName")
+                            or order_info.get("receiverCityName")
+                            or details.get("receiverCity")
+                        ),
+                        "receiverAddress": (
+                            details.get("receiverDetailedAddress")
+                            or details.get("receiverAddress")
+                            or order_info.get("receiverDetailedAddress")
+                        ),
+                        "receiverPhone": (
+                            details.get("receiverPhone")
+                            or order_info.get("receiverPhone")
+                            or details.get("consigneePhone")
+                        ),
+                        "status": (
+                            details.get("waybillStatusName")
+                            or details.get("statusName")
+                            or details.get("status")
+                            or order_info.get("waybillStatusName")
+                        ),
+                        "weight": details.get("packageChargeWeight") or order_info.get("packageChargeWeight"),
+                        "signTime": details.get("signTime") or order_info.get("signTime") or "",
+                    }
+                else:
+                    payload_item["errors"].append(
+                        detail_response.get("msg") or "No se pudo consultar el detalle oficial."
+                    )
+            except Exception as exc:
+                payload_item["errors"].append(f"detail: {exc}")
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
-        futures = {
-            executor.submit(extract_export_payload, wb): wb
-            for wb in unique_waybills
+            try:
+                events = report_service.get_timeline(waybill_no, max_age_minutes=60)
+                timeline = [
+                    {
+                        "time": event.time,
+                        "typeName": event.type_name,
+                        "networkName": event.network_name,
+                        "staffName": event.staff_name,
+                        "staffContact": event.staff_contact,
+                        "status": event.status,
+                        "content": event.content,
+                    }
+                    for event in events
+                ]
+                payload_item["timeline"] = timeline
+                payload_item["timelineSummary"] = {
+                    "eventCount": len(timeline),
+                    "lastEventTime": timeline[0]["time"] if timeline else "",
+                    "lastStatus": (
+                        timeline[0].get("status")
+                        or timeline[0].get("typeName")
+                        or ""
+                    ) if timeline else "",
+                }
+            except Exception as exc:
+                payload_item["errors"].append(f"timeline: {exc}")
+
+            return waybill_no, payload_item
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+            futures = {
+                executor.submit(extract_export_payload, wb): wb
+                for wb in unique_waybills
+            }
+            for future in concurrent.futures.as_completed(futures):
+                waybill_no, item = future.result()
+                results[waybill_no] = item
+
+        return {
+            "generatedAt": datetime.utcnow().isoformat(),
+            "results": results,
         }
-        for future in concurrent.futures.as_completed(futures):
-            waybill_no, item = future.result()
-            results[waybill_no] = item
 
-    return {
-        "generatedAt": datetime.utcnow().isoformat(),
-        "results": results,
-    }
+    return await asyncio.to_thread(_fetch_all)
 
 
 @app.get("/api/waybills/{waybill_no}/timeline")
@@ -782,9 +830,12 @@ async def get_waybill_timeline(waybill_no: str, max_age_minutes: int = 30):
         raise HTTPException(status_code=400, detail="Waybill requerido")
 
     try:
-        client = JTClient()
-        service = ReportService(client)
-        events = service.get_timeline(normalized_wb, max_age_minutes=max_age_minutes)
+        def _fetch():
+            client = JTClient()
+            service = ReportService(client)
+            return service.get_timeline(normalized_wb, max_age_minutes=max_age_minutes)
+
+        events = await asyncio.to_thread(_fetch)
 
         current_status = events[0].status if events else "Desconocido"
         response_events = [
@@ -845,8 +896,8 @@ async def websocket_process(websocket: WebSocket):
             if not wb:
                 continue
             try:
-                # Procesar 1 guía
-                data = service.get_consolidated_data(wb)
+                # Procesar 1 guía (en hilo separado para no bloquear el event loop)
+                data = await asyncio.to_thread(service.get_consolidated_data, wb)
                 result_dict = {
                     "waybill_no": data.waybill_no,
                     "status": data.status,
@@ -966,82 +1017,85 @@ async def get_network_waybills(req: dict = Body(...)):
         return latest_value
 
     try:
-        client = JTClient()
-        report_service = ReportService(client)
-        response = client.get_network_signing_detail(
-            network_code=network_code,
-            start_time=start_time,
-            end_time=end_time,
-            sign_type=sign_type
-        )
+        def _fetch_network():
+            client = JTClient()
+            report_service = ReportService(client)
+            response = client.get_network_signing_detail(
+                network_code=network_code,
+                start_time=start_time,
+                end_time=end_time,
+                sign_type=sign_type
+            )
 
-        records = response.get("data", {}).get("records", [])
-        if not records:
-            return {"records": []}
+            records = response.get("data", {}).get("records", [])
+            if not records:
+                return {"records": []}
 
-        unique_waybills = []
-        seen_waybills = set()
-        for record in records:
-            wb = (
-                record.get("waybillNo")
-                or record.get("billCode")
-                or record.get("orderId")
-                or ""
-            ).strip()
-            if not wb or wb in seen_waybills:
-                continue
-            seen_waybills.add(wb)
-            unique_waybills.append(wb)
+            unique_waybills = []
+            seen_waybills = set()
+            for record in records:
+                wb = (
+                    record.get("waybillNo")
+                    or record.get("billCode")
+                    or record.get("orderId")
+                    or ""
+                ).strip()
+                if not wb or wb in seen_waybills:
+                    continue
+                seen_waybills.add(wb)
+                unique_waybills.append(wb)
 
-        scan_data_map = {}
+            scan_data_map = {}
 
-        def fetch_delivery_scan_time(waybill_no: str):
-            try:
-                events = report_service.get_timeline(waybill_no, max_age_minutes=60)
-                latest_delivery_time = _extract_latest_scan_time_by_keywords(
-                    events,
-                    ("escaneo de entrega",)
-                )
-                latest_return_time = _extract_latest_scan_time_by_keywords(
-                    events,
-                    ("escaneo de devolucion", "escaneo devolucion", "devolucion")
-                )
-                return waybill_no, {
-                    "delivery": latest_delivery_time,
-                    "return": latest_return_time,
+            def fetch_delivery_scan_time(waybill_no: str):
+                try:
+                    events = report_service.get_timeline(waybill_no, max_age_minutes=60)
+                    latest_delivery_time = _extract_latest_scan_time_by_keywords(
+                        events,
+                        ("escaneo de entrega",)
+                    )
+                    latest_return_time = _extract_latest_scan_time_by_keywords(
+                        events,
+                        ("escaneo de devolucion", "escaneo devolucion", "devolucion")
+                    )
+                    return waybill_no, {
+                        "delivery": latest_delivery_time,
+                        "return": latest_return_time,
+                    }
+                except Exception:
+                    return waybill_no, {
+                        "delivery": "",
+                        "return": "",
+                    }
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+                futures = {
+                    executor.submit(fetch_delivery_scan_time, wb): wb
+                    for wb in unique_waybills
                 }
-            except Exception:
-                return waybill_no, {
-                    "delivery": "",
-                    "return": "",
-                }
+                for future in concurrent.futures.as_completed(futures):
+                    wb, scan_data = future.result()
+                    scan_data_map[wb] = scan_data
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-            futures = {
-                executor.submit(fetch_delivery_scan_time, wb): wb
-                for wb in unique_waybills
-            }
-            for future in concurrent.futures.as_completed(futures):
-                wb, scan_data = future.result()
-                scan_data_map[wb] = scan_data
+            enriched_records = []
+            for record in records:
+                wb = (
+                    record.get("waybillNo")
+                    or record.get("billCode")
+                    or record.get("orderId")
+                    or ""
+                ).strip()
+                scan_data = scan_data_map.get(wb, {}) if wb else {}
+                if scan_data.get("return"):
+                    continue
 
-        enriched_records = []
-        for record in records:
-            wb = (
-                record.get("waybillNo")
-                or record.get("billCode")
-                or record.get("orderId")
-                or ""
-            ).strip()
-            scan_data = scan_data_map.get(wb, {}) if wb else {}
-            if scan_data.get("return"):
-                continue
+                enriched = dict(record)
+                enriched["deliveryScanTimeLatest"] = scan_data.get("delivery", "")
+                enriched_records.append(enriched)
 
-            enriched = dict(record)
-            enriched["deliveryScanTimeLatest"] = scan_data.get("delivery", "")
-            enriched_records.append(enriched)
+            return {"records": enriched_records}
 
-        return {"records": enriched_records}
+        return await asyncio.to_thread(_fetch_network)
     except Exception as e:
         return {"records": [], "error": str(e)}
 
@@ -1058,19 +1112,20 @@ async def get_temu_alerts(
     dimension_type: int = 2
 ):
     try:
-        client = JTClient()
-        service = TemuAlertService(client)
-        report = service.build_alert_report(
-            threshold_hours=threshold_hours,
-            window_hours=window_hours,
-            include_overdue=include_overdue,
-            duty_agent_code=duty_agent_code,
-            duty_code=duty_code,
-            manager_code=manager_code,
-            responsible_org_code=responsible_org_code,
-            dimension_type=dimension_type
-        )
-        return report
+        def _fetch():
+            client = JTClient()
+            service = TemuAlertService(client)
+            return service.build_alert_report(
+                threshold_hours=threshold_hours,
+                window_hours=window_hours,
+                include_overdue=include_overdue,
+                duty_agent_code=duty_agent_code,
+                duty_code=duty_code,
+                manager_code=manager_code,
+                responsible_org_code=responsible_org_code,
+                dimension_type=dimension_type
+            )
+        return await asyncio.to_thread(_fetch)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -1094,11 +1149,13 @@ async def get_kpis_overview(
     ranking_limit: int = 10,
 ):
     try:
-        data = kpi_service.get_overview(
-            start_date=start_date,
-            end_date=end_date,
-            ranking_limit=ranking_limit,
-        )
+        def _run():
+            return kpi_service.get_overview(
+                start_date=start_date,
+                end_date=end_date,
+                ranking_limit=ranking_limit,
+            )
+        data = await asyncio.to_thread(_run)
         return {"success": True, "data": data}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -1175,8 +1232,10 @@ async def get_novedades(waybill: Optional[str] = None):
 @app.post("/api/settlements/rate")
 async def set_messenger_rate(payload: RatePayload):
     try:
-        service = SettlementService(JTClient())
-        data = service.set_rate(payload.account_code, payload.account_name, payload.rate_per_delivery)
+        def _run():
+            service = SettlementService(JTClient())
+            return service.set_rate(payload.account_code, payload.account_name, payload.rate_per_delivery)
+        data = await asyncio.to_thread(_run)
         return {"success": True, "data": data}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -1185,8 +1244,10 @@ async def set_messenger_rate(payload: RatePayload):
 @app.get("/api/settlements/rate")
 async def get_messenger_rate(account_code: str):
     try:
-        service = SettlementService(JTClient())
-        data = service.get_rate(account_code)
+        def _run():
+            service = SettlementService(JTClient())
+            return service.get_rate(account_code)
+        data = await asyncio.to_thread(_run)
         return {"success": True, "data": data}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -1195,16 +1256,18 @@ async def get_messenger_rate(account_code: str):
 @app.post("/api/settlements/generate")
 async def generate_settlement(payload: SettlementGeneratePayload):
     try:
-        service = SettlementService(JTClient())
-        data = service.generate_settlement(
-            account_code=payload.account_code,
-            account_name=payload.account_name,
-            network_code=payload.network_code,
-            start_time=payload.start_time,
-            end_time=payload.end_time,
-            deduction_per_issue=payload.deduction_per_issue,
-            rate_per_delivery_override=payload.rate_per_delivery,
-        )
+        def _run():
+            service = SettlementService(JTClient())
+            return service.generate_settlement(
+                account_code=payload.account_code,
+                account_name=payload.account_name,
+                network_code=payload.network_code,
+                start_time=payload.start_time,
+                end_time=payload.end_time,
+                deduction_per_issue=payload.deduction_per_issue,
+                rate_per_delivery_override=payload.rate_per_delivery,
+            )
+        data = await asyncio.to_thread(_run)
         return {"success": True, "data": data}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -1213,8 +1276,11 @@ async def generate_settlement(payload: SettlementGeneratePayload):
 @app.post("/api/waybills/reprint")
 async def reprint_waybills(payload: WaybillReprintPayload):
     try:
-        client = JTClient()
-        response = client.reprint_waybills(payload.waybill_ids, payload.bill_type)
+        def _fetch():
+            client = JTClient()
+            return client.reprint_waybills(payload.waybill_ids, payload.bill_type)
+
+        response = await asyncio.to_thread(_fetch)
 
         if response.get("code") != 1:
             message = response.get("msg") or "No se pudo generar el PDF de reimpresión"
@@ -1242,8 +1308,10 @@ async def reprint_waybills(payload: WaybillReprintPayload):
 @app.get("/api/settlements")
 async def list_settlements(account_code: Optional[str] = None, limit: int = 20):
     try:
-        service = SettlementService(JTClient())
-        data = service.list_settlements(account_code=account_code, limit=limit)
+        def _run():
+            service = SettlementService(JTClient())
+            return service.list_settlements(account_code=account_code, limit=limit)
+        data = await asyncio.to_thread(_run)
         return {"success": True, "data": data}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -1252,8 +1320,10 @@ async def list_settlements(account_code: Optional[str] = None, limit: int = 20):
 @app.get("/api/settlements/{settlement_id}")
 async def get_settlement(settlement_id: int):
     try:
-        service = SettlementService(JTClient())
-        data = service.get_settlement(settlement_id)
+        def _run():
+            service = SettlementService(JTClient())
+            return service.get_settlement(settlement_id)
+        data = await asyncio.to_thread(_run)
         if not data:
             raise HTTPException(status_code=404, detail="Liquidación no encontrada")
         return {"success": True, "data": data}
@@ -1266,10 +1336,13 @@ async def get_settlement(settlement_id: int):
 @app.put("/api/settlements/{settlement_id}/status")
 async def update_settlement_status(settlement_id: int, payload: SettlementStatusPayload):
     try:
-        service = SettlementService(JTClient())
-        ok = service.update_status(settlement_id, payload.status)
-        if not ok:
-            raise HTTPException(status_code=404, detail="Liquidación no encontrada")
+        def _run():
+            service = SettlementService(JTClient())
+            ok = service.update_status(settlement_id, payload.status)
+            if not ok:
+                raise HTTPException(status_code=404, detail="Liquidación no encontrada")
+            return True
+        await asyncio.to_thread(_run)
         return {"success": True}
     except HTTPException:
         raise
@@ -1280,10 +1353,13 @@ async def update_settlement_status(settlement_id: int, payload: SettlementStatus
 @app.delete("/api/settlements/{settlement_id}")
 async def delete_settlement(settlement_id: int):
     try:
-        service = SettlementService(JTClient())
-        ok = service.delete_settlement(settlement_id)
-        if not ok:
-            raise HTTPException(status_code=404, detail="Liquidación no encontrada")
+        def _run():
+            service = SettlementService(JTClient())
+            ok = service.delete_settlement(settlement_id)
+            if not ok:
+                raise HTTPException(status_code=404, detail="Liquidación no encontrada")
+            return True
+        await asyncio.to_thread(_run)
         return {"success": True}
     except HTTPException:
         raise
@@ -1330,28 +1406,31 @@ async def get_waybill_photos(waybill_no: str):
         raise HTTPException(status_code=400, detail="Waybill requerido")
 
     try:
-        client = JTClient()
-        tracking = client.get_tracking_list(normalized_wb)
-        data = tracking.get("data") or []
-        scan_time, scan_by_code = _find_signing_event(data)
+        def _fetch():
+            client = JTClient()
+            tracking = client.get_tracking_list(normalized_wb)
+            data = tracking.get("data") or []
+            scan_time, scan_by_code = _find_signing_event(data)
 
-        if not scan_time or not scan_by_code:
-            return {"waybill_no": normalized_wb, "photos": [], "error": "No se encontró evento de firma/entrega"}
+            if not scan_time or not scan_by_code:
+                return {"waybill_no": normalized_wb, "photos": [], "error": "No se encontró evento de firma/entrega"}
 
-        photos_resp = client.get_delivery_photos(normalized_wb, scan_time, scan_by_code)
+            photos_resp = client.get_delivery_photos(normalized_wb, scan_time, scan_by_code)
 
-        if photos_resp.get("code") != 1:
+            if photos_resp.get("code") != 1:
+                return {
+                    "waybill_no": normalized_wb,
+                    "photos": [],
+                    "error": photos_resp.get("msg", "Error al consultar fotos"),
+                }
+
             return {
                 "waybill_no": normalized_wb,
-                "photos": [],
-                "error": photos_resp.get("msg", "Error al consultar fotos"),
+                "photos": photos_resp.get("data") or [],
+                "scan_time": scan_time,
             }
 
-        return {
-            "waybill_no": normalized_wb,
-            "photos": photos_resp.get("data") or [],
-            "scan_time": scan_time,
-        }
+        return await asyncio.to_thread(_fetch)
     except Exception as exc:
         return {"waybill_no": normalized_wb, "photos": [], "error": str(exc)}
 
@@ -1364,7 +1443,7 @@ async def download_waybill_photos(waybill_no: str):
     if not normalized_wb:
         raise HTTPException(status_code=400, detail="Waybill requerido")
 
-    try:
+    def _fetch():
         client = JTClient()
         tracking = client.get_tracking_list(normalized_wb)
         data = tracking.get("data") or []
@@ -1397,6 +1476,10 @@ async def download_waybill_photos(waybill_no: str):
                 zf.writestr(f"{normalized_wb}_foto_{idx}.{ext}", resp.content)
 
         buf.seek(0)
+        return buf
+
+    try:
+        buf = await asyncio.to_thread(_fetch)
         return StreamingResponse(
             buf,
             media_type="application/zip",
@@ -1420,11 +1503,14 @@ async def proxy_photo(url: str, filename: str = "foto.jpeg"):
     safe_filename = re.sub(r"[^\w\.\-]", "_", filename)[:80]
 
     try:
-        resp = _requests.get(url, timeout=20)
-        resp.raise_for_status()
-        content_type = resp.headers.get("Content-Type", "image/jpeg").split(";")[0].strip()
+        def _fetch():
+            resp = _requests.get(url, timeout=20)
+            resp.raise_for_status()
+            return resp.content, resp.headers.get("Content-Type", "image/jpeg").split(";")[0].strip()
+
+        content, content_type = await asyncio.to_thread(_fetch)
         return StreamingResponse(
-            io.BytesIO(resp.content),
+            io.BytesIO(content),
             media_type=content_type,
             headers={"Content-Disposition": f'attachment; filename="{safe_filename}"'},
         )

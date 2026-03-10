@@ -124,87 +124,105 @@ export default function WaybillQueryModal() {
             
             if (socketRef.current) socketRef.current.close();
             
-            socketRef.current = new WebSocket(wsUrl);
+            let retried = false;
 
-            socketRef.current.onopen = () => {
-                try {
-                    socketRef.current.send(JSON.stringify({ waybills: [wb] }));
-                } catch (sendErr) {
-                    console.error('Error enviando petición de guía:', sendErr);
-                    setError('Error al enviar la consulta de la guía');
-                    setLoading(false);
-                }
-            };
+            function connectWs() {
+                socketRef.current = new WebSocket(wsUrl);
 
-            socketRef.current.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    console.log("WS Query received:", data);
-                    if (data.type === 'result') {
-                        // Normalizar el resultado para evitar errores de renderizado
-                        let normalizedResult = null;
-                        if (data.results && Array.isArray(data.results) && data.results.length > 0) {
-                            normalizedResult = data.results[0];
-                        } else if (data.result_dict) {
-                            normalizedResult = data.result_dict;
-                        } else if (data.data) {
-                            normalizedResult = data.data;
-                        }
-
-                        if (normalizedResult) {
-                            setResult(normalizedResult);
-                        } else {
-                            console.warn('Formato inesperado de respuesta WS (sin datos utilizables):', data);
-                            setError("No se encontraron datos para esta guía");
-                        }
+                socketRef.current.onopen = () => {
+                    try {
+                        socketRef.current.send(JSON.stringify({ waybills: [wb] }));
+                    } catch (sendErr) {
+                        console.error('Error enviando petición de guía:', sendErr);
+                        setError('Error al enviar la consulta de la guía');
                         setLoading(false);
-                        if (socketRef.current) {
-                            socketRef.current.close();
-                            socketRef.current = null;
-                        }
-                    } else if (data.type === 'error') {
-                        setError(data.message || 'Error en la consulta de la guía');
-                        setLoading(false);
-                        if (socketRef.current) {
-                            socketRef.current.close();
-                            socketRef.current = null;
-                        }
-                    } else if (data.type === 'done') {
-                        if (!result) {
-                            setError('No se encontraron datos para esta guía');
-                        }
-                        setLoading(false);
-                        if (socketRef.current) {
-                            socketRef.current.close();
-                            socketRef.current = null;
-                        }
-                    } else {
-                        console.warn('Tipo de mensaje WS no manejado en consulta de guía:', data);
                     }
-                } catch (err) {
-                    console.error("Error parsing WS message:", err);
-                    setError("Error al procesar la respuesta del servidor");
-                    setLoading(false);
-                }
-            };
+                };
 
-            socketRef.current.onerror = (err) => {
-                console.error("WS Socket Error:", err);
-                setError("Error de conexión con el servidor");
-                setLoading(false);
-                if (socketRef.current) {
-                    socketRef.current.close();
+                socketRef.current.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log("WS Query received:", data);
+                        if (data.type === 'result') {
+                            // Normalizar el resultado para evitar errores de renderizado
+                            let normalizedResult = null;
+                            if (data.results && Array.isArray(data.results) && data.results.length > 0) {
+                                normalizedResult = data.results[0];
+                            } else if (data.result_dict) {
+                                normalizedResult = data.result_dict;
+                            } else if (data.data) {
+                                normalizedResult = data.data;
+                            }
+
+                            if (normalizedResult) {
+                                setResult(normalizedResult);
+                            } else {
+                                console.warn('Formato inesperado de respuesta WS (sin datos utilizables):', data);
+                                setError("No se encontraron datos para esta guía");
+                            }
+                            setLoading(false);
+                            if (socketRef.current) {
+                                socketRef.current.close();
+                                socketRef.current = null;
+                            }
+                        } else if (data.type === 'error') {
+                            setError(data.message || 'Error en la consulta de la guía');
+                            setLoading(false);
+                            if (socketRef.current) {
+                                socketRef.current.close();
+                                socketRef.current = null;
+                            }
+                        } else if (data.type === 'done') {
+                            if (!result) {
+                                setError('No se encontraron datos para esta guía');
+                            }
+                            setLoading(false);
+                            if (socketRef.current) {
+                                socketRef.current.close();
+                                socketRef.current = null;
+                            }
+                        } else {
+                            console.warn('Tipo de mensaje WS no manejado en consulta de guía:', data);
+                        }
+                    } catch (err) {
+                        console.error("Error parsing WS message:", err);
+                        setError("Error al procesar la respuesta del servidor");
+                        setLoading(false);
+                    }
+                };
+
+                socketRef.current.onerror = (err) => {
+                    console.error("WS Socket Error:", err);
+                    if (!retried) {
+                        retried = true;
+                        socketRef.current = null;
+                        setTimeout(connectWs, 2000);
+                        return;
+                    }
+                    setError("Error de conexión con el servidor");
+                    setLoading(false);
+                    if (socketRef.current) {
+                        socketRef.current.close();
+                        socketRef.current = null;
+                    }
+                };
+
+                socketRef.current.onclose = () => {
+                    if (loading) {
+                        if (!retried) {
+                            retried = true;
+                            socketRef.current = null;
+                            setTimeout(connectWs, 2000);
+                            return;
+                        }
+                        setError('La conexión se cerró sin resultados.');
+                        setLoading(false);
+                    }
                     socketRef.current = null;
-                }
-            };
+                };
+            }
 
-            socketRef.current.onclose = () => {
-                if (loading) {
-                    setError('La conexión se cerró sin resultados.');
-                    setLoading(false);
-                }
-                socketRef.current = null;
-            };
+            connectWs();
         } catch (err) {
             console.error('Error iniciando consulta de guía:', err);
             setError('Error al iniciar la consulta de la guía');
