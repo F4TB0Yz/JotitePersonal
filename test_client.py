@@ -3,10 +3,19 @@ from src.jt_api.client import JTClient
 from src.services.report_service import ReportService
 import json
 
+from src.infrastructure.database.connection import SessionLocal
+from src.infrastructure.repositories.config_repository import ConfigRepository
+from src.infrastructure.repositories.tracking_event_repository import TrackingEventRepository
+
 def test_full_report():
     try:
-        client = JTClient()
-        service = ReportService(client)
+        with SessionLocal() as session:
+            config_repo = ConfigRepository(session)
+            config = config_repo.load_config()
+            tracking_repo = TrackingEventRepository(session)
+
+        client = JTClient(config=config)
+        service = ReportService(client, tracking_repo)
         waybill = "JTC000036927414" # Guía de ejemplo (esperamos Firmado)
         
         print(f"--- Probando Consolidación de Datos ({waybill}) ---")

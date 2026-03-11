@@ -1,15 +1,17 @@
 from datetime import datetime, timedelta
 
-from src.infrastructure.database.connection import SessionLocal, initialize_database
-from src.infrastructure.database.models import TrackingEventORM
+from src.infrastructure.database.connection import initialize_database
+from src.infrastructure.repositories.tracking_event_repository import TrackingEventRepository
 from src.jt_api.client import JTClient
 from src.models.waybill import (
-    JTWaybillDetail, TrackingEvent, AbnormalScan, ConsolidatedReportRow
+    TrackingEvent, ConsolidatedReportRow
 )
+from src.domain.exceptions import APIError
 
 class ReportService:
-    def __init__(self, client: JTClient):
+    def __init__(self, client: JTClient, tracking_repo: TrackingEventRepository):
         self.client = client
+        self.tracking_repo = tracking_repo
         initialize_database()
 
     @staticmethod
@@ -47,104 +49,46 @@ class ReportService:
                 ))
         return events
 
-    def _save_tracking_events(self, waybill_no: str, events: list[TrackingEvent]) -> None:
-        if not events:
-            return
-        now = datetime.utcnow()
-        seen_identity: set[tuple[str, str]] = set()
-        with SessionLocal() as session:
-            for event in events:
-                event_time = event.time or ""
-                event_type = event.type_name or "Desconocido"
-                identity = (event_time, event_type)
-                if identity in seen_identity:
-                    continue
-                seen_identity.add(identity)
-
-                exists = (
-                    session.query(TrackingEventORM)
-                    .filter(
-                        TrackingEventORM.waybill_no == waybill_no,
-                        TrackingEventORM.time == event_time,
-                        TrackingEventORM.type_name == event_type,
-                    )
-                    .first()
-                )
-                if exists:
-                    exists.network_name = event.network_name
-                    exists.staff_name = event.staff_name
-                    exists.staff_contact = event.staff_contact
-                    exists.status = event.status
-                    exists.content = event.content
-                    exists.fetched_at = now
-                    continue
-
-                session.add(TrackingEventORM(
-                    waybill_no=waybill_no,
-                    time=event_time,
-                    type_name=event_type,
-                    network_name=event.network_name,
-                    staff_name=event.staff_name,
-                    staff_contact=event.staff_contact,
-                    status=event.status,
-                    content=event.content,
-                    fetched_at=now,
-                ))
-            session.commit()
-
-    def get_cached_tracking_events(self, waybill_no: str) -> tuple[list[TrackingEvent], datetime | None]:
-        with SessionLocal() as session:
-            rows = (
-                session.query(TrackingEventORM)
-                .filter(TrackingEventORM.waybill_no == waybill_no)
-                .order_by(TrackingEventORM.time.desc(), TrackingEventORM.id.desc())
-                .all()
-            )
-
-            if not rows:
-                return [], None
-
-            last_fetch = rows[0].fetched_at
-            events = [
-                TrackingEvent(
-                    time=row.time,
-                    type_name=row.type_name,
-                    network_name=row.network_name or "N/A",
-                    staff_name=row.staff_name,
-                    staff_contact=row.staff_contact,
-                    status=row.status or "",
-                    content=row.content or "",
-                )
-                for row in rows
-            ]
-            return events, last_fetch
-
     def get_timeline(self, waybill_no: str, max_age_minutes: int = 30) -> list[TrackingEvent]:
-        cached_events, last_fetch = self.get_cached_tracking_events(waybill_no)
+        cached_events, last_fetch = self.tracking_repo.get_events_for_waybill(waybill_no)
         freshness_cutoff = datetime.utcnow() - timedelta(minutes=max_age_minutes)
         if cached_events and last_fetch and last_fetch >= freshness_cutoff:
             return cached_events
 
-        tracking_json = self.client.get_tracking_list(waybill_no)
+        try:
+            tracking_json = self.client.get_tracking_list(waybill_no)
+        except APIError:
+            return cached_events
+
         events = self._parse_tracking_events(tracking_json)
-        self._save_tracking_events(waybill_no, events)
+        self.tracking_repo.save_events(waybill_no, events)
         return events
 
     def get_consolidated_data(self, waybill_no: str) -> ConsolidatedReportRow:
         # 1. Obtener detalles básicos
-        order_json = self.client.get_order_detail(waybill_no)
-        details = order_json.get("data", {}).get("details", {})
+        try:
+            order_json = self.client.get_order_detail(waybill_no)
+            details = order_json.get("data", {}).get("details", {})
+        except APIError:
+            details = {}
         
         # 2. Obtener rastreo (Timeline)
-        tracking_json = self.client.get_tracking_list(waybill_no)
-        events = self._parse_tracking_events(tracking_json)
-        self._save_tracking_events(waybill_no, events)
+        try:
+            tracking_json = self.client.get_tracking_list(waybill_no)
+            events = self._parse_tracking_events(tracking_json)
+            self.tracking_repo.save_events(waybill_no, events)
+        except APIError:
+            events, _ = self.tracking_repo.get_events_for_waybill(waybill_no)
 
         # 3. Obtener excepciones
-        abnormal_json = self.client.get_abnormal_list(waybill_no)
-        abnormal_records = abnormal_json.get("data", {}).get("records", [])
-        exceptions = [rec.get("abnormalPieceName") for rec in abnormal_records if rec.get("abnormalPieceName")]
-        last_exception_remark = abnormal_records[0].get("remark") if abnormal_records else ""
+        try:
+            abnormal_json = self.client.get_abnormal_list(waybill_no)
+            abnormal_records = abnormal_json.get("data", {}).get("records", [])
+            exceptions = [rec.get("abnormalPieceName") for rec in abnormal_records if rec.get("abnormalPieceName")]
+            last_exception_remark = abnormal_records[0].get("remark") if abnormal_records else ""
+        except APIError:
+            exceptions = []
+            last_exception_remark = ""
 
         # Consolidar (Tomar el evento más reciente)
         last_event = events[0] if events else None
