@@ -4,6 +4,7 @@ import { formatDateToSpanish, formatCity, formatCurrencyCOP } from '../../utils/
 import { STATUS_DICTIONARY } from '../../utils/constants.js';
 import { fetchMessengerContact } from '../../services/messengerService.js';
 import DateRangePicker from '../shared/DateRangePicker.js';
+import MessengerReportSection from './MessengerReportSection.js';
 
 function renderMessengerRow(messenger, phoneState) {
     if (!messenger) {
@@ -587,6 +588,8 @@ export default function MessengerAdminView() {
                         </div>
                     </div>
                 </div>
-            ` : null}            `}        </main>
+            ` : null}
+            `}
+        </main>
     `;
 }

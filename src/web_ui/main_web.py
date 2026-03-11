@@ -774,7 +774,7 @@ async def get_waybills_intelligence_export(payload: WaybillList):
 
     def _fetch_all():
         config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
-        report_service = ReportService(client, TrackingEventRepository(SessionLocal()))
+        report_service = ReportService(client)
         results = {}
 
         def extract_export_payload(waybill_no: str):
@@ -897,7 +897,7 @@ async def get_waybill_timeline(waybill_no: str, max_age_minutes: int = 30):
     try:
         def _fetch():
             config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
-            service = ReportService(client, TrackingEventRepository(SessionLocal()))
+            service = ReportService(client)
             return service.get_timeline(normalized_wb, max_age_minutes=max_age_minutes)
 
         events = await asyncio.to_thread(_fetch)
@@ -1084,7 +1084,7 @@ async def get_network_waybills(req: dict = Body(...)):
     try:
         def _fetch_network():
             config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
-            report_service = ReportService(client, TrackingEventRepository(SessionLocal()))
+            report_service = ReportService(client)
             response = client.get_network_signing_detail(
                 network_code=network_code,
                 start_time=start_time,
