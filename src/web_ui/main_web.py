@@ -570,19 +570,25 @@ async def get_bulk_messenger_metrics(payload: BulkMetricsRequest):
 
 @app.get("/api/messengers/daily-report")
 async def get_messengers_daily_report(
-    date: str,
+    date: str = None,
+    start_date: str = None,
+    end_date: str = None,
     network_code: str = "1025006",
     finance_code: str = "R00001",
 ):
-    if not date:
-        raise HTTPException(status_code=400, detail="date es requerida")
+    resolved_start = start_date or date
+    resolved_end = end_date or date
+
+    if not resolved_start or not resolved_end:
+        raise HTTPException(status_code=400, detail="Se requiere 'date' o 'start_date'/'end_date'")
     try:
-        datetime.strptime(date, "%Y-%m-%d")
+        datetime.strptime(resolved_start, "%Y-%m-%d")
+        datetime.strptime(resolved_end, "%Y-%m-%d")
     except ValueError:
         raise HTTPException(status_code=400, detail="Formato de fecha inválido. Use YYYY-MM-DD")
 
-    start_time = f"{date} 00:00:00"
-    end_time = f"{date} 23:59:59"
+    start_time = f"{resolved_start} 00:00:00"
+    end_time = f"{resolved_end} 23:59:59"
 
     def _fetch():
         config = ConfigRepository(SessionLocal()).load_config()
@@ -596,7 +602,7 @@ async def get_messengers_daily_report(
 
     try:
         records = await asyncio.to_thread(_fetch)
-        return {"records": records, "date": date, "total": len(records)}
+        return {"records": records, "date": resolved_start, "endDate": resolved_end, "total": len(records)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -1,13 +1,14 @@
 import { html, createPortal, useEffect, useCallback } from '../../lib/ui.js';
 import { useMessengerReport } from '../../hooks/useMessengerReport.js';
 
-function PrintableReport({ data, totals, date }) {
+function PrintableReport({ data, totals, startDate, endDate }) {
     if (!data || !data.length || typeof document === 'undefined') return null;
     const host = document.getElementById('print-root') || document.body;
+    const dateLabel = startDate === endDate ? startDate : `${startDate} al ${endDate}`;
     return createPortal(
         html`
             <div id="print-table-report">
-                <h2>Informe de Mensajeros — ${date}</h2>
+                <h2>Informe de Mensajeros — ${dateLabel}</h2>
                 <p><strong>Mensajeros seleccionados:</strong> ${data.length}</p>
                 <table>
                     <thead>
@@ -48,8 +49,10 @@ function PrintableReport({ data, totals, date }) {
 
 export default function MessengerReportSection() {
     const {
-        date,
-        setDate,
+        startDate,
+        setStartDate,
+        endDate,
+        setEndDate,
         records,
         filteredRecords,
         selectedCodes,
@@ -85,12 +88,26 @@ export default function MessengerReportSection() {
         <div class="report-section">
             <div class="report-load-bar">
                 <div class="report-date-field">
-                    <label class="report-date-label">Fecha:</label>
+                    <label class="report-date-label">Desde:</label>
                     <input
                         type="date"
                         class="report-date-input"
-                        value=${date}
-                        onChange=${(e) => setDate(e.target.value)}
+                        value=${startDate}
+                        onChange=${(e) => {
+                            setStartDate(e.target.value);
+                            if (endDate < e.target.value) setEndDate(e.target.value);
+                        }}
+                        max=${new Date().toISOString().split('T')[0]}
+                    />
+                </div>
+                <div class="report-date-field">
+                    <label class="report-date-label">Hasta:</label>
+                    <input
+                        type="date"
+                        class="report-date-input"
+                        value=${endDate}
+                        onChange=${(e) => setEndDate(e.target.value)}
+                        min=${startDate}
                         max=${new Date().toISOString().split('T')[0]}
                     />
                 </div>
@@ -192,11 +209,11 @@ export default function MessengerReportSection() {
                   `
                 : html`${!loading
                       ? html`<div class="dash-placeholder">
-                            Selecciona una fecha y haz clic en "Cargar Mensajeros" para ver el informe del día.
+                            Selecciona un rango de fechas y haz clic en "Cargar Mensajeros" para ver el informe.
                         </div>`
                       : null}`}
 
-            <${PrintableReport} data=${selectedRecords} totals=${totals} date=${date} />
+            <${PrintableReport} data=${selectedRecords} totals=${totals} startDate=${startDate} endDate=${endDate} />
         </div>
     `;
 }

@@ -4,7 +4,8 @@ import { fetchDailyReport } from '../services/messengerService.js';
 
 export function useMessengerReport() {
     const today = toISODateInput(new Date());
-    const [date, setDate] = useState(today);
+    const [startDate, setStartDate] = useState(today);
+    const [endDate, setEndDate] = useState(today);
     const [records, setRecords] = useState([]);
     const [selectedCodes, setSelectedCodes] = useState(new Set());
     const [filterText, setFilterText] = useState('');
@@ -12,11 +13,11 @@ export function useMessengerReport() {
     const [error, setError] = useState('');
 
     const loadDay = useCallback(async () => {
-        if (!date) return;
+        if (!startDate || !endDate) return;
         setLoading(true);
         setError('');
         try {
-            const data = await fetchDailyReport(date);
+            const data = await fetchDailyReport(startDate, endDate);
             const recs = data.records || [];
             setRecords(recs);
             setSelectedCodes(new Set(recs.map((r) => r.dispatchStaffCode)));
@@ -26,7 +27,7 @@ export function useMessengerReport() {
         } finally {
             setLoading(false);
         }
-    }, [date]);
+    }, [startDate, endDate]);
 
     const toggleMessenger = useCallback((code) => {
         setSelectedCodes((prev) => {
@@ -94,14 +95,16 @@ export function useMessengerReport() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `informe_mensajeros_${date}.csv`;
+        a.download = `informe_mensajeros_${startDate}_al_${endDate}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     }, [selectedRecords, totals, date]);
 
     return {
-        date,
-        setDate,
+        startDate,
+        setStartDate,
+        endDate,
+        setEndDate,
         records,
         filteredRecords,
         selectedCodes,
