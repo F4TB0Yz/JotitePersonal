@@ -509,3 +509,149 @@
         font-size: 15px;
     }
 }
+
+/* ═══════════════════════════════════════════
+   Informe Grupal — Mode Toggle + Chips + Report
+   ═══════════════════════════════════════════ */
+
+/* ── Mode toggle pills ── */
+.mode-toggle {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+/* ── Report section layout ── */
+.report-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-top: 8px;
+}
+
+/* ── Messenger chips (multi-select) ── */
+.messenger-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+    border-radius: 10px;
+    align-items: center;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: var(--text-main);
+    white-space: nowrap;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.chip:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.chip-remove {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 2px;
+    transition: color 0.15s;
+    font-weight: 600;
+}
+
+.chip-remove:hover {
+    color: var(--accent-color);
+}
+
+.chip-clear {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 12px;
+    text-decoration: underline;
+    padding: 6px 10px;
+    margin-left: auto;
+    transition: color 0.15s;
+}
+
+.chip-clear:hover {
+    color: var(--accent-color);
+}
+
+/* ── Report actions bar ── */
+.report-actions {
+    display: flex;
+    gap: 12px;
+}
+
+/* ── Report export bar ── */
+.report-export-bar {
+    display: flex;
+    gap: 12px;
+    padding: 8px 0;
+    justify-content: flex-end;
+}
+
+/* ── Report table tweaks ── */
+.report-table th,
+.report-table td {
+    text-align: center;
+}
+
+.report-table th:first-child,
+.report-table td:first-child {
+    text-align: left;
+}
+
+.report-totals-row td {
+    border-top: 2px solid var(--accent-color);
+    background: rgba(230, 28, 36, 0.06);
+}
+
+.row-error {
+    opacity: 0.55;
+}
+
+.error-text {
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .mode-toggle {
+        width: 100%;
+    }
+
+    .mode-toggle .filter-pill {
+        flex: 1;
+        text-align: center;
+    }
+
+    .messenger-chips {
+        padding: 10px 12px;
+    }
+
+    .report-export-bar {
+        flex-direction: column;
+    }
+
+    .report-export-bar .secondary-btn {
+        width: 100%;
+        min-height: 44px;
+    }
+}

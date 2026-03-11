@@ -530,7 +530,7 @@ async def get_bulk_messenger_metrics(payload: BulkMetricsRequest):
             def _call():
                 config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
                 response = client.get_messenger_metrics_sum(
-                    m.accountCode, m.networkCode, m.startTime, payload.endTime
+                    m.accountCode, m.networkCode, payload.startTime, payload.endTime
                 )
                 records = []
                 if response.get("code") == 1:
