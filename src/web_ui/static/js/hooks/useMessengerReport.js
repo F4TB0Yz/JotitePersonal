@@ -98,7 +98,7 @@ export function useMessengerReport() {
         a.download = `informe_mensajeros_${startDate}_al_${endDate}.csv`;
         a.click();
         URL.revokeObjectURL(url);
-    }, [selectedRecords, totals, date]);
+    }, [selectedRecords, totals, startDate, endDate]);
 
     return {
         startDate,
