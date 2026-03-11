@@ -139,6 +139,41 @@ class JTClient:
             extra_headers={"routeName": "CollectUser"}
         )
 
+    def get_network_staff_daily(self, network_code, start_time, end_time, finance_code="R00001", page_size=100):
+        """Fetch all dispatch staff records for a network on a date range, auto-paginating."""
+        all_records = []
+        page = 1
+        safe_size = max(50, min(page_size, 200))
+
+        while True:
+            payload = {
+                "current": page,
+                "size": safe_size,
+                "dataType": "net",
+                "startTime": start_time,
+                "endTime": end_time,
+                "dispatchNetworkCode": [network_code],
+                "dispatchFinanceCode": finance_code,
+                "countryId": self.config.get("countryId", "1"),
+            }
+            response = self._post(
+                "/bigdataReport/detail/network_ecology_staff",
+                payload,
+                base=self.busdicator_base_url,
+                extra_headers={"routeName": "CollectUser"},
+            )
+            if response.get("code") != 1:
+                break
+            data = response.get("data", {}) or {}
+            records = data.get("records", []) or []
+            all_records.extend(records)
+            total = data.get("total", 0) or 0
+            if not records or len(all_records) >= total:
+                break
+            page += 1
+
+        return all_records
+
     def get_messenger_waybills_detail(self, account_code, network_code, start_time, end_time, current=1, size=500):
         payload = {
             "current": current,

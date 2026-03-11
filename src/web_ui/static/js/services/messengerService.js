@@ -47,3 +47,9 @@ export function fetchBulkMetrics(messengers, startTime, endTime) {
     }
     return post('/api/messengers/bulk-metrics', { messengers, startTime, endTime });
 }
+
+export function fetchDailyReport(date, networkCode = '1025006', financeCode = 'R00001') {
+    if (!date) return Promise.resolve({ records: [], date: '', total: 0 });
+    const params = new URLSearchParams({ date, network_code: networkCode, finance_code: financeCode });
+    return get(`/api/messengers/daily-report?${params.toString()}`);
+}
