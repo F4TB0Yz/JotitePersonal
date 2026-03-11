@@ -503,6 +503,66 @@ async def get_messenger_waybills(account_code: str, network_code: str, start_tim
         print(f"Error obteniendo paquetes de mensajero: {e}")
         return {"error": str(e)}
 
+class MessengerItem(BaseModel):
+    accountCode: str
+    networkCode: str
+    accountName: str
+
+class BulkMetricsRequest(BaseModel):
+    messengers: List[MessengerItem]
+    startTime: str
+    endTime: str
+
+@app.post("/api/messengers/bulk-metrics")
+async def get_bulk_messenger_metrics(payload: BulkMetricsRequest):
+    if not payload.messengers or not payload.startTime or not payload.endTime:
+        return {"error": "Missing parameters"}
+    if len(payload.messengers) > 30:
+        raise HTTPException(status_code=400, detail="Máximo 30 mensajeros por consulta")
+
+    async def _fetch_one(m: MessengerItem):
+        try:
+            def _call():
+                client = JTClient()
+                response = client.get_messenger_metrics_sum(
+                    m.accountCode, m.networkCode, m.startTime, payload.endTime
+                )
+                records = []
+                if response.get("code") == 1:
+                    records = response.get("data", {}).get("records", [])
+                if records:
+                    r = records[0]
+                    dispatch = r.get("dispatchTotal", 0) or 0
+                    sign = r.get("signTotal", 0) or 0
+                    nosign = r.get("nosignTotal", 0) or 0
+                    eff = f"{(sign / dispatch * 100):.1f}%" if dispatch else "0%"
+                    return {
+                        "accountCode": m.accountCode,
+                        "accountName": m.accountName,
+                        "dispatchTotal": dispatch,
+                        "signTotal": sign,
+                        "nosignTotal": nosign,
+                        "effectiveness": eff,
+                        "error": None
+                    }
+                return {
+                    "accountCode": m.accountCode,
+                    "accountName": m.accountName,
+                    "dispatchTotal": 0, "signTotal": 0, "nosignTotal": 0,
+                    "effectiveness": "0%", "error": None
+                }
+            return await asyncio.to_thread(_call)
+        except Exception as e:
+            return {
+                "accountCode": m.accountCode,
+                "accountName": m.accountName,
+                "dispatchTotal": 0, "signTotal": 0, "nosignTotal": 0,
+                "effectiveness": "-", "error": str(e)
+            }
+
+    results = await asyncio.gather(*[_fetch_one(m) for m in payload.messengers])
+    return {"results": list(results)}
+
 class WaybillList(BaseModel):
     waybills: List[str]
 

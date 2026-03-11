@@ -1,4 +1,4 @@
-import { get } from './http.js';
+import { get, post } from './http.js';
 
 export function searchMessengers(query) {
     if (!query || query.trim().length < 2) return Promise.resolve([]);
@@ -39,4 +39,11 @@ export function fetchMessengerContact(name, networkCode, waybillNo) {
         params.append('waybill', waybillNo.trim());
     }
     return get(`/api/messengers/contact?${params.toString()}`);
+}
+
+export function fetchBulkMetrics(messengers, startTime, endTime) {
+    if (!messengers?.length || !startTime || !endTime) {
+        return Promise.resolve({ results: [] });
+    }
+    return post('/api/messengers/bulk-metrics', { messengers, startTime, endTime });
 }

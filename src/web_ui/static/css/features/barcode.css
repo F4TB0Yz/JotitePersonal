@@ -245,6 +245,121 @@
     margin: 0;
 }
 
+/* ── Floating Messenger Phone Lookup ── */
+
+.floating-messenger-phone-wrapper {
+    position: fixed;
+    right: 20px;
+    bottom: 212px;
+    z-index: 213;
+}
+
+.floating-messenger-phone-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 1px solid rgba(230, 28, 36, 0.5);
+    background: rgba(230, 28, 36, 0.1);
+    color: var(--accent-color);
+    font-size: 22px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.floating-messenger-phone-btn:hover {
+    transform: translateY(-2px);
+    background: rgba(230, 28, 36, 0.2);
+    border-color: var(--accent-color);
+    box-shadow: 0 8px 25px rgba(230, 28, 36, 0.25);
+}
+
+.floating-messenger-search-container {
+    position: relative;
+}
+
+.floating-messenger-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background: var(--bg-card);
+    border: 1px solid var(--border-main);
+    border-radius: 8px;
+    margin-top: 4px;
+    padding: 0;
+    list-style: none;
+    z-index: 10;
+}
+
+.floating-messenger-suggestions li {
+    padding: 10px 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-bottom: 1px solid var(--border-main);
+    transition: background 0.12s ease;
+}
+
+.floating-messenger-suggestions li:last-child {
+    border-bottom: none;
+}
+
+.floating-messenger-suggestions li:hover {
+    background: var(--bg-hover);
+}
+
+.floating-messenger-suggestions li strong {
+    color: var(--text-main);
+    font-size: 0.9rem;
+}
+
+.floating-messenger-suggestions li span {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.floating-messenger-result {
+    text-align: center;
+    padding: 8px 0;
+}
+
+.floating-messenger-result p {
+    margin: 0;
+    color: var(--text-main);
+}
+
+.floating-messenger-phone-number {
+    font-size: 1.3rem;
+    margin-top: 4px;
+}
+
+.floating-messenger-phone-number a {
+    color: var(--accent-color);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.floating-messenger-phone-number a:hover {
+    text-decoration: underline;
+}
+
+.messenger-phone.has-phone a {
+    color: var(--accent-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.messenger-phone.has-phone a:hover {
+    text-decoration: underline;
+}
+
 .floating-reprint-btn {
     width: 52px;
     height: 52px;
@@ -411,5 +526,9 @@
 
     .floating-phone-wrapper {
         bottom: calc(var(--bottom-bar-height) + 144px);
+    }
+
+    .floating-messenger-phone-wrapper {
+        bottom: calc(var(--bottom-bar-height) + 208px);
     }
 }

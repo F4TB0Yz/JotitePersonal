@@ -2,23 +2,35 @@ import { html, createPortal, useEffect, useState } from '../../lib/ui.js';
 import { useMessengerAdmin } from '../../hooks/useMessengerAdmin.js';
 import { formatDateToSpanish, formatCity, formatCurrencyCOP } from '../../utils/formatters.js';
 import { STATUS_DICTIONARY } from '../../utils/constants.js';
+import { fetchMessengerContact } from '../../services/messengerService.js';
 import DateRangePicker from '../shared/DateRangePicker.js';
 
-function renderMessengerRow(messenger) {
+function renderMessengerRow(messenger, phoneState) {
     if (!messenger) {
         return html`<tr>
-            <td colspan="4" className="table-placeholder">Usa el buscador para encontrar mensajeros…</td>
+            <td colspan="5" className="table-placeholder">Usa el buscador para encontrar mensajeros…</td>
         </tr>`;
     }
     const statusColor = messenger.status === 1 ? '#56d364' : '#ff7b72';
     let statusText = messenger.statusName || 'Desconocido';
     if (statusText === '启用') statusText = 'Activo';
     if (statusText === '停用') statusText = 'Inactivo';
+    const { phone, loading: phoneLoading } = phoneState || {};
+    const phoneDisplay = phoneLoading
+        ? 'Buscando…'
+        : phone
+            ? phone
+            : 'No disponible';
     return html`<tr>
         <td data-label="Nombre">
             <div className="messenger-name">${messenger.accountName}</div>
         </td>
         <td data-label="Código"><span className="mono">${messenger.accountCode}</span></td>
+        <td data-label="Teléfono">
+            <span className="messenger-phone ${phone ? 'has-phone' : ''}">
+                ${phone ? html`<a href="tel:${phone}">${phoneDisplay}</a>` : phoneDisplay}
+            </span>
+        </td>
         <td data-label="Punto de Red">${messenger.customerNetworkName || 'N/A'}</td>
         <td data-label="Estado">
             <span className="status-pill" style=${{ color: statusColor }}>${statusText}</span>
@@ -316,6 +328,25 @@ export default function MessengerAdminView() {
         removeSettlement
     } = state;
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [viewMode, setViewMode] = useState('individual');
+    const [messengerPhone, setMessengerPhone] = useState('');
+    const [phoneLoading, setPhoneLoading] = useState(false);
+
+    useEffect(() => {
+        if (!selectedMessenger) {
+            setMessengerPhone('');
+            return;
+        }
+        setPhoneLoading(true);
+        setMessengerPhone('');
+        fetchMessengerContact(
+            selectedMessenger.accountName,
+            selectedMessenger.customerNetworkCode || ''
+        )
+            .then((data) => setMessengerPhone(data?.phone || ''))
+            .catch(() => setMessengerPhone(''))
+            .finally(() => setPhoneLoading(false));
+    }, [selectedMessenger]);
 
     const totalWaybills = waybills.length;
     const filteredList = filteredWaybills;
@@ -348,7 +379,12 @@ export default function MessengerAdminView() {
             <header className="header no-print">
                 <h2>Administración de Mensajeros</h2>
                 <p className="subtitle">Busca y consulta información sobre el personal de reparto.</p>
+                <div className="mode-toggle">
+                    <button type="button" className=${`filter-pill ${viewMode === 'individual' ? 'active' : ''}`} onClick=${() => setViewMode('individual')}>Individual</button>
+                    <button type="button" className=${`filter-pill ${viewMode === 'report' ? 'active' : ''}`} onClick=${() => setViewMode('report')}>Informe Grupal</button>
+                </div>
             </header>
+            ${viewMode === 'report' ? html`<${MessengerReportSection} />` : html`
             <section className="search-module">
                 <div className="search-bar-container">
                     <label>Buscar Mensajero:</label>
@@ -383,12 +419,13 @@ export default function MessengerAdminView() {
                         <tr>
                             <th>Nombre / Cuenta</th>
                             <th>Código de Red</th>
+                            <th>Teléfono</th>
                             <th>Punto de Red</th>
                             <th>Estado</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${renderMessengerRow(selectedMessenger)}
+                        ${renderMessengerRow(selectedMessenger, { phone: messengerPhone, loading: phoneLoading })}
                     </tbody>
                 </table>
             </section>
@@ -550,7 +587,6 @@ export default function MessengerAdminView() {
                         </div>
                     </div>
                 </div>
-            ` : null}
-        </main>
+            ` : null}            `}        </main>
     `;
 }
