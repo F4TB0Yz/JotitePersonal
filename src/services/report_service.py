@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from src.infrastructure.database.connection import initialize_database
+from src.infrastructure.database.connection import initialize_database, SessionLocal
 from src.infrastructure.repositories.tracking_event_repository import TrackingEventRepository
 from src.jt_api.client import JTClient
 from src.models.waybill import (
@@ -9,10 +9,10 @@ from src.models.waybill import (
 from src.domain.exceptions import APIError
 
 class ReportService:
-    def __init__(self, client: JTClient, tracking_repo: TrackingEventRepository):
+    def __init__(self, client: JTClient, tracking_repo: TrackingEventRepository = None):
         self.client = client
-        self.tracking_repo = tracking_repo
         initialize_database()
+        self.tracking_repo = tracking_repo if tracking_repo is not None else TrackingEventRepository(SessionLocal())
 
     @staticmethod
     def _is_signed_event(event: "TrackingEvent") -> bool:
