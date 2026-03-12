@@ -1,6 +1,11 @@
 import { useCallback, useState } from '../lib/ui.js';
 import { toISODateInput } from '../utils/formatters.js';
-import { fetchReturnApplications, syncReturnSnapshots } from '../services/returnsService.js';
+import {
+    fetchReturnApplications,
+    fetchReturnPrintable,
+    fetchReturnPrintUrl,
+    syncReturnSnapshots,
+} from '../services/returnsService.js';
 
 function daysAgoISO(days) {
     const now = new Date();
@@ -22,19 +27,30 @@ export function useReturns() {
     const [error, setError] = useState('');
     const [syncedAt, setSyncedAt] = useState('');
     const [snapshotsInserted, setSnapshotsInserted] = useState(0);
+    const [printLinkLoadingWaybill, setPrintLinkLoadingWaybill] = useState('');
+    const [printLinkMessage, setPrintLinkMessage] = useState('');
 
     const fetchReturns = useCallback(async ({ page = currentPage, persist = true } = {}) => {
         setLoading(true);
         setError('');
+        setPrintLinkMessage('');
         try {
-            const response = await fetchReturnApplications({
-                status,
-                dateFrom: startDate,
-                dateTo: endDate,
-                current: page,
-                size: pageSize,
-                saveSnapshot: persist,
-            });
+            const response = status === 'printable'
+                ? await fetchReturnPrintable({
+                    dateFrom: startDate,
+                    dateTo: endDate,
+                    current: page,
+                    size: pageSize,
+                })
+                : await fetchReturnApplications({
+                    status,
+                    dateFrom: startDate,
+                    dateTo: endDate,
+                    current: page,
+                    size: pageSize,
+                    saveSnapshot: persist,
+                });
+
             const data = response?.data || {};
             setRecords(data.records || []);
             setTotal(Number(data.total || 0));
@@ -50,6 +66,11 @@ export function useReturns() {
     }, [status, startDate, endDate, pageSize, currentPage]);
 
     const runSync = useCallback(async () => {
+        if (status === 'printable') {
+            setError('La sincronización no aplica para la vista de impresión. Usa Buscar para refrescar.');
+            return;
+        }
+
         setSyncing(true);
         setError('');
         try {
@@ -67,6 +88,37 @@ export function useReturns() {
             setSyncing(false);
         }
     }, [status, startDate, endDate, pageSize, fetchReturns]);
+
+    const requestPrintUrl = useCallback(async (waybillNo) => {
+        const target = (waybillNo || '').trim().toUpperCase();
+        if (!target) {
+            setError('Waybill inválido para impresión');
+            return null;
+        }
+
+        setPrintLinkLoadingWaybill(target);
+        setError('');
+        setPrintLinkMessage('');
+
+        try {
+            const response = await fetchReturnPrintUrl({ waybillNo: target });
+            const data = response?.data || {};
+            const printUrl = data.print_url || data.url || null;
+
+            if (!printUrl) {
+                setPrintLinkMessage(`No se recibió URL de impresión para ${target}.`);
+                return null;
+            }
+
+            setPrintLinkMessage(`Link de impresión generado para ${target}.`);
+            return printUrl;
+        } catch (err) {
+            setError(err.message || 'No se pudo obtener el link de impresión');
+            return null;
+        } finally {
+            setPrintLinkLoadingWaybill('');
+        }
+    }, []);
 
     return {
         status,
@@ -87,7 +139,10 @@ export function useReturns() {
         error,
         syncedAt,
         snapshotsInserted,
+        printLinkLoadingWaybill,
+        printLinkMessage,
         fetchReturns,
         runSync,
+        requestPrintUrl,
     };
 }

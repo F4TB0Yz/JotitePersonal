@@ -400,3 +400,66 @@ class JTClient:
             extra_headers={"routeName": "returnAndForwardMaintain"},
         )
 
+    def get_return_print_list_page(
+        self,
+        apply_network_id=1009,
+        apply_time_from="",
+        apply_time_to="",
+        current=1,
+        size=20,
+        pring_flag=0,
+        printer=0,
+        template_size=1,
+        pring_type=1,
+    ):
+        payload = {
+            "current": int(current),
+            "size": int(size),
+            "applyNetworkId": int(apply_network_id),
+            "pringFlag": int(pring_flag),
+            "printer": int(printer),
+            "templateSize": int(template_size),
+            "applyTimeFrom": apply_time_from,
+            "applyTimeTo": apply_time_to,
+            "pringType": int(pring_type),
+            "countryId": str(self.config.get("countryId", "1")),
+        }
+
+        return self._post(
+            "/rebackTransferExpress/pringListPage",
+            payload,
+            base=self.base_url,
+            extra_headers={"routeName": "returnAndForwardMaintain"},
+        )
+
+    def get_return_print_waybill_url_new(
+        self,
+        waybill_nos,
+        template_size=1,
+        pring_type=1,
+        printer=0,
+    ):
+        if isinstance(waybill_nos, str):
+            cleaned_ids = [waybill_nos.strip()] if waybill_nos.strip() else []
+        else:
+            cleaned_ids = [str(item).strip() for item in (waybill_nos or []) if str(item).strip()]
+
+        if not cleaned_ids:
+            raise ValueError("Debe enviar al menos una guía válida")
+
+        payload = {
+            "waybillNos": cleaned_ids,
+            "waybillNoList": cleaned_ids,
+            "templateSize": int(template_size),
+            "pringType": int(pring_type),
+            "printer": int(printer),
+            "countryId": str(self.config.get("countryId", "1")),
+        }
+
+        return self._post(
+            "/rebackTransferExpress/getPrintWaybillUrlNew",
+            payload,
+            base=self.base_url,
+            extra_headers={"routeName": "returnAndForwardMaintain"},
+        )
+

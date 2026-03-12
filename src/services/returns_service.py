@@ -87,6 +87,109 @@ class ReturnsService:
             "snapshots_inserted": inserted_count,
         }
 
+    def fetch_printable_list(
+        self,
+        apply_time_from: str,
+        apply_time_to: str,
+        current: int = 1,
+        size: int = 20,
+        pring_flag: int = 0,
+        printer: int = 0,
+        template_size: int = 1,
+        pring_type: int = 1,
+    ) -> dict[str, Any]:
+        response = self.client.get_return_print_list_page(
+            apply_network_id=self.apply_network_id,
+            apply_time_from=apply_time_from,
+            apply_time_to=apply_time_to,
+            current=max(1, self._to_int(current, 1)),
+            size=min(max(1, self._to_int(size, 20)), 100),
+            pring_flag=self._to_int(pring_flag, 0),
+            printer=self._to_int(printer, 0),
+            template_size=self._to_int(template_size, 1),
+            pring_type=self._to_int(pring_type, 1),
+        )
+
+        if response.get("code") != 1:
+            raise ValueError(response.get("msg") or "Error consultando devoluciones para imprimir")
+
+        data = response.get("data") or {}
+        records = data.get("records") or []
+        normalized = [
+            {
+                "waybill_no": item.get("waybillNo") or "",
+                "source_status": self._to_int(item.get("status"), 2),
+                "status_name": item.get("statusName") or "",
+                "apply_time": item.get("applyTime") or "",
+                "examine_time": item.get("examineTime") or "",
+                "apply_network_id": item.get("applyNetworkId"),
+                "apply_network_name": item.get("applyNetworkName") or "",
+                "apply_staff_code": item.get("applyStaffCode") or "",
+                "apply_staff_name": item.get("applyStaffName") or "",
+                "examine_staff_name": item.get("examineStaffName") or "",
+                "reback_transfer_reason": item.get("rebackTransferReason") or "",
+                "print_flag": item.get("printFlag"),
+                "raw": item,
+            }
+            for item in records
+        ]
+
+        return {
+            "records": normalized,
+            "total": self._to_int(data.get("total"), len(normalized)),
+            "size": self._to_int(data.get("size"), size),
+            "current": self._to_int(data.get("current"), current),
+            "pages": self._to_int(data.get("pages"), 0),
+            "mode": "printable",
+        }
+
+    def get_print_waybill_url(
+        self,
+        waybill_no: str,
+        template_size: int = 1,
+        pring_type: int = 1,
+        printer: int = 0,
+    ) -> dict[str, Any]:
+        target = (waybill_no or "").strip().upper()
+        if not target:
+            raise ValueError("waybill_no requerido")
+
+        response = self.client.get_return_print_waybill_url_new(
+            [target],
+            template_size=template_size,
+            pring_type=pring_type,
+            printer=printer,
+        )
+
+        if response.get("code") != 1:
+            raise ValueError(response.get("msg") or "No se pudo obtener el link de impresión")
+
+        data = response.get("data") or {}
+        resolved_url = None
+
+        if isinstance(data, dict):
+            resolved_url = (
+                data.get("centrePrintUrl")
+                or data.get("centerPrintUrl")
+                or data.get("printUrl")
+                or data.get("url")
+            )
+        elif isinstance(data, list) and data:
+            first = data[0] or {}
+            if isinstance(first, dict):
+                resolved_url = (
+                    first.get("centrePrintUrl")
+                    or first.get("centerPrintUrl")
+                    or first.get("printUrl")
+                    or first.get("url")
+                )
+
+        return {
+            "waybill_no": target,
+            "print_url": resolved_url,
+            "raw": data,
+        }
+
     def _save_snapshots(self, records: list[dict[str, Any]]) -> int:
         inserted = 0
         with SessionLocal() as session:

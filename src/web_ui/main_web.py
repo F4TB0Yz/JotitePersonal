@@ -295,6 +295,13 @@ class ReturnsSyncPayload(BaseModel):
     size: int = 50
     max_pages: int = 20
 
+
+class ReturnPrintUrlPayload(BaseModel):
+    waybill_no: str
+    template_size: int = 1
+    pring_type: int = 1
+    printer: int = 0
+
 @app.post("/api/config/token")
 async def update_token(payload: TokenUpdate):
     global _cached_password, _cached_password_ts
@@ -1478,6 +1485,61 @@ async def sync_return_snapshots(payload: ReturnsSyncPayload):
 
             data = await asyncio.to_thread(_run)
 
+        return {"success": True, "data": data}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/returns/printable")
+async def get_return_printable(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    current: int = 1,
+    size: int = 20,
+    pring_flag: int = 0,
+    printer: int = 0,
+    template_size: int = 1,
+    pring_type: int = 1,
+):
+    start_time, end_time = _resolve_returns_range(date_from, date_to)
+
+    try:
+        def _run():
+            service = _build_returns_service()
+            return service.fetch_printable_list(
+                apply_time_from=start_time,
+                apply_time_to=end_time,
+                current=current,
+                size=size,
+                pring_flag=pring_flag,
+                printer=printer,
+                template_size=template_size,
+                pring_type=pring_type,
+            )
+
+        data = await asyncio.to_thread(_run)
+        return {"success": True, "data": data}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/api/returns/print-url")
+async def get_return_print_url(payload: ReturnPrintUrlPayload):
+    try:
+        def _run():
+            service = _build_returns_service()
+            return service.get_print_waybill_url(
+                waybill_no=payload.waybill_no,
+                template_size=payload.template_size,
+                pring_type=payload.pring_type,
+                printer=payload.printer,
+            )
+
+        data = await asyncio.to_thread(_run)
         return {"success": True, "data": data}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

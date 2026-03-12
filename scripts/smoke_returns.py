@@ -95,6 +95,41 @@ def run_smoke(base_url: str, username: str, password: str, token: str | None) ->
         },
     )
 
+    printable_resp = requests.get(
+        f"{base_url}/api/returns/printable?date_from=2026-03-10&date_to=2026-03-12&current=1&size=20",
+        headers=manual_cookie,
+        timeout=60,
+    )
+    printable_body = printable_resp.json() if printable_resp.headers.get("content-type", "").startswith("application/json") else printable_resp.text
+    _print_result(
+        "GET /api/returns/printable",
+        {
+            "status": printable_resp.status_code,
+            "body": printable_body,
+        },
+    )
+
+    sample_waybill = None
+    if isinstance(printable_body, dict):
+        records = (((printable_body.get("data") or {}).get("records") or []))
+        if records:
+            sample_waybill = records[0].get("waybill_no")
+
+    if sample_waybill:
+        print_url_resp = requests.post(
+            f"{base_url}/api/returns/print-url",
+            headers=manual_cookie,
+            json={"waybill_no": sample_waybill, "template_size": 1, "pring_type": 1, "printer": 0},
+            timeout=60,
+        )
+        _print_result(
+            "POST /api/returns/print-url",
+            {
+                "status": print_url_resp.status_code,
+                "body": print_url_resp.json() if print_url_resp.headers.get("content-type", "").startswith("application/json") else print_url_resp.text,
+            },
+        )
+
     return 0
 
 

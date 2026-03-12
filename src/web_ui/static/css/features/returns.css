@@ -70,6 +70,10 @@
     color: var(--danger-color, #ff7b72);
 }
 
+.returns-print-message {
+    color: var(--success-color, #56d364);
+}
+
 .returns-table-wrap {
     overflow: auto;
     border: 1px solid var(--border-color, rgba(240, 246, 252, 0.1));

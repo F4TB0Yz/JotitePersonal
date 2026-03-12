@@ -4,6 +4,7 @@ import { useReturns } from '../../hooks/useReturns.js';
 import { formatDateTimeLabel } from '../../utils/formatters.js';
 
 function statusLabel(value) {
+    if (value === 'printable') return 'Para imprimir';
     const safe = Number(value);
     if (safe === 2) return 'Aprobadas';
     if (safe === 3) return 'Rechazadas';
@@ -33,9 +34,14 @@ export default function ReturnsView({ isActive }) {
         error,
         syncedAt,
         snapshotsInserted,
+        printLinkLoadingWaybill,
+        printLinkMessage,
         fetchReturns,
         runSync,
+        requestPrintUrl,
     } = useReturns();
+
+    const isPrintableMode = status === 'printable';
 
     useEffect(() => {
         if (!isActive) return;
@@ -51,7 +57,7 @@ export default function ReturnsView({ isActive }) {
                 <div className="returns-header">
                     <div>
                         <h2>Devoluciones</h2>
-                        <p>Consulta solicitudes en revisión y aprobadas, con snapshot para auditoría local.</p>
+                        <p>Consulta en revisión, aprobadas, rechazadas y guías listas para imprimir.</p>
                     </div>
 
                     <form
@@ -66,12 +72,13 @@ export default function ReturnsView({ isActive }) {
                                 { value: 1, label: 'En revisión' },
                                 { value: 2, label: 'Aprobadas' },
                                 { value: 3, label: 'Rechazadas' },
+                                { value: 'printable', label: 'Para imprimir' },
                             ].map((item) => html`
                                 <button
                                     type="button"
-                                    className=${`returns-status-btn ${Number(status) === item.value ? 'active' : ''}`}
+                                    className=${`returns-status-btn ${status === item.value ? 'active' : ''}`}
                                     onClick=${() => setStatus(item.value)}
-                                    aria-pressed=${Number(status) === item.value}
+                                    aria-pressed=${status === item.value}
                                 >
                                     ${item.label}
                                 </button>
@@ -108,7 +115,8 @@ export default function ReturnsView({ isActive }) {
                             type="button"
                             className="form-btn outline"
                             onClick=${runSync}
-                            disabled=${syncing}
+                            disabled=${syncing || isPrintableMode}
+                            title=${isPrintableMode ? 'No aplica para la vista de impresión' : ''}
                         >
                             ${syncing ? 'Sincronizando…' : 'Sincronizar'}
                         </button>
@@ -121,6 +129,8 @@ export default function ReturnsView({ isActive }) {
                     <span>Insertados en consulta: <strong>${snapshotsInserted}</strong></span>
                     <span>Última sincronización: <strong>${formatDateTimeLabel(syncedAt)}</strong></span>
                 </div>
+
+                ${printLinkMessage ? html`<div className="returns-print-message">${printLinkMessage}</div>` : null}
 
                 ${error ? html`<div className="returns-error">${error}</div>` : null}
 
@@ -136,11 +146,12 @@ export default function ReturnsView({ isActive }) {
                                 <th>Solicitante</th>
                                 <th>Motivo</th>
                                 <th>Impreso</th>
+                                ${isPrintableMode ? html`<th>Acción</th>` : null}
                             </tr>
                         </thead>
                         <tbody>
                             ${records.length === 0
-                                ? html`<tr><td colSpan="8" className="returns-empty">Sin resultados para el filtro actual.</td></tr>`
+                                ? html`<tr><td colSpan=${isPrintableMode ? '9' : '8'} className="returns-empty">Sin resultados para el filtro actual.</td></tr>`
                                 : records.map((row) => html`
                                     <tr key=${`${row.waybill_no}-${row.apply_time}-${row.source_status}`}>
                                         <td>${row.waybill_no || '—'}</td>
@@ -151,6 +162,21 @@ export default function ReturnsView({ isActive }) {
                                         <td>${row.apply_staff_name || row.apply_staff_code || '—'}</td>
                                         <td>${row.reback_transfer_reason || '—'}</td>
                                         <td>${printFlagLabel(row.print_flag)}</td>
+                                        ${isPrintableMode ? html`
+                                            <td>
+                                                <button
+                                                    type="button"
+                                                    className="form-btn outline"
+                                                    disabled=${printLinkLoadingWaybill === (row.waybill_no || '').toUpperCase()}
+                                                    onClick=${async () => {
+                                                        const url = await requestPrintUrl(row.waybill_no);
+                                                        if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                                                    }}
+                                                >
+                                                    ${printLinkLoadingWaybill === (row.waybill_no || '').toUpperCase() ? 'Generando…' : 'Abrir link'}
+                                                </button>
+                                            </td>
+                                        ` : null}
                                     </tr>
                                 `)}
                         </tbody>
