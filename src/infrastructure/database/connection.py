@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from .config import DEFAULT_DATABASE_URL, get_database_url
 from .models import Base
+from .migrations import run_all_migrations
 
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ def initialize_database() -> None:
         return
     try:
         Base.metadata.create_all(bind=_engine)
+        run_all_migrations(_engine)
         _db_initialized = True
     except SQLAlchemyError as exc:
         logger.warning(
@@ -39,4 +41,5 @@ def initialize_database() -> None:
         )
         _switch_to_default_sqlite()
         Base.metadata.create_all(bind=_engine)
+        run_all_migrations(_engine)
         _db_initialized = True

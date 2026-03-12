@@ -4,6 +4,7 @@ import {
     fetchDailyReportEntries,
     ingestDailyReportEntries,
     deleteDailyReportEntry,
+    updateDailyReportEntry,
 } from '../services/dailyReportService.js';
 
 export function useDailyReport() {
@@ -93,6 +94,23 @@ export function useDailyReport() {
     }, []);
 
     // -------------------------------------------------------
+    // Update notes and/or status of an entry
+    // -------------------------------------------------------
+    const handleUpdateEntry = useCallback(async (id, updates) => {
+        try {
+            const result = await updateDailyReportEntry(id, updates);
+            // Update the entry in the local state
+            setEntries((prev) => prev.map((e) => 
+                e.id === id ? { ...e, ...result } : e
+            ));
+            return result;
+        } catch (e) {
+            setError(e.message || 'Error al actualizar la entrada.');
+            throw e;
+        }
+    }, []);
+
+    // -------------------------------------------------------
     // Grouped / sorted derived data
     // -------------------------------------------------------
     const groupedEntries = useMemo(() => {
@@ -127,6 +145,7 @@ export function useDailyReport() {
         error,
         loadEntries,
         handleDelete,
+        handleUpdateEntry,
         // ingest
         inputValue, setInputValue,
         reportDate, setReportDate,

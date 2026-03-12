@@ -479,5 +479,135 @@
     word-break: break-word;
 }
 
+/* ── Entry card edit mode ── */
+.dr-entry-card.editing {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+}
+
+.dr-entry-actions {
+    grid-row: 1;
+    grid-column: 2;
+    display: flex;
+    gap: 4px;
+    align-self: flex-start;
+}
+
+.dr-edit-btn,
+.dr-delete-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+}
+
+.dr-edit-btn:hover {
+    color: var(--accent-color);
+    background: rgba(91, 141, 255, 0.12);
+}
+
+.dr-delete-btn:hover {
+    color: #f85149;
+    background: rgba(248, 81, 73, 0.12);
+}
+
+.dr-entry-edit-panel {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
+    margin-top: 8px;
+}
+
+.dr-edit-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.dr-edit-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.dr-edit-input,
+.dr-edit-textarea {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-main);
+    font-size: 0.85rem;
+    padding: 6px 10px;
+    font-family: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.dr-edit-input:focus,
+.dr-edit-textarea:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(91, 141, 255, 0.1);
+}
+
+.dr-edit-textarea {
+    resize: vertical;
+    min-height: 50px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.dr-edit-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+    padding-top: 4px;
+}
+
+.dr-save-btn,
+.dr-cancel-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.dr-save-btn {
+    background: rgba(91, 141, 255, 0.15);
+    color: #5d8dff;
+    border: 1px solid rgba(91, 141, 255, 0.3);
+}
+
+.dr-save-btn:hover:not(:disabled) {
+    background: rgba(91, 141, 255, 0.25);
+    border-color: rgba(91, 141, 255, 0.5);
+}
+
+.dr-save-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.dr-cancel-btn {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+}
+
+.dr-cancel-btn:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: var(--text-muted);
+}
+
 /* ── Hidden helpers ── */
 .print-only { display: none; }

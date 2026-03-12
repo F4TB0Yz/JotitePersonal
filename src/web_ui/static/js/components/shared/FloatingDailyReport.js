@@ -96,6 +96,9 @@ function PrintPreviewModal({ groupedEntries, startDate, endDate, groupBy, onClos
 
 export default function FloatingDailyReport() {
     const [panelOpen, setPanelOpen] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [editData, setEditData] = useState({});
+    const [savingId, setSavingId] = useState(null);
     const {
         startDate, setStartDate,
         endDate, setEndDate,
@@ -105,6 +108,7 @@ export default function FloatingDailyReport() {
         loading, error,
         loadEntries,
         handleDelete,
+        handleUpdateEntry,
         inputValue, setInputValue,
         reportDate, setReportDate,
         ingesting,
@@ -112,6 +116,32 @@ export default function FloatingDailyReport() {
         handleIngest,
         previewOpen, setPreviewOpen,
     } = useDailyReport();
+
+    const startEdit = (entry) => {
+        setEditingId(entry.id);
+        setEditData({
+            notes: entry.notes || '',
+            status: entry.status || '',
+        });
+    };
+
+    const cancelEdit = () => {
+        setEditingId(null);
+        setEditData({});
+    };
+
+    const saveEdit = async (entryId) => {
+        setSavingId(entryId);
+        try {
+            await handleUpdateEntry(entryId, editData);
+            setEditingId(null);
+            setEditData({});
+        } catch (e) {
+            console.error('Error saving:', e);
+        } finally {
+            setSavingId(null);
+        }
+    };
 
     return html`
         <div className="floating-daily-report-wrapper no-print">
@@ -231,8 +261,12 @@ export default function FloatingDailyReport() {
                                             ` : null}
                                             ${items.map((entry) => {
                                                 const isDelivered = (entry.status || '').toLowerCase().includes('firm');
+                                                const isEditing = editingId === entry.id;
+                                                const editStatus = editData.status !== undefined ? editData.status : entry.status || '';
+                                                const editNotes = editData.notes !== undefined ? editData.notes : entry.notes || '';
+                                                
                                                 return html`
-                                                    <div className="dr-entry-card" key=${entry.id}>
+                                                    <div className="dr-entry-card ${isEditing ? 'editing' : ''}" key=${entry.id}>
                                                         <div className="dr-entry-main">
                                                             <span className="dr-entry-waybill">${entry.waybill_no}</span>
                                                             <span className="dr-entry-city">${entry.city || '—'}</span>
@@ -243,12 +277,66 @@ export default function FloatingDailyReport() {
                                                                 ${entry.status || '—'}
                                                             </span>
                                                         </div>
-                                                        <button
-                                                            type="button"
-                                                            className="dr-delete-btn"
-                                                            title="Eliminar entrada"
-                                                            onClick=${() => handleDelete(entry.id)}
-                                                        >✕</button>
+                                                        <div className="dr-entry-actions">
+                                                            <button
+                                                                type="button"
+                                                                className="dr-edit-btn"
+                                                                title="Editar notas y estado"
+                                                                onClick=${() => isEditing ? cancelEdit() : startEdit(entry)}
+                                                            >${isEditing ? '✕' : '✏️'}</button>
+                                                            <button
+                                                                type="button"
+                                                                className="dr-delete-btn"
+                                                                title="Eliminar entrada"
+                                                                onClick=${() => handleDelete(entry.id)}
+                                                            >✕</button>
+                                                        </div>
+
+                                                        ${isEditing ? html`
+                                                            <div className="dr-entry-edit-panel">
+                                                                <div className="dr-edit-group">
+                                                                    <label className="dr-edit-label">Estado</label>
+                                                                    <select 
+                                                                        className="dr-edit-input"
+                                                                        value=${editStatus}
+                                                                        onChange=${(e) => setEditData(prev => ({ ...prev, status: e.target.value }))}
+                                                                    >
+                                                                        <option value="">— Sin especificar —</option>
+                                                                        <option value="Entregado">Entregado</option>
+                                                                        <option value="Pendiente">Pendiente</option>
+                                                                        <option value="En tránsito">En tránsito</option>
+                                                                        <option value="No entregado">No entregado</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div className="dr-edit-group">
+                                                                    <label className="dr-edit-label">Notas</label>
+                                                                    <textarea 
+                                                                        className="dr-edit-textarea"
+                                                                        value=${editNotes}
+                                                                        onChange=${(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
+                                                                        placeholder="Agrega notas sobre esta guía..."
+                                                                        rows="2"
+                                                                    ></textarea>
+                                                                </div>
+                                                                <div className="dr-edit-actions">
+                                                                    <button 
+                                                                        type="button"
+                                                                        className="dr-save-btn"
+                                                                        onClick=${() => saveEdit(entry.id)}
+                                                                        disabled=${savingId === entry.id}
+                                                                    >
+                                                                        ${savingId === entry.id ? '💾 Guardando...' : '💾 Guardar'}
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="dr-cancel-btn"
+                                                                        onClick=${cancelEdit}
+                                                                    >
+                                                                        Cancelar
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ` : null}
                                                     </div>
                                                 `;
                                             })}

@@ -1642,6 +1642,7 @@ async def get_daily_report_entries(start_date: str, end_date: str):
                     "address": row.address,
                     "city": row.city,
                     "status": row.status,
+                    "notes": row.notes or "",
                     "report_date": row.report_date,
                 }
                 for row in rows
@@ -1677,6 +1678,47 @@ async def delete_daily_report_entry(entry_id: int):
     try:
         await asyncio.to_thread(_delete)
         return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.patch("/api/daily-report/entries/{entry_id}")
+async def update_daily_report_entry(entry_id: int, payload: dict = Body(...)):
+    """Actualiza notas y/o estado de una entrada del reporte diario."""
+    notes = payload.get("notes", "").strip() if isinstance(payload.get("notes"), str) else ""
+    status = payload.get("status", "").strip() if isinstance(payload.get("status"), str) else None
+
+    def _update():
+        session = SessionLocal()
+        try:
+            row = session.query(DailyReportEntryORM).filter_by(id=entry_id).first()
+            if not row:
+                raise HTTPException(status_code=404, detail="Entrada no encontrada")
+            
+            if notes is not None:
+                row.notes = notes
+            if status is not None:
+                row.status = status
+            
+            session.commit()
+            return {
+                "id": row.id,
+                "waybill_no": row.waybill_no,
+                "status": row.status,
+                "notes": row.notes or "",
+            }
+        except HTTPException:
+            raise
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+    try:
+        return await asyncio.to_thread(_update)
     except HTTPException:
         raise
     except Exception as exc:

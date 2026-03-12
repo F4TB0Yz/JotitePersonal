@@ -120,5 +120,12 @@ class DailyReportEntryORM(Base):
     address = Column(Text, nullable=True)
     city = Column(String, nullable=True)
     status = Column(String, nullable=True)
+    notes = Column(Text, nullable=True, default='')  # Notas/comentarios del operador
     report_date = Column(String, nullable=False)  # YYYY-MM-DD
     created_at = Column(DateTime, server_default=func.current_timestamp(), nullable=False)
+    updated_at = Column(
+        DateTime,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        nullable=False,
+    )

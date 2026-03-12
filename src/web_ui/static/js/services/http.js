@@ -59,3 +59,12 @@ export function httpDelete(url) {
         credentials: 'same-origin'
     }).then(handleJson);
 }
+
+export function patch(url, body) {
+    return _fetchWithRetry(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(body),
+        credentials: 'same-origin'
+    }).then(handleJson);
+}
