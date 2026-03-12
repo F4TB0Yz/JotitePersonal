@@ -246,7 +246,7 @@ class JTClient:
             "/bigdataReport/detail/bis_network_today_sign_detail",
             payload,
             base=self.busdicator_base_url,
-            extra_headers={"routeName": "DailySigningRate"}
+            extra_headers={"routeName": "CollectUser"}
         )
 
     def get_waybill_receiver_phone(self, waybill_numbers):
