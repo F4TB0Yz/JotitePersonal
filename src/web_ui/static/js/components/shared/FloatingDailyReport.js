@@ -1,4 +1,4 @@
-import { html, useState, useEffect, createPortal } from '../../lib/ui.js';
+import { html, useState, useEffect, createPortal, Fragment } from '../../lib/ui.js';
 import { useDailyReport } from '../../hooks/useDailyReport.js';
 
 const ALL_PRINT_COLS = [
@@ -59,20 +59,20 @@ function PrintPreviewModal({ groupedEntries, startDate, endDate, groupBy, onClos
     const printHost = document.getElementById('print-root') || document.body;
     const printContent = createPortal(html`
         <div id="daily-report-print-content">
-            <div class="dr-print-header">
+            <div className="dr-print-header">
                 <h2>Reporte Diario de Guías</h2>
                 <p>${startDate === endDate ? startDate : startDate + ' — ' + endDate}</p>
-                <p class="dr-print-meta">Generado: ${today} · ${groupLabel}</p>
+                <p className="dr-print-meta">Generado: ${today} · ${groupLabel}</p>
             </div>
             ${groupedEntries.map(({ key, label, items }) => html`
-                <div class="dr-group" key=${key}>
+                <div className="dr-group" key=${key}>
                     ${groupBy !== 'none' ? html`
-                        <h4 class="dr-group-title">
+                        <h4 className="dr-group-title">
                             ${label}
-                            <span class="dr-group-count">(${items.length})</span>
+                            <span className="dr-group-count">(${items.length})</span>
                         </h4>
                     ` : null}
-                    <table class="dr-table">
+                    <table className="dr-table">
                         <thead>
                             <tr>
                                 <th>#</th>
@@ -84,9 +84,9 @@ function PrintPreviewModal({ groupedEntries, startDate, endDate, groupBy, onClos
                             ${items.map((entry, idx) => html`
                                 <tr key=${entry.id}>
                                     <td>${idx + 1}</td>
-                                    <td class="dr-waybill-cell">${entry.waybill_no}</td>
+                                    <td className="dr-waybill-cell">${entry.waybill_no}</td>
                                     ${activeCols.map((c) => html`
-                                        <td key=${c.key} class=${c.key === 'address' ? 'dr-address-cell' : ''}>
+                                        <td key=${c.key} className=${c.key === 'address' ? 'dr-address-cell' : ''}>
                                             ${c.getValue(entry)}
                                         </td>
                                     `)}
@@ -96,14 +96,14 @@ function PrintPreviewModal({ groupedEntries, startDate, endDate, groupBy, onClos
                     </table>
                 </div>
             `)}
-            <div class="dr-print-footer">
+            <div className="dr-print-footer">
                 <p>Total guías: ${total}</p>
             </div>
         </div>
     `, printHost);
 
     return html`
-        <>
+        <${Fragment}>
             <div className="dr-preview-overlay" onClick=${onClose}>
                 <div className="dr-preview-modal" onClick=${(e) => e.stopPropagation()}>
                     <header className="dr-preview-header">
@@ -188,7 +188,7 @@ function PrintPreviewModal({ groupedEntries, startDate, endDate, groupBy, onClos
                 </div>
             </div>
             ${printContent}
-        </>
+        </${Fragment}>
     `;
 }
 
