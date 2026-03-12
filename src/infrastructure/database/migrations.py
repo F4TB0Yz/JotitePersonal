@@ -7,6 +7,8 @@ from sqlalchemy import inspect, text
 from sqlalchemy.exc import SQLAlchemyError
 import logging
 
+from .models import ReturnApplicationSnapshotORM
+
 logger = logging.getLogger(__name__)
 
 
@@ -74,3 +76,21 @@ def run_all_migrations(engine) -> None:
     """
     ensure_daily_report_notes_column(engine)
     ensure_daily_report_updated_at_column(engine)
+    ensure_return_snapshots_table(engine)
+
+
+def ensure_return_snapshots_table(engine) -> bool:
+    """Ensures return_application_snapshots table and indexes exist."""
+    try:
+        table = ReturnApplicationSnapshotORM.__table__
+        table.create(bind=engine, checkfirst=True)
+        for index in table.indexes:
+            index.create(bind=engine, checkfirst=True)
+        logger.info("Ensured return_application_snapshots table and indexes.")
+        return True
+    except SQLAlchemyError as e:
+        logger.warning(f"Could not ensure return_application_snapshots table: {e}")
+        return False
+    except Exception as e:
+        logger.warning(f"Unexpected error ensuring return_application_snapshots table: {e}")
+        return False

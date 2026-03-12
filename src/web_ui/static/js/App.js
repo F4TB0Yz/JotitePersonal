@@ -4,6 +4,7 @@ import BottomTabBar from './components/layout/BottomTabBar.js';
 import HomeView from './components/dashboard/HomeView.js';
 import WaybillProcessorView from './components/process/WaybillProcessorView.js';
 import PendingDashboardView from './components/dashboard/PendingDashboardView.js';
+import ReturnsView from './components/dashboard/ReturnsView.js';
 import MessengerAdminView from './components/admin/MessengerAdminView.js';
 import TemuAlertCenter from './components/dashboard/TemuAlertCenter.js';
 import KpiDashboardView from './components/dashboard/KpiDashboardView.js';
@@ -81,6 +82,9 @@ export default function App() {
                 </section>
                 <section className=${`view-section ${activeView === 'dashboard' ? 'active' : ''}`}>
                     <${PendingDashboardView} isActive=${activeView === 'dashboard'} />
+                </section>
+                <section className=${`view-section ${activeView === 'devoluciones' ? 'active' : ''}`}>
+                    <${ReturnsView} isActive=${activeView === 'devoluciones'} />
                 </section>
                 <section className=${`view-section ${activeView === 'alertas' ? 'active' : ''}`}>
                     <${TemuAlertCenter} isActive=${activeView === 'alertas'} />

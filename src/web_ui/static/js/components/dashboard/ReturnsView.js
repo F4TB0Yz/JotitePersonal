@@ -1,0 +1,174 @@
+import { html, useEffect } from '../../lib/ui.js';
+import DateRangePicker from '../shared/DateRangePicker.js';
+import { useReturns } from '../../hooks/useReturns.js';
+import { formatDateTimeLabel } from '../../utils/formatters.js';
+
+function statusLabel(value) {
+    return Number(value) === 2 ? 'Aprobadas' : 'En revisión';
+}
+
+function printFlagLabel(value) {
+    return Number(value) === 1 ? 'Sí' : 'No';
+}
+
+export default function ReturnsView({ isActive }) {
+    const {
+        status,
+        setStatus,
+        startDate,
+        setStartDate,
+        endDate,
+        setEndDate,
+        currentPage,
+        pageSize,
+        setPageSize,
+        records,
+        total,
+        pages,
+        loading,
+        syncing,
+        error,
+        syncedAt,
+        snapshotsInserted,
+        fetchReturns,
+        runSync,
+    } = useReturns();
+
+    useEffect(() => {
+        if (!isActive) return;
+        fetchReturns({ page: 1, persist: true });
+    }, [isActive, fetchReturns]);
+
+    const canGoPrev = currentPage > 1;
+    const canGoNext = pages > 0 ? currentPage < pages : records.length >= pageSize;
+
+    return html`
+        <main className="returns-main">
+            <div className="returns-shell">
+                <div className="returns-header">
+                    <div>
+                        <h2>Devoluciones</h2>
+                        <p>Consulta solicitudes en revisión y aprobadas, con snapshot para auditoría local.</p>
+                    </div>
+
+                    <form
+                        className="returns-filters"
+                        onSubmit=${(event) => {
+                            event.preventDefault();
+                            fetchReturns({ page: 1, persist: true });
+                        }}
+                    >
+                        <label>
+                            Estado
+                            <select
+                                className="form-input"
+                                value=${String(status)}
+                                onChange=${(event) => setStatus(Number(event.target.value || 1))}
+                            >
+                                <option value="1">En revisión</option>
+                                <option value="2">Aprobadas</option>
+                            </select>
+                        </label>
+
+                        <label>
+                            Tamaño página
+                            <select
+                                className="form-input"
+                                value=${String(pageSize)}
+                                onChange=${(event) => setPageSize(Number(event.target.value || 20))}
+                            >
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </label>
+
+                        <${DateRangePicker}
+                            label="Rango"
+                            dateFrom=${startDate}
+                            dateTo=${endDate}
+                            onDateChange=${(from, to) => {
+                                setStartDate(from);
+                                setEndDate(to);
+                            }}
+                        />
+
+                        <button type="submit" className="form-btn primary" disabled=${loading}>
+                            ${loading ? 'Consultando…' : 'Buscar'}
+                        </button>
+                        <button
+                            type="button"
+                            className="form-btn outline"
+                            onClick=${runSync}
+                            disabled=${syncing}
+                        >
+                            ${syncing ? 'Sincronizando…' : 'Sincronizar'}
+                        </button>
+                    </form>
+                </div>
+
+                <div className="returns-meta">
+                    <span>Total: <strong>${total}</strong></span>
+                    <span>Estado: <strong>${statusLabel(status)}</strong></span>
+                    <span>Insertados en consulta: <strong>${snapshotsInserted}</strong></span>
+                    <span>Última sincronización: <strong>${formatDateTimeLabel(syncedAt)}</strong></span>
+                </div>
+
+                ${error ? html`<div className="returns-error">${error}</div>` : null}
+
+                <div className="returns-table-wrap">
+                    <table className="returns-table">
+                        <thead>
+                            <tr>
+                                <th>Waybill</th>
+                                <th>Estado</th>
+                                <th>Solicitud</th>
+                                <th>Revisión</th>
+                                <th>Red</th>
+                                <th>Solicitante</th>
+                                <th>Motivo</th>
+                                <th>Impreso</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${records.length === 0
+                                ? html`<tr><td colSpan="8" className="returns-empty">Sin resultados para el filtro actual.</td></tr>`
+                                : records.map((row) => html`
+                                    <tr key=${`${row.waybill_no}-${row.apply_time}-${row.source_status}`}>
+                                        <td>${row.waybill_no || '—'}</td>
+                                        <td>${row.status_name || statusLabel(row.source_status)}</td>
+                                        <td>${row.apply_time || '—'}</td>
+                                        <td>${row.examine_time || '—'}</td>
+                                        <td>${row.apply_network_name || row.apply_network_id || '—'}</td>
+                                        <td>${row.apply_staff_name || row.apply_staff_code || '—'}</td>
+                                        <td>${row.reback_transfer_reason || '—'}</td>
+                                        <td>${printFlagLabel(row.print_flag)}</td>
+                                    </tr>
+                                `)}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div className="returns-pagination">
+                    <button
+                        type="button"
+                        className="form-btn outline"
+                        onClick=${() => fetchReturns({ page: currentPage - 1, persist: true })}
+                        disabled=${loading || !canGoPrev}
+                    >
+                        ← Anterior
+                    </button>
+                    <span>Página ${currentPage}${pages > 0 ? ` de ${pages}` : ''}</span>
+                    <button
+                        type="button"
+                        className="form-btn outline"
+                        onClick=${() => fetchReturns({ page: currentPage + 1, persist: true })}
+                        disabled=${loading || !canGoNext}
+                    >
+                        Siguiente →
+                    </button>
+                </div>
+            </div>
+        </main>
+    `;
+}

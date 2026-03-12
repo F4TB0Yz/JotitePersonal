@@ -3,6 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional
+import logging
 import os
 import io
 import json
@@ -31,11 +32,13 @@ from src.services.temu_prediction_service import temu_prediction_service
 from src.services.notification_service import notification_manager
 from src.services.novedades_service import novedades_service
 from src.services.settlement_service import SettlementService
+from src.services.returns_service import ReturnsService
 from src.services.kpi_service import kpi_service
 from src.infrastructure.database.connection import SessionLocal, initialize_database
 from src.infrastructure.database.models import ConfigORM
 
 app = FastAPI(title="J&T Express Web Reporter")
+logger = logging.getLogger(__name__)
 
 SESSION_COOKIE_NAME = "jt_session"
 SESSION_TTL_SECONDS = 60 * 60 * 12
@@ -58,6 +61,64 @@ def _is_public_path(path: str) -> bool:
 _cached_password: str | None = None
 _cached_password_ts: float = 0
 _CACHE_TTL = 60  # segundos
+_returns_sync_task: asyncio.Task | None = None
+_returns_sync_lock = asyncio.Lock()
+
+
+def _format_returns_datetime(value: str | None, is_end: bool = False) -> str:
+    raw = (value or "").strip()
+    if not raw:
+        return ""
+    if len(raw) == 10:
+        suffix = "23:59:59" if is_end else "00:00:00"
+        return f"{raw} {suffix}"
+    return raw
+
+
+def _resolve_returns_range(date_from: str | None, date_to: str | None, lookback_days: int = 2) -> tuple[str, str]:
+    now = datetime.now()
+    default_from = (now - timedelta(days=max(0, lookback_days))).strftime("%Y-%m-%d 00:00:00")
+    default_to = now.strftime("%Y-%m-%d 23:59:59")
+    return (
+        _format_returns_datetime(date_from, is_end=False) or default_from,
+        _format_returns_datetime(date_to, is_end=True) or default_to,
+    )
+
+
+def _build_returns_service() -> ReturnsService:
+    cfg = ConfigRepository.get_cached()
+    apply_network_id = int(os.getenv("RETURNS_APPLY_NETWORK_ID", "1009"))
+    return ReturnsService(JTClient(config=cfg), apply_network_id=apply_network_id)
+
+
+def _run_returns_sync_cycle() -> dict:
+    lookback_days = int(os.getenv("RETURNS_SYNC_LOOKBACK_DAYS", "2"))
+    sync_size = int(os.getenv("RETURNS_SYNC_PAGE_SIZE", "50"))
+    sync_max_pages = int(os.getenv("RETURNS_SYNC_MAX_PAGES", "20"))
+    start_time, end_time = _resolve_returns_range(None, None, lookback_days=lookback_days)
+    service = _build_returns_service()
+    return service.sync_statuses(
+        apply_time_from=start_time,
+        apply_time_to=end_time,
+        statuses=(1, 2),
+        size=sync_size,
+        max_pages=sync_max_pages,
+    )
+
+
+async def _returns_sync_loop() -> None:
+    interval = max(60, int(os.getenv("RETURNS_SYNC_INTERVAL_SECONDS", "900")))
+    while True:
+        try:
+            async with _returns_sync_lock:
+                summary = await asyncio.to_thread(_run_returns_sync_cycle)
+                logger.info("Returns sync cycle done: %s", summary)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.warning("Returns sync cycle failed: %s", exc)
+
+        await asyncio.sleep(interval)
 
 
 def _resolve_dashboard_password() -> str | None:
@@ -173,11 +234,24 @@ async def auth_middleware(request: Request, call_next):
 
 @app.on_event("startup")
 async def startup_event():
+    global _returns_sync_task
+
     temu_prediction_service.start()
+    _returns_sync_task = asyncio.create_task(_returns_sync_loop())
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    global _returns_sync_task
+
+    if _returns_sync_task:
+        _returns_sync_task.cancel()
+        try:
+            await _returns_sync_task
+        except asyncio.CancelledError:
+            pass
+        _returns_sync_task = None
+
     await temu_prediction_service.stop()
 
 class TokenUpdate(BaseModel):
@@ -212,6 +286,14 @@ class SettlementStatusPayload(BaseModel):
 class WaybillReprintPayload(BaseModel):
     waybill_ids: List[str]
     bill_type: str = "small"
+
+
+class ReturnsSyncPayload(BaseModel):
+    date_from: Optional[str] = None
+    date_to: Optional[str] = None
+    statuses: List[int] = [1, 2]
+    size: int = 50
+    max_pages: int = 20
 
 @app.post("/api/config/token")
 async def update_token(payload: TokenUpdate):
@@ -1301,6 +1383,104 @@ async def reprint_waybills(payload: WaybillReprintPayload):
         }
     except HTTPException:
         raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/returns/applications")
+async def get_return_applications(
+    status: int = 1,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    current: int = 1,
+    size: int = 20,
+    save_snapshot: bool = True,
+):
+    if status not in (1, 2):
+        raise HTTPException(status_code=400, detail="status debe ser 1 (En revisión) o 2 (Aprobada)")
+
+    start_time, end_time = _resolve_returns_range(date_from, date_to)
+
+    try:
+        def _run():
+            service = _build_returns_service()
+            return service.fetch_applications(
+                status=status,
+                apply_time_from=start_time,
+                apply_time_to=end_time,
+                current=current,
+                size=size,
+                save_snapshot=save_snapshot,
+            )
+
+        data = await asyncio.to_thread(_run)
+        return {"success": True, "data": data}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/returns/snapshots")
+async def get_return_snapshots(
+    status: Optional[int] = None,
+    waybill_no: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+):
+    if status is not None and status not in (1, 2):
+        raise HTTPException(status_code=400, detail="status debe ser 1 (En revisión) o 2 (Aprobada)")
+
+    start_time = _format_returns_datetime(date_from, is_end=False)
+    end_time = _format_returns_datetime(date_to, is_end=True)
+
+    try:
+        def _run():
+            service = _build_returns_service()
+            return service.list_snapshots(
+                status=status,
+                waybill_no=waybill_no,
+                date_from=start_time or None,
+                date_to=end_time or None,
+                limit=limit,
+                offset=offset,
+            )
+
+        data = await asyncio.to_thread(_run)
+        return {"success": True, "data": data}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/api/returns/sync")
+async def sync_return_snapshots(payload: ReturnsSyncPayload):
+    statuses = [status for status in (payload.statuses or [1, 2]) if status in (1, 2)]
+    if not statuses:
+        raise HTTPException(status_code=400, detail="Debe incluir al menos un status válido (1 o 2)")
+
+    start_time, end_time = _resolve_returns_range(payload.date_from, payload.date_to)
+
+    try:
+        async with _returns_sync_lock:
+            def _run():
+                service = _build_returns_service()
+                return service.sync_statuses(
+                    apply_time_from=start_time,
+                    apply_time_to=end_time,
+                    statuses=statuses,
+                    size=payload.size,
+                    max_pages=payload.max_pages,
+                )
+
+            data = await asyncio.to_thread(_run)
+
+        return {"success": True, "data": data}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 

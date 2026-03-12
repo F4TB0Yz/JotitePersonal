@@ -129,3 +129,27 @@ class DailyReportEntryORM(Base):
         onupdate=func.current_timestamp(),
         nullable=False,
     )
+
+
+class ReturnApplicationSnapshotORM(Base):
+    __tablename__ = "return_application_snapshots"
+    __table_args__ = (
+        UniqueConstraint("waybill_no", "source_status", "apply_time", name="uq_return_snapshot_identity"),
+        Index("ix_return_snapshot_status_synced", "source_status", "synced_at"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    waybill_no = Column(String, nullable=False, index=True)
+    source_status = Column(Integer, nullable=False, index=True)
+    status_name = Column(String, nullable=True)
+    apply_time = Column(String, nullable=True, index=True)
+    examine_time = Column(String, nullable=True)
+    apply_network_id = Column(Integer, nullable=True, index=True)
+    apply_network_name = Column(String, nullable=True)
+    apply_staff_code = Column(String, nullable=True)
+    apply_staff_name = Column(String, nullable=True)
+    examine_staff_name = Column(String, nullable=True)
+    reback_transfer_reason = Column(Text, nullable=True)
+    print_flag = Column(Integer, nullable=True)
+    raw_json = Column(Text, nullable=False)
+    synced_at = Column(DateTime, server_default=func.current_timestamp(), nullable=False, index=True)

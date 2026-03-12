@@ -374,3 +374,29 @@ class JTClient:
         }
         return self._post("/podTracking/img/path", payload)
 
+    def get_return_applications_page(
+        self,
+        apply_network_id=1009,
+        apply_time_from="",
+        apply_time_to="",
+        status=1,
+        current=1,
+        size=20,
+    ):
+        payload = {
+            "current": current,
+            "size": size,
+            "applyNetworkId": int(apply_network_id),
+            "applyTimeFrom": apply_time_from,
+            "applyTimeTo": apply_time_to,
+            "status": int(status),
+            "countryId": str(self.config.get("countryId", "1")),
+        }
+
+        return self._post(
+            "/rebackTransferExpress/applyForPage",
+            payload,
+            base=self.base_url,
+            extra_headers={"routeName": "returnAndForwardMaintain"},
+        )
+

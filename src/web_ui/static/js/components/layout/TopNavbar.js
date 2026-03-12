@@ -5,6 +5,7 @@ const NAV_ITEMS = [
     { id: 'inicio', label: 'Inicio' },
     { id: 'reportes', label: 'Generador PDF' },
     { id: 'dashboard', label: 'Dashboard Pendientes' },
+    { id: 'devoluciones', label: 'Devoluciones' },
     { id: 'alertas', label: 'Alertas 96h' },
     { id: 'mensajeros', label: 'Gestión de Mensajeros' },
     { id: 'kpis', label: 'KPIs Históricos' }

@@ -4,6 +4,7 @@ const TAB_ITEMS = [
     { id: 'inicio',     label: 'Inicio',      icon: '🏠' },
     { id: 'reportes',   label: 'PDF',         icon: '📄' },
     { id: 'dashboard',  label: 'Pendientes',  icon: '📦' },
+    { id: 'devoluciones', label: 'Devoluc.',  icon: '↩️' },
     { id: 'alertas',    label: 'Alertas',     icon: '⚠️' },
     { id: 'mensajeros', label: 'Mensajeros',  icon: '🛵' },
     { id: 'kpis',       label: 'KPIs',        icon: '📊' },
