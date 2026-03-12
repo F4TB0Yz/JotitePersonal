@@ -16,7 +16,7 @@ function PrintPreviewModal({ groupedEntries, startDate, endDate, groupBy, onClos
     });
 
     const [visibleCols, setVisibleCols] = useState(
-        () => new Set(['messenger', 'address', 'city', 'status'])
+        () => new Set(['messenger', 'address', 'city', 'status', 'notes'])
     );
     const [showColPicker, setShowColPicker] = useState(false);
 
