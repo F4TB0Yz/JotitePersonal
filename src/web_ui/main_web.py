@@ -1072,132 +1072,17 @@ async def get_network_waybills(req: dict = Body(...)):
     if not all([network_code, start_time, end_time]):
         raise HTTPException(status_code=400, detail="Faltan parámetros requeridos.")
 
-    def _normalize_text(value: str) -> str:
-        if not value:
-            return ""
-        normalized = unicodedata.normalize("NFKD", str(value))
-        return "".join(ch for ch in normalized if not unicodedata.combining(ch)).strip().lower()
-
-    def _parse_event_time(value: str) -> datetime | None:
-        if not value:
-            return None
-        cleaned = value.strip()
-        known_formats = (
-            "%Y-%m-%d %H:%M:%S",
-            "%Y-%m-%d %H:%M",
-            "%Y/%m/%d %H:%M:%S",
-            "%Y/%m/%d %H:%M",
-        )
-        for fmt in known_formats:
-            try:
-                return datetime.strptime(cleaned, fmt)
-            except ValueError:
-                continue
-        return None
-
-    def _extract_latest_scan_time_by_keywords(events: list, keywords: tuple[str, ...]) -> str:
-        latest_value = ""
-        latest_dt = None
-
-        for event in events or []:
-            type_name = _normalize_text(getattr(event, "type_name", ""))
-            if not any(keyword in type_name for keyword in keywords):
-                continue
-
-            event_time = (getattr(event, "time", "") or "").strip()
-            if not event_time:
-                continue
-
-            parsed = _parse_event_time(event_time)
-            if parsed is None:
-                if not latest_value:
-                    latest_value = event_time
-                continue
-
-            if latest_dt is None or parsed > latest_dt:
-                latest_dt = parsed
-                latest_value = event_time
-
-        return latest_value
-
     try:
         def _fetch_network():
             config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
-            report_service = ReportService(client)
             response = client.get_network_signing_detail(
                 network_code=network_code,
                 start_time=start_time,
                 end_time=end_time,
                 sign_type=sign_type
             )
-
             records = response.get("data", {}).get("records", [])
-            if not records:
-                return {"records": []}
-
-            unique_waybills = []
-            seen_waybills = set()
-            for record in records:
-                wb = (
-                    record.get("waybillNo")
-                    or record.get("billCode")
-                    or record.get("orderId")
-                    or ""
-                ).strip()
-                if not wb or wb in seen_waybills:
-                    continue
-                seen_waybills.add(wb)
-                unique_waybills.append(wb)
-
-            scan_data_map = {}
-
-            def fetch_delivery_scan_time(waybill_no: str):
-                try:
-                    events = report_service.get_timeline(waybill_no, max_age_minutes=60)
-                    latest_delivery_time = _extract_latest_scan_time_by_keywords(
-                        events,
-                        ("escaneo de entrega",)
-                    )
-                    latest_return_time = _extract_latest_scan_time_by_keywords(
-                        events,
-                        ("escaneo de devolucion", "escaneo devolucion", "devolucion")
-                    )
-                    return waybill_no, {
-                        "delivery": latest_delivery_time,
-                        "return": latest_return_time,
-                    }
-                except Exception:
-                    return waybill_no, {
-                        "delivery": "",
-                        "return": "",
-                    }
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-                futures = {
-                    executor.submit(fetch_delivery_scan_time, wb): wb
-                    for wb in unique_waybills
-                }
-                for future in concurrent.futures.as_completed(futures):
-                    wb, scan_data = future.result()
-                    scan_data_map[wb] = scan_data
-
-            enriched_records = []
-            for record in records:
-                wb = (
-                    record.get("waybillNo")
-                    or record.get("billCode")
-                    or record.get("orderId")
-                    or ""
-                ).strip()
-                scan_data = scan_data_map.get(wb, {}) if wb else {}
-                if scan_data.get("return"):
-                    continue
-
-                enriched = dict(record)
-                enriched["deliveryScanTimeLatest"] = scan_data.get("delivery", "")
-                enriched_records.append(enriched)
-
-            return {"records": enriched_records}
+            return {"records": records or []}
 
         return await asyncio.to_thread(_fetch_network)
     except Exception as e:
