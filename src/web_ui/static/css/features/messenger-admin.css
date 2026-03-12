@@ -711,11 +711,11 @@
     position: absolute;
     bottom: calc(100% + 6px);
     right: 0;
-    background: var(--surface, #fff);
-    border: 1px solid var(--border-color, #ddd);
+    background: var(--sidebar-bg, #161b22);
+    border: 1px solid var(--border-color, #30363d);
     border-radius: 8px;
     padding: 12px 14px;
-    box-shadow: 0 4px 16px rgba(0,0,0,.15);
+    box-shadow: 0 4px 16px rgba(0,0,0,.4);
     z-index: 200;
     min-width: 170px;
 }
