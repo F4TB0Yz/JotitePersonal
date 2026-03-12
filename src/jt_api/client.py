@@ -91,9 +91,10 @@ class JTClient:
             "accountName": account_name,
             "current": 1,
             "size": 50,
-            "networkId": network_id,
             "countryId": self.config.get("countryId", "1")
         }
+        if network_id is not None:
+            payload["networkId"] = network_id
         return self._post(
             "/spmSettlementRelationship/list",
             payload,

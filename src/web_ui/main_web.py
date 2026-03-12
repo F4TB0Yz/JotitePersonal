@@ -381,14 +381,8 @@ async def get_messenger_contact(name: str, network_code: str | None = None, wayb
 
     def _fetch_contact():
         config = ConfigRepository.get_cached(); client = JTClient(config=config)
-        target_network = 1009
-        if network_code:
-            try:
-                target_network = int(network_code)
-            except ValueError:
-                target_network = 1009
         normalized = name.strip().lower()
-        response = client.search_messengers(name.strip(), network_id=target_network)
+        response = client.search_messengers(name.strip(), network_id=None)
         data = response.get("data") or {}
         records = data.get("records") if isinstance(data, dict) else data
         if records and not isinstance(records, list):
