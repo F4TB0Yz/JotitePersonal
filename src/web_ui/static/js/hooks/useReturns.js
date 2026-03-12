@@ -15,6 +15,7 @@ function daysAgoISO(days) {
 
 export function useReturns() {
     const [status, setStatus] = useState(1);
+    const [printableFlag, setPrintableFlag] = useState(0);
     const [startDate, setStartDate] = useState(daysAgoISO(2));
     const [endDate, setEndDate] = useState(toISODateInput(new Date()));
     const [currentPage, setCurrentPage] = useState(1);
@@ -41,6 +42,7 @@ export function useReturns() {
                     dateTo: endDate,
                     current: page,
                     size: pageSize,
+                    pringFlag: printableFlag,
                 })
                 : await fetchReturnApplications({
                     status,
@@ -63,7 +65,7 @@ export function useReturns() {
         } finally {
             setLoading(false);
         }
-    }, [status, startDate, endDate, pageSize, currentPage]);
+    }, [status, startDate, endDate, pageSize, currentPage, printableFlag]);
 
     const runSync = useCallback(async () => {
         if (status === 'printable') {
@@ -89,8 +91,9 @@ export function useReturns() {
         }
     }, [status, startDate, endDate, pageSize, fetchReturns]);
 
-    const requestPrintUrl = useCallback(async (waybillNo) => {
-        const target = (waybillNo || '').trim().toUpperCase();
+    const requestPrintUrl = useCallback(async (rowOrWaybill) => {
+        const source = typeof rowOrWaybill === 'string' ? { waybill_no: rowOrWaybill } : (rowOrWaybill || {});
+        const target = (source.waybill_no || source.waybillNo || '').trim().toUpperCase();
         if (!target) {
             setError('Waybill inválido para impresión');
             return null;
@@ -101,7 +104,11 @@ export function useReturns() {
         setPrintLinkMessage('');
 
         try {
-            const response = await fetchReturnPrintUrl({ waybillNo: target });
+            const response = await fetchReturnPrintUrl({
+                waybillNo: target,
+                printFlag: source.print_flag,
+                printCount: source.print_count,
+            });
             const data = response?.data || {};
             const printUrl = data.print_url || data.url || null;
 
@@ -123,6 +130,8 @@ export function useReturns() {
     return {
         status,
         setStatus,
+        printableFlag,
+        setPrintableFlag,
         startDate,
         setStartDate,
         endDate,

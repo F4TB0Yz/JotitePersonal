@@ -129,6 +129,7 @@ class ReturnsService:
                 "examine_staff_name": item.get("examineStaffName") or "",
                 "reback_transfer_reason": item.get("rebackTransferReason") or "",
                 "print_flag": item.get("printFlag"),
+                "print_count": item.get("printCount"),
                 "raw": item,
             }
             for item in records

@@ -67,11 +67,15 @@ export function fetchReturnPrintUrl({
     templateSize = 1,
     pringType = 1,
     printer = 0,
+    printFlag = 0,
+    printCount = 0,
 } = {}) {
+    const resolvedPrinter = Number(printer || 0) || (Number(printFlag || 0) === 1 || Number(printCount || 0) > 0 ? 1 : 0);
+
     return post('/api/returns/print-url', {
         waybill_no: waybillNo,
         template_size: Number(templateSize || 1),
         pring_type: Number(pringType || 1),
-        printer: Number(printer || 0),
+        printer: resolvedPrinter,
     });
 }

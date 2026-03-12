@@ -19,6 +19,8 @@ export default function ReturnsView({ isActive }) {
     const {
         status,
         setStatus,
+        printableFlag,
+        setPrintableFlag,
         startDate,
         setStartDate,
         endDate,
@@ -84,6 +86,24 @@ export default function ReturnsView({ isActive }) {
                                 </button>
                             `)}
                         </div>
+
+                        ${isPrintableMode ? html`
+                            <div className="returns-status-selector" role="group" aria-label="Filtro impresión">
+                                ${[
+                                    { value: 0, label: 'Pendientes impresión' },
+                                    { value: 1, label: 'Ya impresas' },
+                                ].map((item) => html`
+                                    <button
+                                        type="button"
+                                        className=${`returns-status-btn ${Number(printableFlag) === item.value ? 'active' : ''}`}
+                                        onClick=${() => setPrintableFlag(item.value)}
+                                        aria-pressed=${Number(printableFlag) === item.value}
+                                    >
+                                        ${item.label}
+                                    </button>
+                                `)}
+                            </div>
+                        ` : null}
 
                         <label>
                             Tamaño página
@@ -169,7 +189,7 @@ export default function ReturnsView({ isActive }) {
                                                     className="form-btn outline"
                                                     disabled=${printLinkLoadingWaybill === (row.waybill_no || '').toUpperCase()}
                                                     onClick=${async () => {
-                                                        const url = await requestPrintUrl(row.waybill_no);
+                                                        const url = await requestPrintUrl(row);
                                                         if (url) window.open(url, '_blank', 'noopener,noreferrer');
                                                     }}
                                                 >
