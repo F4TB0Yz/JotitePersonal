@@ -1,12 +1,42 @@
 import { html, useState } from '../../lib/ui.js';
 import { useDailyReport } from '../../hooks/useDailyReport.js';
 
+const ALL_PRINT_COLS = [
+    { key: 'messenger', label: 'Mensajero',  getValue: (e) => e.messenger_name || '—' },
+    { key: 'address',   label: 'Dirección',  getValue: (e) => e.address || '—' },
+    { key: 'city',      label: 'Ciudad',     getValue: (e) => e.city || '—' },
+    { key: 'status',    label: 'Estado',     getValue: (e) => e.status || '—' },
+    { key: 'notes',     label: 'Notas',      getValue: (e) => e.notes || '' },
+    { key: 'date',      label: 'Fecha',      getValue: (e) => e.report_date },
+];
+
 function PrintPreviewModal({ groupedEntries, startDate, endDate, groupBy, onClose }) {
     const today = new Date().toLocaleDateString('es-CO', {
         year: 'numeric', month: 'long', day: 'numeric',
     });
 
-    const handlePrint = () => window.print();
+    const [visibleCols, setVisibleCols] = useState(
+        () => new Set(['messenger', 'address', 'city', 'status'])
+    );
+    const [showColPicker, setShowColPicker] = useState(false);
+
+    const toggleCol = (key) => {
+        setVisibleCols((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) {
+                if (next.size === 1) return prev;
+                next.delete(key);
+            } else {
+                next.add(key);
+            }
+            return next;
+        });
+    };
+
+    const handlePrint = () => {
+        setShowColPicker(false);
+        setTimeout(() => window.print(), 50);
+    };
 
     const groupLabel = groupBy === 'messenger'
         ? 'Agrupado por mensajero'
@@ -15,9 +45,10 @@ function PrintPreviewModal({ groupedEntries, startDate, endDate, groupBy, onClos
             : 'Sin agrupar';
 
     const total = groupedEntries.reduce((s, g) => s + g.items.length, 0);
+    const activeCols = ALL_PRINT_COLS.filter((c) => visibleCols.has(c.key));
 
     return html`
-        <div className="dr-preview-overlay no-print" onClick=${onClose}>
+        <div className="dr-preview-overlay" onClick=${onClose}>
             <div className="dr-preview-modal" onClick=${(e) => e.stopPropagation()}>
                 <header className="dr-preview-header no-print">
                     <div className="dr-preview-header-info">
@@ -27,6 +58,28 @@ function PrintPreviewModal({ groupedEntries, startDate, endDate, groupBy, onClos
                         </span>
                     </div>
                     <div className="dr-preview-header-actions">
+                        <div className="dr-col-picker-wrapper">
+                            <button
+                                type="button"
+                                className="dr-col-picker-btn"
+                                onClick=${() => setShowColPicker((v) => !v)}
+                            >⚙️ Columnas</button>
+                            ${showColPicker ? html`
+                                <div className="dr-col-picker-dropdown">
+                                    <p className="dr-col-picker-title">Columnas en el PDF:</p>
+                                    ${ALL_PRINT_COLS.map((c) => html`
+                                        <label key=${c.key} className="dr-col-picker-item">
+                                            <input
+                                                type="checkbox"
+                                                checked=${visibleCols.has(c.key)}
+                                                onChange=${() => toggleCol(c.key)}
+                                            />
+                                            ${c.label}
+                                        </label>
+                                    `)}
+                                </div>
+                            ` : null}
+                        </div>
                         <button type="button" className="dr-print-btn" onClick=${handlePrint}>
                             🖨️ Imprimir / PDF
                         </button>
@@ -54,32 +107,21 @@ function PrintPreviewModal({ groupedEntries, startDate, endDate, groupBy, onClos
                                     <tr>
                                         <th>#</th>
                                         <th>Guía</th>
-                                        ${groupBy !== 'messenger' ? html`<th>Mensajero</th>` : null}
-                                        <th>Dirección</th>
-                                        ${groupBy !== 'city' ? html`<th>Ciudad</th>` : null}
-                                        <th>Estado</th>
-                                        <th className="no-print">Fecha</th>
+                                        ${activeCols.map((c) => html`<th key=${c.key}>${c.label}</th>`)}
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${items.map((entry, idx) => {
-                                        const isDelivered = (entry.status || '').toLowerCase().includes('firm');
-                                        return html`
-                                            <tr key=${entry.id}>
-                                                <td>${idx + 1}</td>
-                                                <td className="dr-waybill-cell">${entry.waybill_no}</td>
-                                                ${groupBy !== 'messenger' ? html`<td>${entry.messenger_name || '—'}</td>` : null}
-                                                <td className="dr-address-cell">${entry.address || '—'}</td>
-                                                ${groupBy !== 'city' ? html`<td>${entry.city || '—'}</td>` : null}
-                                                <td>
-                                                    <span className=${'dr-status-badge ' + (isDelivered ? 'delivered' : 'pending')}>
-                                                        ${entry.status || '—'}
-                                                    </span>
+                                    ${items.map((entry, idx) => html`
+                                        <tr key=${entry.id}>
+                                            <td>${idx + 1}</td>
+                                            <td className="dr-waybill-cell">${entry.waybill_no}</td>
+                                            ${activeCols.map((c) => html`
+                                                <td key=${c.key} className=${c.key === 'address' ? 'dr-address-cell' : ''}>
+                                                    ${c.getValue(entry)}
                                                 </td>
-                                                <td className="no-print">${entry.report_date}</td>
-                                            </tr>
-                                        `;
-                                    })}
+                                            `)}
+                                        </tr>
+                                    `)}
                                 </tbody>
                             </table>
                         </div>

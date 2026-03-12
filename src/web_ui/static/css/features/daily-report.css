@@ -623,5 +623,69 @@
     border-color: var(--text-muted);
 }
 
+/* ── Column picker (print preview) ── */
+.dr-preview-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+}
+
+.dr-col-picker-wrapper {
+    position: relative;
+}
+
+.dr-col-picker-btn {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-main);
+    font-size: 0.8rem;
+    padding: 5px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+.dr-col-picker-btn:hover { background: rgba(255,255,255,0.13); }
+
+.dr-col-picker-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: var(--sidebar-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px 14px;
+    z-index: 10;
+    min-width: 160px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+
+.dr-col-picker-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin: 0 0 8px;
+}
+
+.dr-col-picker-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--text-main);
+    padding: 4px 0;
+    cursor: pointer;
+    user-select: none;
+}
+.dr-col-picker-item input[type="checkbox"] {
+    accent-color: var(--accent-color);
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
 /* ── Hidden helpers ── */
 .print-only { display: none; }
