@@ -16,7 +16,7 @@ import time
 import base64
 import hashlib
 import hmac
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
 
@@ -419,6 +419,22 @@ async def get_messenger_contact(name: str, network_code: str | None = None, wayb
 
         tracking_phone = None
         tracking_name = None
+        
+        if (not phone_value) and (not waybill or not waybill.strip()) and account_code:
+            try:
+                today_dt = datetime.now()
+                end_str = today_dt.strftime("%Y-%m-%d 23:59:59")
+                start_str = (today_dt - timedelta(days=3)).strftime("%Y-%m-%d 00:00:00")
+                net_code = best_match.get("customerNetworkCode") if best_match else (network_code or "1025006")
+                wb_resp = client.get_messenger_waybills_detail(account_code, net_code, start_str, end_str, current=1, size=1)
+                
+                if isinstance(wb_resp, dict) and wb_resp.get("code") == 1:
+                    wb_records = wb_resp.get("data", {}).get("records", [])
+                    if wb_records and isinstance(wb_records, list) and len(wb_records) > 0:
+                        waybill = wb_records[0].get("waybillNo")
+            except Exception as e:
+                print(f"Error auto-fetching waybill for contact: {e}")
+
         if (not phone_value) and waybill and waybill.strip():
             try:
                 tracking = client.get_tracking_list(waybill.strip())
