@@ -6,7 +6,7 @@
 .floating-messages-wrapper {
     position: fixed;
     right: 20px;
-    bottom: 212px;
+    bottom: 276px;
     z-index: 213;
 }
 
@@ -238,7 +238,7 @@
 /* ── Mobile adjustments ── */
 @media (max-width: 768px) {
     .floating-messages-wrapper {
-        bottom: calc(var(--bottom-bar-height) + 208px);
+        bottom: calc(var(--bottom-bar-height) + 272px);
     }
 
     .msg-tpl-window {
