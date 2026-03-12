@@ -39,6 +39,26 @@
     min-width: 140px;
 }
 
+.returns-status-selector {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.returns-status-btn {
+    border: 1px solid var(--border-color, rgba(240, 246, 252, 0.2));
+    background: transparent;
+    color: var(--text-main, #c9d1d9);
+    border-radius: 999px;
+    padding: 0.42rem 0.72rem;
+    cursor: pointer;
+}
+
+.returns-status-btn.active {
+    border-color: var(--accent-color, #e61c24);
+    color: var(--accent-color, #e61c24);
+}
+
 .returns-meta {
     display: flex;
     flex-wrap: wrap;

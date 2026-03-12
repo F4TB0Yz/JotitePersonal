@@ -8,6 +8,8 @@ from src.jt_api.client import JTClient
 
 
 class ReturnsService:
+    VALID_STATUSES = (1, 2, 3)
+
     def __init__(self, client: JTClient, apply_network_id: int = 1009):
         self.client = client
         self.apply_network_id = int(apply_network_id)
@@ -49,8 +51,8 @@ class ReturnsService:
         save_snapshot: bool = True,
     ) -> dict[str, Any]:
         source_status = self._to_int(status)
-        if source_status not in (1, 2):
-            raise ValueError("status debe ser 1 (En revisión) o 2 (Aprobada)")
+        if source_status not in self.VALID_STATUSES:
+            raise ValueError("status debe ser 1 (En revisión), 2 (Aprobada) o 3 (Rechazada)")
 
         response = self.client.get_return_applications_page(
             apply_network_id=self.apply_network_id,
@@ -166,7 +168,7 @@ class ReturnsService:
         with SessionLocal() as session:
             query = session.query(ReturnApplicationSnapshotORM)
 
-            if status in (1, 2):
+            if status in self.VALID_STATUSES:
                 query = query.filter(ReturnApplicationSnapshotORM.source_status == int(status))
 
             if waybill_no:
@@ -196,11 +198,11 @@ class ReturnsService:
         self,
         apply_time_from: str,
         apply_time_to: str,
-        statuses: list[int] | tuple[int, ...] = (1, 2),
+        statuses: list[int] | tuple[int, ...] = (1, 2, 3),
         size: int = 50,
         max_pages: int = 20,
     ) -> dict[str, Any]:
-        statuses_to_sync = [s for s in statuses if s in (1, 2)] or [1, 2]
+        statuses_to_sync = [s for s in statuses if s in self.VALID_STATUSES] or list(self.VALID_STATUSES)
         safe_size = min(max(1, self._to_int(size, 50)), 100)
         safe_max_pages = min(max(1, self._to_int(max_pages, 20)), 100)
 

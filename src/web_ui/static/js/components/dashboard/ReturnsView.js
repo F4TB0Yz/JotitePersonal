@@ -4,7 +4,10 @@ import { useReturns } from '../../hooks/useReturns.js';
 import { formatDateTimeLabel } from '../../utils/formatters.js';
 
 function statusLabel(value) {
-    return Number(value) === 2 ? 'Aprobadas' : 'En revisión';
+    const safe = Number(value);
+    if (safe === 2) return 'Aprobadas';
+    if (safe === 3) return 'Rechazadas';
+    return 'En revisión';
 }
 
 function printFlagLabel(value) {
@@ -58,17 +61,22 @@ export default function ReturnsView({ isActive }) {
                             fetchReturns({ page: 1, persist: true });
                         }}
                     >
-                        <label>
-                            Estado
-                            <select
-                                className="form-input"
-                                value=${String(status)}
-                                onChange=${(event) => setStatus(Number(event.target.value || 1))}
-                            >
-                                <option value="1">En revisión</option>
-                                <option value="2">Aprobadas</option>
-                            </select>
-                        </label>
+                        <div className="returns-status-selector" role="group" aria-label="Estado de devoluciones">
+                            ${[
+                                { value: 1, label: 'En revisión' },
+                                { value: 2, label: 'Aprobadas' },
+                                { value: 3, label: 'Rechazadas' },
+                            ].map((item) => html`
+                                <button
+                                    type="button"
+                                    className=${`returns-status-btn ${Number(status) === item.value ? 'active' : ''}`}
+                                    onClick=${() => setStatus(item.value)}
+                                    aria-pressed=${Number(status) === item.value}
+                                >
+                                    ${item.label}
+                                </button>
+                            `)}
+                        </div>
 
                         <label>
                             Tamaño página

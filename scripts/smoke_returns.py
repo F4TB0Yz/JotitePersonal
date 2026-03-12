@@ -68,7 +68,7 @@ def run_smoke(base_url: str, username: str, password: str, token: str | None) ->
         json={
             "date_from": "2026-03-10",
             "date_to": "2026-03-12",
-            "statuses": [1, 2],
+            "statuses": [1, 2, 3],
             "size": 20,
             "max_pages": 1,
         },
@@ -83,7 +83,7 @@ def run_smoke(base_url: str, username: str, password: str, token: str | None) ->
     )
 
     app_resp = requests.get(
-        f"{base_url}/api/returns/applications?status=2&date_from=2026-03-10&date_to=2026-03-12&current=1&size=20",
+        f"{base_url}/api/returns/applications?status=3&date_from=2026-03-10&date_to=2026-03-12&current=1&size=20",
         headers=manual_cookie,
         timeout=60,
     )

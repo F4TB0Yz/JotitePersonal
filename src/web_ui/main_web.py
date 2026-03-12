@@ -100,7 +100,7 @@ def _run_returns_sync_cycle() -> dict:
     return service.sync_statuses(
         apply_time_from=start_time,
         apply_time_to=end_time,
-        statuses=(1, 2),
+        statuses=(1, 2, 3),
         size=sync_size,
         max_pages=sync_max_pages,
     )
@@ -291,7 +291,7 @@ class WaybillReprintPayload(BaseModel):
 class ReturnsSyncPayload(BaseModel):
     date_from: Optional[str] = None
     date_to: Optional[str] = None
-    statuses: List[int] = [1, 2]
+    statuses: List[int] = [1, 2, 3]
     size: int = 50
     max_pages: int = 20
 
@@ -1396,8 +1396,8 @@ async def get_return_applications(
     size: int = 20,
     save_snapshot: bool = True,
 ):
-    if status not in (1, 2):
-        raise HTTPException(status_code=400, detail="status debe ser 1 (En revisión) o 2 (Aprobada)")
+    if status not in (1, 2, 3):
+        raise HTTPException(status_code=400, detail="status debe ser 1 (En revisión), 2 (Aprobada) o 3 (Rechazada)")
 
     start_time, end_time = _resolve_returns_range(date_from, date_to)
 
@@ -1430,8 +1430,8 @@ async def get_return_snapshots(
     limit: int = 100,
     offset: int = 0,
 ):
-    if status is not None and status not in (1, 2):
-        raise HTTPException(status_code=400, detail="status debe ser 1 (En revisión) o 2 (Aprobada)")
+    if status is not None and status not in (1, 2, 3):
+        raise HTTPException(status_code=400, detail="status debe ser 1 (En revisión), 2 (Aprobada) o 3 (Rechazada)")
 
     start_time = _format_returns_datetime(date_from, is_end=False)
     end_time = _format_returns_datetime(date_to, is_end=True)
@@ -1458,9 +1458,9 @@ async def get_return_snapshots(
 
 @app.post("/api/returns/sync")
 async def sync_return_snapshots(payload: ReturnsSyncPayload):
-    statuses = [status for status in (payload.statuses or [1, 2]) if status in (1, 2)]
+    statuses = [status for status in (payload.statuses or [1, 2, 3]) if status in (1, 2, 3)]
     if not statuses:
-        raise HTTPException(status_code=400, detail="Debe incluir al menos un status válido (1 o 2)")
+        raise HTTPException(status_code=400, detail="Debe incluir al menos un status válido (1, 2 o 3)")
 
     start_time, end_time = _resolve_returns_range(payload.date_from, payload.date_to)
 
