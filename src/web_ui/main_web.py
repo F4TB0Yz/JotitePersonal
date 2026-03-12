@@ -1549,24 +1549,35 @@ async def ingest_daily_report_entries(payload: DailyReportIngestPayload):
     if len(waybill_nos) > 200:
         raise HTTPException(status_code=400, detail="Máximo 200 guías por solicitud")
 
-    def _process_one(waybill_no: str) -> dict:
-        config = ConfigRepository(SessionLocal()).load_config()
-        client = JTClient(config=config)
-        service = ReportService(client)
-        try:
-            row = service.get_consolidated_data(waybill_no)
-            return {
-                "waybill_no": row.waybill_no,
-                "messenger_name": row.last_staff or "",
-                "address": row.address or "",
-                "city": row.city or "",
-                "status": row.status or "",
-                "ok": True,
-            }
-        except Exception as exc:
-            return {"waybill_no": waybill_no, "ok": False, "error": str(exc)}
-
     def _run_all():
+        # Load config and build client ONCE for all worker threads
+        cfg_session = SessionLocal()
+        try:
+            config = ConfigRepository(cfg_session).load_config()
+        finally:
+            cfg_session.close()
+        shared_client = JTClient(config=config)
+
+        def _process_one(waybill_no: str) -> dict:
+            session = SessionLocal()
+            try:
+                tracking_repo = TrackingEventRepository(session)
+                service = ReportService(shared_client, tracking_repo=tracking_repo)
+                try:
+                    row = service.get_consolidated_data(waybill_no)
+                    return {
+                        "waybill_no": row.waybill_no,
+                        "messenger_name": row.last_staff or "",
+                        "address": row.address or "",
+                        "city": row.city or "",
+                        "status": row.status or "",
+                        "ok": True,
+                    }
+                except Exception as exc:
+                    return {"waybill_no": waybill_no, "ok": False, "error": str(exc)}
+            finally:
+                session.close()
+
         results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             futures = {executor.submit(_process_one, wn): wn for wn in waybill_nos}

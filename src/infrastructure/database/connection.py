@@ -15,6 +15,8 @@ _engine = create_engine(get_database_url(), future=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False)
 SessionLocal.configure(bind=_engine)
 
+_db_initialized = False
+
 
 def _switch_to_default_sqlite() -> None:
     global _engine
@@ -23,8 +25,12 @@ def _switch_to_default_sqlite() -> None:
 
 
 def initialize_database() -> None:
+    global _db_initialized
+    if _db_initialized:
+        return
     try:
         Base.metadata.create_all(bind=_engine)
+        _db_initialized = True
     except SQLAlchemyError as exc:
         logger.warning(
             "No se pudo conectar a la base de datos configurada (%s). Usando SQLite fallback. Error: %s",
@@ -33,3 +39,4 @@ def initialize_database() -> None:
         )
         _switch_to_default_sqlite()
         Base.metadata.create_all(bind=_engine)
+        _db_initialized = True
