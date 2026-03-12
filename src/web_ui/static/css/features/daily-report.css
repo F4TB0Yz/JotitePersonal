@@ -118,7 +118,7 @@
 
 /* ── Section ── */
 .dr-section {
-    padding: 14px 20px;
+    padding: 16px 20px;
 }
 
 .dr-section-title {
@@ -274,11 +274,11 @@
     background: rgba(255,255,255,0.04);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 8px 10px;
+    padding: 10px 12px;
     display: grid;
     grid-template-columns: 1fr auto;
     grid-template-rows: auto auto;
-    gap: 2px 8px;
+    gap: 4px 8px;
     position: relative;
 }
 
@@ -519,16 +519,16 @@
     grid-column: 1 / -1;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding-top: 8px;
+    gap: 12px;
+    padding: 12px 0 0 0;
     border-top: 1px solid var(--border-color);
-    margin-top: 8px;
+    margin-top: 10px;
 }
 
 .dr-edit-group {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
 }
 
 .dr-edit-label {
@@ -546,7 +546,7 @@
     border-radius: 6px;
     color: var(--text-main);
     font-size: 0.85rem;
-    padding: 6px 10px;
+    padding: 8px 12px;
     font-family: inherit;
     transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -560,26 +560,28 @@
 
 .dr-edit-textarea {
     resize: vertical;
-    min-height: 50px;
+    min-height: 60px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .dr-edit-actions {
     display: flex;
-    gap: 6px;
+    gap: 8px;
     justify-content: flex-end;
-    padding-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
 }
 
 .dr-save-btn,
 .dr-cancel-btn {
-    padding: 6px 12px;
+    padding: 7px 14px;
     font-size: 0.8rem;
     font-weight: 600;
     border: none;
     border-radius: 6px;
     cursor: pointer;
     transition: background 0.15s, color 0.15s;
+    min-height: 32px;
 }
 
 .dr-save-btn {

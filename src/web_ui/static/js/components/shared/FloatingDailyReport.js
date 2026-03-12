@@ -302,10 +302,8 @@ export default function FloatingDailyReport() {
                                                                         onChange=${(e) => setEditData(prev => ({ ...prev, status: e.target.value }))}
                                                                     >
                                                                         <option value="">— Sin especificar —</option>
-                                                                        <option value="Entregado">Entregado</option>
-                                                                        <option value="Pendiente">Pendiente</option>
-                                                                        <option value="En tránsito">En tránsito</option>
-                                                                        <option value="No entregado">No entregado</option>
+                                                                        <option value="Resuelto">✅ Resuelto</option>
+                                                                        <option value="No resuelto">❌ No resuelto</option>
                                                                     </select>
                                                                 </div>
                                                                 <div className="dr-edit-group">
