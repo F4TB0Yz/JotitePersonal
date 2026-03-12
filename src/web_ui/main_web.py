@@ -298,7 +298,7 @@ async def search_messengers(q: str):
         return []
     try:
         def _search():
-            config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+            config = ConfigRepository.get_cached(); client = JTClient(config=config)
             return client.search_messengers(q)
 
         response = await asyncio.to_thread(_search)
@@ -334,7 +334,7 @@ async def global_search(q: str, limit: int = 6):
         messenger_results = []
         novedades_results = []
 
-        config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+        config = ConfigRepository.get_cached(); client = JTClient(config=config)
 
         maybe_waybill = bool(re.fullmatch(r"[A-Za-z0-9\-]{6,32}", query))
         if maybe_waybill:
@@ -380,7 +380,7 @@ async def get_messenger_contact(name: str, network_code: str | None = None, wayb
         raise HTTPException(status_code=400, detail="Nombre requerido")
 
     def _fetch_contact():
-        config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+        config = ConfigRepository.get_cached(); client = JTClient(config=config)
         target_network = 1009
         if network_code:
             try:
@@ -483,7 +483,7 @@ async def get_messenger_metrics(account_code: str, network_code: str, start_time
         return {"error": "Missing parameters"}
     try:
         def _fetch():
-            config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+            config = ConfigRepository.get_cached(); client = JTClient(config=config)
             detail = client.get_messenger_metrics(account_code, network_code, start_time, end_time)
             summary = client.get_messenger_metrics_sum(account_code, network_code, start_time, end_time)
             return {
@@ -501,7 +501,7 @@ async def get_messenger_waybills(account_code: str, network_code: str, start_tim
         return {"error": "Missing parameters"}
     try:
         def _fetch():
-            config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+            config = ConfigRepository.get_cached(); client = JTClient(config=config)
             return client.get_all_messenger_waybills_detail(account_code, network_code, start_time, end_time)
         return await asyncio.to_thread(_fetch)
     except Exception as e:
@@ -528,7 +528,7 @@ async def get_bulk_messenger_metrics(payload: BulkMetricsRequest):
     async def _fetch_one(m: MessengerItem):
         try:
             def _call():
-                config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+                config = ConfigRepository.get_cached(); client = JTClient(config=config)
                 response = client.get_messenger_metrics_sum(
                     m.accountCode, m.networkCode, payload.startTime, payload.endTime
                 )
@@ -591,7 +591,7 @@ async def get_messengers_daily_report(
     end_time = f"{resolved_end} 23:59:59"
 
     def _fetch():
-        config = ConfigRepository(SessionLocal()).load_config()
+        config = ConfigRepository.get_cached()
         client = JTClient(config=config)
         return client.get_network_staff_daily(
             network_code=network_code,
@@ -620,7 +620,7 @@ async def get_waybills_addresses(payload: WaybillList):
         return {}
 
     def _fetch_all():
-        config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+        config = ConfigRepository.get_cached(); client = JTClient(config=config)
         results = {}
 
         def fetch_address(wb):
@@ -650,7 +650,7 @@ async def get_waybills_phones(payload: WaybillList):
         return {}
 
     def _fetch():
-        config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+        config = ConfigRepository.get_cached(); client = JTClient(config=config)
         return client.get_waybill_receiver_phone(payload.waybills)
 
     try:
@@ -692,7 +692,7 @@ async def get_waybills_details(payload: WaybillList):
         return {}
 
     def _fetch_all():
-        config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+        config = ConfigRepository.get_cached(); client = JTClient(config=config)
         results = {}
 
         def extract_detail(wb):
@@ -734,39 +734,40 @@ async def get_waybills_details(payload: WaybillList):
                 sign_time = details.get("signTime") or order_info.get("signTime") or ""
                 signer_name = ""
 
-                # Fallback: extract date and signer from tracking events
-                try:
-                    tracking_resp = client.get_tracking_list(wb)
-                    tracking_data = tracking_resp.get("data", [])
-                    if tracking_data:
-                        tracking_items = tracking_data[0].get("details", [])
-                        # First pass: look for a "firmado" event (preferred)
-                        for item in tracking_items:
-                            scan_type = (item.get("scanTypeName") or "").lower()
-                            item_status = (item.get("status") or "")
-                            is_signed = (
-                                item.get("code") == 100
-                                or "firmado" in scan_type
-                                or "签收" in item_status
-                                or "firmado" in item_status.lower()
-                            )
-                            if is_signed:
-                                if not sign_time:
-                                    sign_time = item.get("scanTime") or ""
-                                signer_name = (item.get("remark3") or "").strip()
-                                break
-                        # Second pass: if still no signer, use the last item with a non-empty remark3
-                        if not signer_name:
-                            for item in reversed(tracking_items):
-                                candidate = (item.get("remark3") or "").strip()
-                                if candidate:
-                                    signer_name = candidate
+                # Only call tracking API for packages that appear delivered — no-op for in-transit
+                status_lower = (status or "").lower()
+                if "firmado" in status_lower or "entregado" in status_lower or "签收" in (status or ""):
+                    try:
+                        tracking_resp = client.get_tracking_list(wb)
+                        tracking_data = tracking_resp.get("data", [])
+                        if tracking_data:
+                            tracking_items = tracking_data[0].get("details", [])
+                            # First pass: look for a "firmado" event (preferred)
+                            for item in tracking_items:
+                                scan_type = (item.get("scanTypeName") or "").lower()
+                                item_status = (item.get("status") or "")
+                                is_signed = (
+                                    item.get("code") == 100
+                                    or "firmado" in scan_type
+                                    or "签收" in item_status
+                                    or "firmado" in item_status.lower()
+                                )
+                                if is_signed:
                                     if not sign_time:
                                         sign_time = item.get("scanTime") or ""
+                                    signer_name = (item.get("remark3") or "").strip()
                                     break
-                    print(f"[waybills/details] {wb}: sign_time={sign_time!r}, signer_name={signer_name!r}")
-                except Exception as e:
-                    print(f"[waybills/details] Tracking fallback error for {wb}: {e}")
+                            # Second pass: if still no signer, use the last item with a non-empty remark3
+                            if not signer_name:
+                                for item in reversed(tracking_items):
+                                    candidate = (item.get("remark3") or "").strip()
+                                    if candidate:
+                                        signer_name = candidate
+                                        if not sign_time:
+                                            sign_time = item.get("scanTime") or ""
+                                        break
+                    except Exception:
+                        pass
 
                 return wb, {
                     "waybillNo": wb,
@@ -812,7 +813,7 @@ async def get_waybills_intelligence_export(payload: WaybillList):
         return {"generatedAt": datetime.utcnow().isoformat(), "results": {}}
 
     def _fetch_all():
-        config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+        config = ConfigRepository.get_cached(); client = JTClient(config=config)
         report_service = ReportService(client)
         results = {}
 
@@ -935,7 +936,7 @@ async def get_waybill_timeline(waybill_no: str, max_age_minutes: int = 30):
 
     try:
         def _fetch():
-            config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+            config = ConfigRepository.get_cached(); client = JTClient(config=config)
             service = ReportService(client)
             return service.get_timeline(normalized_wb, max_age_minutes=max_age_minutes)
 
@@ -988,7 +989,7 @@ async def websocket_process(websocket: WebSocket):
             return
 
         try:
-            config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+            config = ConfigRepository.get_cached(); client = JTClient(config=config)
             service = ReportService(client, TrackingEventRepository(SessionLocal()))
         except Exception as e:
             await websocket.send_json({"type": "error", "message": f"Error inicializando cliente: {e}"})
@@ -1074,7 +1075,7 @@ async def get_network_waybills(req: dict = Body(...)):
 
     try:
         def _fetch_network():
-            config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+            config = ConfigRepository.get_cached(); client = JTClient(config=config)
             response = client.get_network_signing_detail(
                 network_code=network_code,
                 start_time=start_time,
@@ -1102,7 +1103,7 @@ async def get_temu_alerts(
 ):
     try:
         def _fetch():
-            config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+            config = ConfigRepository.get_cached(); client = JTClient(config=config)
             service = TemuAlertService(client)
             return service.build_alert_report(
                 threshold_hours=threshold_hours,
@@ -1222,7 +1223,7 @@ async def get_novedades(waybill: Optional[str] = None):
 async def set_messenger_rate(payload: RatePayload):
     try:
         def _run():
-            service = SettlementService(JTClient(config=ConfigRepository(SessionLocal()).load_config()))
+            service = SettlementService(JTClient(config=ConfigRepository.get_cached()))
             return service.set_rate(payload.account_code, payload.account_name, payload.rate_per_delivery)
         data = await asyncio.to_thread(_run)
         return {"success": True, "data": data}
@@ -1234,7 +1235,7 @@ async def set_messenger_rate(payload: RatePayload):
 async def get_messenger_rate(account_code: str):
     try:
         def _run():
-            service = SettlementService(JTClient(config=ConfigRepository(SessionLocal()).load_config()))
+            service = SettlementService(JTClient(config=ConfigRepository.get_cached()))
             return service.get_rate(account_code)
         data = await asyncio.to_thread(_run)
         return {"success": True, "data": data}
@@ -1246,7 +1247,7 @@ async def get_messenger_rate(account_code: str):
 async def generate_settlement(payload: SettlementGeneratePayload):
     try:
         def _run():
-            service = SettlementService(JTClient(config=ConfigRepository(SessionLocal()).load_config()))
+            service = SettlementService(JTClient(config=ConfigRepository.get_cached()))
             return service.generate_settlement(
                 account_code=payload.account_code,
                 account_name=payload.account_name,
@@ -1266,7 +1267,7 @@ async def generate_settlement(payload: SettlementGeneratePayload):
 async def reprint_waybills(payload: WaybillReprintPayload):
     try:
         def _fetch():
-            config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+            config = ConfigRepository.get_cached(); client = JTClient(config=config)
             return client.reprint_waybills(payload.waybill_ids, payload.bill_type)
 
         response = await asyncio.to_thread(_fetch)
@@ -1298,7 +1299,7 @@ async def reprint_waybills(payload: WaybillReprintPayload):
 async def list_settlements(account_code: Optional[str] = None, limit: int = 20):
     try:
         def _run():
-            service = SettlementService(JTClient(config=ConfigRepository(SessionLocal()).load_config()))
+            service = SettlementService(JTClient(config=ConfigRepository.get_cached()))
             return service.list_settlements(account_code=account_code, limit=limit)
         data = await asyncio.to_thread(_run)
         return {"success": True, "data": data}
@@ -1310,7 +1311,7 @@ async def list_settlements(account_code: Optional[str] = None, limit: int = 20):
 async def get_settlement(settlement_id: int):
     try:
         def _run():
-            service = SettlementService(JTClient(config=ConfigRepository(SessionLocal()).load_config()))
+            service = SettlementService(JTClient(config=ConfigRepository.get_cached()))
             return service.get_settlement(settlement_id)
         data = await asyncio.to_thread(_run)
         if not data:
@@ -1326,7 +1327,7 @@ async def get_settlement(settlement_id: int):
 async def update_settlement_status(settlement_id: int, payload: SettlementStatusPayload):
     try:
         def _run():
-            service = SettlementService(JTClient(config=ConfigRepository(SessionLocal()).load_config()))
+            service = SettlementService(JTClient(config=ConfigRepository.get_cached()))
             ok = service.update_status(settlement_id, payload.status)
             if not ok:
                 raise HTTPException(status_code=404, detail="Liquidación no encontrada")
@@ -1343,7 +1344,7 @@ async def update_settlement_status(settlement_id: int, payload: SettlementStatus
 async def delete_settlement(settlement_id: int):
     try:
         def _run():
-            service = SettlementService(JTClient(config=ConfigRepository(SessionLocal()).load_config()))
+            service = SettlementService(JTClient(config=ConfigRepository.get_cached()))
             ok = service.delete_settlement(settlement_id)
             if not ok:
                 raise HTTPException(status_code=404, detail="Liquidación no encontrada")
@@ -1396,7 +1397,7 @@ async def get_waybill_photos(waybill_no: str):
 
     try:
         def _fetch():
-            config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+            config = ConfigRepository.get_cached(); client = JTClient(config=config)
             tracking = client.get_tracking_list(normalized_wb)
             data = tracking.get("data") or []
             scan_time, scan_by_code = _find_signing_event(data)
@@ -1433,7 +1434,7 @@ async def download_waybill_photos(waybill_no: str):
         raise HTTPException(status_code=400, detail="Waybill requerido")
 
     def _fetch():
-        config = ConfigRepository(SessionLocal()).load_config(); client = JTClient(config=config)
+        config = ConfigRepository.get_cached(); client = JTClient(config=config)
         tracking = client.get_tracking_list(normalized_wb)
         data = tracking.get("data") or []
         scan_time, scan_by_code = _find_signing_event(data)
@@ -1550,13 +1551,7 @@ async def ingest_daily_report_entries(payload: DailyReportIngestPayload):
         raise HTTPException(status_code=400, detail="Máximo 200 guías por solicitud")
 
     def _run_all():
-        # Load config and build client ONCE for all worker threads
-        cfg_session = SessionLocal()
-        try:
-            config = ConfigRepository(cfg_session).load_config()
-        finally:
-            cfg_session.close()
-        shared_client = JTClient(config=config)
+        shared_client = JTClient(config=ConfigRepository.get_cached())
 
         def _process_one(waybill_no: str) -> dict:
             session = SessionLocal()

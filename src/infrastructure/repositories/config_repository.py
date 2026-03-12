@@ -1,12 +1,35 @@
 import json
 import os
+import time as _time
 from sqlalchemy.orm import Session
 from src.infrastructure.database.models import ConfigORM
+
+_config_cache: "dict | None" = None
+_config_cache_ts: float = 0.0
+
 
 class ConfigRepository:
     def __init__(self, session: Session, config_path: str = "config.json"):
         self.session = session
         self.config_path = config_path
+
+    @classmethod
+    def get_cached(cls, ttl: int = 300) -> dict:
+        """Return J&T config from a TTL cache (default 5 min).
+        Self-manages its DB session — guaranteed no leaks.
+        """
+        global _config_cache, _config_cache_ts
+        if _config_cache is not None and (_time.monotonic() - _config_cache_ts) < ttl:
+            return _config_cache
+        from src.infrastructure.database.connection import SessionLocal
+        s = SessionLocal()
+        try:
+            cfg = cls(s).load_config()
+        finally:
+            s.close()
+        _config_cache = cfg
+        _config_cache_ts = _time.monotonic()
+        return cfg
 
     def load_config(self) -> dict:
         config = {
