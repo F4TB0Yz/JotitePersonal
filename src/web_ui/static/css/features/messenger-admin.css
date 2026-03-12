@@ -699,6 +699,50 @@
     gap: 12px;
     padding: 8px 0;
     justify-content: flex-end;
+    align-items: flex-start;
+}
+
+/* ── Column picker ── */
+.col-picker-wrapper {
+    position: relative;
+}
+
+.col-picker-dropdown {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    right: 0;
+    background: var(--surface, #fff);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 8px;
+    padding: 12px 14px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.15);
+    z-index: 200;
+    min-width: 170px;
+}
+
+.col-picker-title {
+    font-size: .75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--text-secondary, #666);
+    margin: 0 0 8px;
+}
+
+.col-picker-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .875rem;
+    cursor: pointer;
+    padding: 3px 0;
+}
+
+.col-picker-item input[type="checkbox"] {
+    accent-color: var(--accent-color, #e61c24);
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
 }
 
 /* ── Report table tweaks ── */

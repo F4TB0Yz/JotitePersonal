@@ -1,10 +1,20 @@
-import { html, createPortal, useEffect, useCallback } from '../../lib/ui.js';
+import { html, createPortal, useEffect, useCallback, useState } from '../../lib/ui.js';
 import { useMessengerReport } from '../../hooks/useMessengerReport.js';
 
-function PrintableReport({ data, totals, startDate, endDate }) {
+const ALL_COLUMNS = [
+    { key: 'dispatchStaffName', label: 'Mensajero',   getValue: (r) => r.dispatchStaffName,    getTotal: () => '' },
+    { key: 'dispatchStaffCode', label: 'Código',      getValue: (r) => r.dispatchStaffCode,    getTotal: () => '' },
+    { key: 'dispatchTotal',     label: 'Asignados',   getValue: (r) => r.dispatchTotal,        getTotal: (t) => t.dispatchTotal },
+    { key: 'signTotal',         label: 'Entregados',  getValue: (r) => r.signTotal,            getTotal: (t) => t.signTotal },
+    { key: 'nosignTotal',       label: 'Pendientes',  getValue: (r) => r.nosignTotal,          getTotal: (t) => t.nosignTotal },
+    { key: 'signTotalRate',     label: 'Efectividad', getValue: (r) => r.signTotalRate || '0%', getTotal: (t) => t.effectiveness },
+];
+
+function PrintableReport({ data, totals, startDate, endDate, visibleCols }) {
     if (!data || !data.length || typeof document === 'undefined') return null;
     const host = document.getElementById('print-root') || document.body;
     const dateLabel = startDate === endDate ? startDate : `${startDate} al ${endDate}`;
+    const cols = ALL_COLUMNS.filter((c) => visibleCols.has(c.key));
     return createPortal(
         html`
             <div id="print-table-report">
@@ -13,31 +23,21 @@ function PrintableReport({ data, totals, startDate, endDate }) {
                 <table>
                     <thead>
                         <tr>
-                            <th>Mensajero</th>
-                            <th>Código</th>
-                            <th>Asignados</th>
-                            <th>Entregados</th>
-                            <th>Pendientes</th>
-                            <th>Efectividad</th>
+                            ${cols.map((c) => html`<th key=${c.key}>${c.label}</th>`)}
                         </tr>
                     </thead>
                     <tbody>
                         ${data.map(
                             (r) => html`<tr key=${r.dispatchStaffCode}>
-                                <td>${r.dispatchStaffName}</td>
-                                <td>${r.dispatchStaffCode}</td>
-                                <td>${r.dispatchTotal}</td>
-                                <td>${r.signTotal}</td>
-                                <td>${r.nosignTotal}</td>
-                                <td>${r.signTotalRate || '0%'}</td>
+                                ${cols.map((c) => html`<td key=${c.key}>${c.getValue(r)}</td>`)}
                             </tr>`
                         )}
                         <tr style=${{ fontWeight: 'bold', borderTop: '2px solid #000' }}>
-                            <td colspan="2">TOTAL</td>
-                            <td>${totals.dispatchTotal}</td>
-                            <td>${totals.signTotal}</td>
-                            <td>${totals.nosignTotal}</td>
-                            <td>${totals.effectiveness}</td>
+                            ${cols.map((c, i) =>
+                                i === 0
+                                    ? html`<td key=${c.key} colspan=${cols.length > 1 ? 1 : 1}><strong>TOTAL</strong></td>`
+                                    : html`<td key=${c.key}><strong>${c.getTotal(totals)}</strong></td>`
+                            )}
                         </tr>
                     </tbody>
                 </table>
@@ -68,6 +68,24 @@ export default function MessengerReportSection() {
         totals,
         exportCSV,
     } = useMessengerReport();
+
+    const [visibleCols, setVisibleCols] = useState(
+        () => new Set(ALL_COLUMNS.map((c) => c.key))
+    );
+    const [showColPicker, setShowColPicker] = useState(false);
+
+    const toggleCol = useCallback((key) => {
+        setVisibleCols((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) {
+                if (next.size === 1) return prev; // al menos 1 columna
+                next.delete(key);
+            } else {
+                next.add(key);
+            }
+            return next;
+        });
+    }, []);
 
     const handlePrint = useCallback(() => {
         if (!selectedRecords.length) return;
@@ -198,6 +216,30 @@ export default function MessengerReportSection() {
 
                     ${selectedCodes.size > 0
                         ? html`<div class="report-export-bar no-print">
+                              <div class="col-picker-wrapper">
+                                  <button
+                                      type="button"
+                                      class="secondary-btn"
+                                      onClick=${() => setShowColPicker((v) => !v)}
+                                  >
+                                      ⚙️ Columnas PDF
+                                  </button>
+                                  ${showColPicker
+                                      ? html`<div class="col-picker-dropdown">
+                                            <p class="col-picker-title">Columnas a incluir:</p>
+                                            ${ALL_COLUMNS.map(
+                                                (c) => html`<label key=${c.key} class="col-picker-item">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked=${visibleCols.has(c.key)}
+                                                        onChange=${() => toggleCol(c.key)}
+                                                    />
+                                                    ${c.label}
+                                                </label>`
+                                            )}
+                                        </div>`
+                                      : null}
+                              </div>
                               <button type="button" class="secondary-btn" onClick=${handlePrint}>
                                   🖨️ Imprimir PDF
                               </button>
@@ -213,7 +255,7 @@ export default function MessengerReportSection() {
                         </div>`
                       : null}`}
 
-            <${PrintableReport} data=${selectedRecords} totals=${totals} startDate=${startDate} endDate=${endDate} />
+            <${PrintableReport} data=${selectedRecords} totals=${totals} startDate=${startDate} endDate=${endDate} visibleCols=${visibleCols} />
         </div>
     `;
 }
