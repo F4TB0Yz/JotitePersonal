@@ -1,36 +1,23 @@
 /* =========================================================
    Daily Report — Print styles
    ========================================================= */
+
+/* Screen: keep #print-root invisible */
+#print-root #daily-report-print-content {
+    display: none;
+}
+
 @media print {
-    /* Show the printable area, hide everything else */
-    body > *:not(#root) { display: none !important; }
+    /* When printing daily report: hide the app, show the portal */
+    body.printing-daily-report #root { display: none !important; }
+    body.printing-daily-report #print-root { display: block !important; }
+    body.printing-daily-report #daily-report-print-content { display: block !important; }
 
-    .no-print { display: none !important; }
-    .print-only { display: block !important; }
-
-    /* Reset the overlay so it fills the page */
-    .dr-preview-overlay {
-        position: static !important;
-        background: none !important;
-        backdrop-filter: none !important;
-        padding: 0 !important;
-        overflow: visible !important;
-    }
-
-    .dr-preview-modal {
-        border: none !important;
-        box-shadow: none !important;
-        border-radius: 0 !important;
-        max-width: 100% !important;
-        background: #fff !important;
-    }
-
-    .dr-preview-header { display: none !important; }
-
-    .dr-preview-body {
-        padding: 0 !important;
-        max-height: none !important;
-        overflow: visible !important;
+    /* Print container padding */
+    #daily-report-print-content {
+        padding: 16px;
+        background: #fff;
+        color: #000;
     }
 
     /* Print header */

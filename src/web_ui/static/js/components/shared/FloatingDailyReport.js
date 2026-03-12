@@ -1,4 +1,4 @@
-import { html, useState } from '../../lib/ui.js';
+import { html, useState, useEffect, createPortal } from '../../lib/ui.js';
 import { useDailyReport } from '../../hooks/useDailyReport.js';
 
 const ALL_PRINT_COLS = [
@@ -35,8 +35,17 @@ function PrintPreviewModal({ groupedEntries, startDate, endDate, groupBy, onClos
 
     const handlePrint = () => {
         setShowColPicker(false);
-        setTimeout(() => window.print(), 50);
+        document.body.classList.add('printing-daily-report');
+        setTimeout(() => {
+            window.print();
+        }, 50);
     };
+
+    useEffect(() => {
+        const onAfterPrint = () => document.body.classList.remove('printing-daily-report');
+        window.addEventListener('afterprint', onAfterPrint);
+        return () => window.removeEventListener('afterprint', onAfterPrint);
+    }, []);
 
     const groupLabel = groupBy === 'messenger'
         ? 'Agrupado por mensajero'
@@ -47,92 +56,139 @@ function PrintPreviewModal({ groupedEntries, startDate, endDate, groupBy, onClos
     const total = groupedEntries.reduce((s, g) => s + g.items.length, 0);
     const activeCols = ALL_PRINT_COLS.filter((c) => visibleCols.has(c.key));
 
+    const printHost = document.getElementById('print-root') || document.body;
+    const printContent = createPortal(html`
+        <div id="daily-report-print-content">
+            <div class="dr-print-header">
+                <h2>Reporte Diario de Guías</h2>
+                <p>${startDate === endDate ? startDate : startDate + ' — ' + endDate}</p>
+                <p class="dr-print-meta">Generado: ${today} · ${groupLabel}</p>
+            </div>
+            ${groupedEntries.map(({ key, label, items }) => html`
+                <div class="dr-group" key=${key}>
+                    ${groupBy !== 'none' ? html`
+                        <h4 class="dr-group-title">
+                            ${label}
+                            <span class="dr-group-count">(${items.length})</span>
+                        </h4>
+                    ` : null}
+                    <table class="dr-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Guía</th>
+                                ${activeCols.map((c) => html`<th key=${c.key}>${c.label}</th>`)}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${items.map((entry, idx) => html`
+                                <tr key=${entry.id}>
+                                    <td>${idx + 1}</td>
+                                    <td class="dr-waybill-cell">${entry.waybill_no}</td>
+                                    ${activeCols.map((c) => html`
+                                        <td key=${c.key} class=${c.key === 'address' ? 'dr-address-cell' : ''}>
+                                            ${c.getValue(entry)}
+                                        </td>
+                                    `)}
+                                </tr>
+                            `)}
+                        </tbody>
+                    </table>
+                </div>
+            `)}
+            <div class="dr-print-footer">
+                <p>Total guías: ${total}</p>
+            </div>
+        </div>
+    `, printHost);
+
     return html`
-        <div className="dr-preview-overlay" onClick=${onClose}>
-            <div className="dr-preview-modal" onClick=${(e) => e.stopPropagation()}>
-                <header className="dr-preview-header no-print">
-                    <div className="dr-preview-header-info">
-                        <h3>Vista previa — Reporte diario</h3>
-                        <span className="dr-preview-meta">
-                            ${startDate === endDate ? startDate : startDate + ' → ' + endDate} · ${groupLabel}
-                        </span>
-                    </div>
-                    <div className="dr-preview-header-actions">
-                        <div className="dr-col-picker-wrapper">
-                            <button
-                                type="button"
-                                className="dr-col-picker-btn"
-                                onClick=${() => setShowColPicker((v) => !v)}
-                            >⚙️ Columnas</button>
-                            ${showColPicker ? html`
-                                <div className="dr-col-picker-dropdown">
-                                    <p className="dr-col-picker-title">Columnas en el PDF:</p>
-                                    ${ALL_PRINT_COLS.map((c) => html`
-                                        <label key=${c.key} className="dr-col-picker-item">
-                                            <input
-                                                type="checkbox"
-                                                checked=${visibleCols.has(c.key)}
-                                                onChange=${() => toggleCol(c.key)}
-                                            />
-                                            ${c.label}
-                                        </label>
-                                    `)}
-                                </div>
-                            ` : null}
+        <>
+            <div className="dr-preview-overlay" onClick=${onClose}>
+                <div className="dr-preview-modal" onClick=${(e) => e.stopPropagation()}>
+                    <header className="dr-preview-header">
+                        <div className="dr-preview-header-info">
+                            <h3>Vista previa — Reporte diario</h3>
+                            <span className="dr-preview-meta">
+                                ${startDate === endDate ? startDate : startDate + ' → ' + endDate} · ${groupLabel}
+                            </span>
                         </div>
-                        <button type="button" className="dr-print-btn" onClick=${handlePrint}>
-                            🖨️ Imprimir / PDF
-                        </button>
-                        <button type="button" className="dr-close-btn" onClick=${onClose}>✕</button>
-                    </div>
-                </header>
+                        <div className="dr-preview-header-actions">
+                            <div className="dr-col-picker-wrapper">
+                                <button
+                                    type="button"
+                                    className="dr-col-picker-btn"
+                                    onClick=${() => setShowColPicker((v) => !v)}
+                                >⚙️ Columnas</button>
+                                ${showColPicker ? html`
+                                    <div className="dr-col-picker-dropdown">
+                                        <p className="dr-col-picker-title">Columnas en el PDF:</p>
+                                        ${ALL_PRINT_COLS.map((c) => html`
+                                            <label key=${c.key} className="dr-col-picker-item">
+                                                <input
+                                                    type="checkbox"
+                                                    checked=${visibleCols.has(c.key)}
+                                                    onChange=${() => toggleCol(c.key)}
+                                                />
+                                                ${c.label}
+                                            </label>
+                                        `)}
+                                    </div>
+                                ` : null}
+                            </div>
+                            <button type="button" className="dr-print-btn" onClick=${handlePrint}>
+                                🖨️ Imprimir / PDF
+                            </button>
+                            <button type="button" className="dr-close-btn" onClick=${onClose}>✕</button>
+                        </div>
+                    </header>
 
-                <div className="dr-preview-body" id="daily-report-printable">
-                    <div className="dr-print-header print-only">
-                        <h2>Reporte Diario de Guías</h2>
-                        <p>${startDate === endDate ? startDate : startDate + ' — ' + endDate}</p>
-                        <p className="dr-print-meta">Generado: ${today} · ${groupLabel}</p>
-                    </div>
-
-                    ${groupedEntries.map(({ key, label, items }) => html`
-                        <div className="dr-group" key=${key}>
-                            ${groupBy !== 'none' ? html`
-                                <h4 className="dr-group-title">
-                                    ${label}
-                                    <span className="dr-group-count">(${items.length})</span>
-                                </h4>
-                            ` : null}
-                            <table className="dr-table">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Guía</th>
-                                        ${activeCols.map((c) => html`<th key=${c.key}>${c.label}</th>`)}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${items.map((entry, idx) => html`
-                                        <tr key=${entry.id}>
-                                            <td>${idx + 1}</td>
-                                            <td className="dr-waybill-cell">${entry.waybill_no}</td>
-                                            ${activeCols.map((c) => html`
-                                                <td key=${c.key} className=${c.key === 'address' ? 'dr-address-cell' : ''}>
-                                                    ${c.getValue(entry)}
-                                                </td>
-                                            `)}
+                    <div className="dr-preview-body">
+                        <div className="dr-print-header">
+                            <h2>Reporte Diario de Guías</h2>
+                            <p>${startDate === endDate ? startDate : startDate + ' — ' + endDate}</p>
+                            <p className="dr-print-meta">${today} · ${groupLabel}</p>
+                        </div>
+                        ${groupedEntries.map(({ key, label, items }) => html`
+                            <div className="dr-group" key=${key}>
+                                ${groupBy !== 'none' ? html`
+                                    <h4 className="dr-group-title">
+                                        ${label}
+                                        <span className="dr-group-count">(${items.length})</span>
+                                    </h4>
+                                ` : null}
+                                <table className="dr-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Guía</th>
+                                            ${activeCols.map((c) => html`<th key=${c.key}>${c.label}</th>`)}
                                         </tr>
-                                    `)}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        ${items.map((entry, idx) => html`
+                                            <tr key=${entry.id}>
+                                                <td>${idx + 1}</td>
+                                                <td className="dr-waybill-cell">${entry.waybill_no}</td>
+                                                ${activeCols.map((c) => html`
+                                                    <td key=${c.key} className=${c.key === 'address' ? 'dr-address-cell' : ''}>
+                                                        ${c.getValue(entry)}
+                                                    </td>
+                                                `)}
+                                            </tr>
+                                        `)}
+                                    </tbody>
+                                </table>
+                            </div>
+                        `)}
+                        <div className="dr-print-footer">
+                            <p>Total guías: ${total}</p>
                         </div>
-                    `)}
-
-                    <div className="dr-print-footer print-only">
-                        <p>Total guías: ${total}</p>
                     </div>
                 </div>
             </div>
-        </div>
+            ${printContent}
+        </>
     `;
 }
 
