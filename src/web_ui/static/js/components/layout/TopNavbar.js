@@ -2,6 +2,7 @@ import { html, useState, useEffect } from '../../lib/ui.js';
 import NotificationBell from './NotificationBell.js';
 
 const NAV_ITEMS = [
+    { id: 'inicio', label: 'Inicio' },
     { id: 'reportes', label: 'Generador PDF' },
     { id: 'dashboard', label: 'Dashboard Pendientes' },
     { id: 'alertas', label: 'Alertas 96h' },

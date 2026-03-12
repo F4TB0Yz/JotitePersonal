@@ -1,6 +1,7 @@
 import { html } from '../../lib/ui.js';
 
 const TAB_ITEMS = [
+    { id: 'inicio',     label: 'Inicio',      icon: '🏠' },
     { id: 'reportes',   label: 'PDF',         icon: '📄' },
     { id: 'dashboard',  label: 'Pendientes',  icon: '📦' },
     { id: 'alertas',    label: 'Alertas',     icon: '⚠️' },

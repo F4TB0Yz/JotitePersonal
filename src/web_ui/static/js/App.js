@@ -1,6 +1,7 @@
 import { html, useEffect, useState } from './lib/ui.js';
 import TopNavbar from './components/layout/TopNavbar.js';
 import BottomTabBar from './components/layout/BottomTabBar.js';
+import HomeView from './components/dashboard/HomeView.js';
 import WaybillProcessorView from './components/process/WaybillProcessorView.js';
 import PendingDashboardView from './components/dashboard/PendingDashboardView.js';
 import MessengerAdminView from './components/admin/MessengerAdminView.js';
@@ -13,11 +14,12 @@ import FloatingReprintButton from './components/shared/FloatingReprintButton.js'
 import FloatingPhoneLookup from './components/shared/FloatingPhoneLookup.js';
 import FloatingMessengerPhone from './components/shared/FloatingMessengerPhone.js';
 import FloatingMessageTemplates from './components/shared/FloatingMessageTemplates.js';
+import FloatingDailyReport from './components/shared/FloatingDailyReport.js';
 import CommandPalette from './components/shared/CommandPalette.js';
 import { initNotificationSocket, stopNotificationSocket } from './services/notificationService.js';
 
 export default function App() {
-    const [activeView, setActiveView] = useState('reportes');
+    const [activeView, setActiveView] = useState('inicio');
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
 
@@ -71,6 +73,9 @@ export default function App() {
                 onMarkAllRead=${handleMarkAllRead}
             />`}
             <div className="app-container">
+                <section className=${`view-section ${activeView === 'inicio' ? 'active' : ''}`}>
+                    <${HomeView} isActive=${activeView === 'inicio'} />
+                </section>
                 <section className=${`view-section ${activeView === 'reportes' ? 'active' : ''}`}>
                     <${WaybillProcessorView} isActive=${activeView === 'reportes'} />
                 </section>
@@ -91,8 +96,14 @@ export default function App() {
             <${BottomTabBar} activeView=${activeView} onChange=${setActiveView} />
             <${NovedadesModal} />
             <${WaybillQueryModal} />
-            ${activeView === 'reportes' ? html`<${FloatingMessageTemplates} /><${FloatingPhoneLookup} /><${FloatingReprintButton} /><${FloatingBarcodeScanner} />` : null}
-            <${FloatingMessengerPhone} />
+            ${activeView === 'inicio' ? html`
+                <${FloatingMessageTemplates} />
+                <${FloatingPhoneLookup} />
+                <${FloatingReprintButton} />
+                <${FloatingBarcodeScanner} />
+                <${FloatingMessengerPhone} />
+                <${FloatingDailyReport} />
+            ` : null}
             <${CommandPalette} />
         </div>
     `;

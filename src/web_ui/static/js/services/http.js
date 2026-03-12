@@ -51,3 +51,11 @@ export function post(url, body) {
         credentials: 'same-origin'
     }).then(handleJson);
 }
+
+export function httpDelete(url) {
+    return _fetchWithRetry(url, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin'
+    }).then(handleJson);
+}

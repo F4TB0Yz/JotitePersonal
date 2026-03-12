@@ -1,0 +1,129 @@
+/* =========================================================
+   Daily Report — Print styles
+   ========================================================= */
+@media print {
+    /* Show the printable area, hide everything else */
+    body > *:not(#root) { display: none !important; }
+
+    .no-print { display: none !important; }
+    .print-only { display: block !important; }
+
+    /* Reset the overlay so it fills the page */
+    .dr-preview-overlay {
+        position: static !important;
+        background: none !important;
+        backdrop-filter: none !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+
+    .dr-preview-modal {
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        max-width: 100% !important;
+        background: #fff !important;
+    }
+
+    .dr-preview-header { display: none !important; }
+
+    .dr-preview-body {
+        padding: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    /* Print header */
+    .dr-print-header {
+        text-align: center;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #000;
+    }
+
+    .dr-print-header h2 {
+        font-size: 18pt;
+        margin: 0 0 4px;
+        color: #000;
+    }
+
+    .dr-print-header p {
+        font-size: 10pt;
+        color: #444;
+        margin: 2px 0;
+    }
+
+    .dr-print-meta {
+        font-style: italic;
+    }
+
+    /* Groups */
+    .dr-group {
+        margin-bottom: 20px;
+        page-break-inside: avoid;
+    }
+
+    .dr-group-title {
+        font-size: 11pt;
+        font-weight: 700;
+        color: #c0151b;
+        border-bottom: 1px solid #c0151b;
+        padding-bottom: 4px;
+        margin-bottom: 8px;
+    }
+
+    .dr-group-count {
+        color: #555;
+    }
+
+    /* Table */
+    .dr-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9pt;
+        color: #000;
+    }
+
+    .dr-table th {
+        background: #f0f0f0;
+        border: 1px solid #bbb;
+        padding: 5px 8px;
+        font-size: 8pt;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #333;
+    }
+
+    .dr-table td {
+        border: 1px solid #ddd;
+        padding: 5px 8px;
+        color: #000;
+        vertical-align: top;
+    }
+
+    .dr-table tr:nth-child(even) td {
+        background: #f9f9f9;
+    }
+
+    /* Status badge in print */
+    .dr-status-badge {
+        background: none !important;
+        border: none !important;
+        padding: 0 !important;
+        font-size: 8pt;
+        font-weight: 600;
+    }
+
+    .dr-status-badge.delivered { color: #1a7a2e; }
+    .dr-status-badge.pending   { color: #8a6800; }
+
+    /* Footer */
+    .dr-print-footer {
+        margin-top: 16px;
+        text-align: right;
+        font-size: 9pt;
+        color: #555;
+        border-top: 1px solid #ccc;
+        padding-top: 6px;
+    }
+}

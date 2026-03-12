@@ -1519,3 +1519,159 @@ async def update_novedad_status(novedad_id: int, payload: dict = Body(...)):
         return {"success": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------------------------------------------------------
+# Reporte diario de guías
+
+from src.infrastructure.database.models import DailyReportEntryORM  # noqa: E402
+
+
+class DailyReportIngestPayload(BaseModel):
+    waybill_nos: List[str]
+    report_date: str  # YYYY-MM-DD
+
+
+@app.post("/api/daily-report/entries")
+async def ingest_daily_report_entries(payload: DailyReportIngestPayload):
+    """Consulta J&T por cada guía y guarda los datos en BD local."""
+    raw_date = (payload.report_date or "").strip()
+    if not raw_date:
+        raise HTTPException(status_code=400, detail="report_date requerido (YYYY-MM-DD)")
+    try:
+        datetime.strptime(raw_date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="report_date inválido. Usa YYYY-MM-DD")
+
+    waybill_nos = [w.strip().upper() for w in payload.waybill_nos if w.strip()]
+    if not waybill_nos:
+        raise HTTPException(status_code=400, detail="Debes enviar al menos una guía")
+    if len(waybill_nos) > 200:
+        raise HTTPException(status_code=400, detail="Máximo 200 guías por solicitud")
+
+    def _process_one(waybill_no: str) -> dict:
+        config = ConfigRepository(SessionLocal()).load_config()
+        client = JTClient(config=config)
+        service = ReportService(client)
+        try:
+            row = service.get_consolidated_data(waybill_no)
+            return {
+                "waybill_no": row.waybill_no,
+                "messenger_name": row.last_staff or "",
+                "address": row.address or "",
+                "city": row.city or "",
+                "status": row.status or "",
+                "ok": True,
+            }
+        except Exception as exc:
+            return {"waybill_no": waybill_no, "ok": False, "error": str(exc)}
+
+    def _run_all():
+        results = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {executor.submit(_process_one, wn): wn for wn in waybill_nos}
+            for future in concurrent.futures.as_completed(futures):
+                results.append(future.result())
+
+        session = SessionLocal()
+        try:
+            saved = 0
+            for r in results:
+                if not r.get("ok"):
+                    continue
+                entry = DailyReportEntryORM(
+                    waybill_no=r["waybill_no"],
+                    messenger_name=r["messenger_name"],
+                    address=r["address"],
+                    city=r["city"],
+                    status=r["status"],
+                    report_date=raw_date,
+                )
+                session.add(entry)
+                saved += 1
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+        return {
+            "saved": saved,
+            "errors": [r for r in results if not r.get("ok")],
+        }
+
+    try:
+        return await asyncio.to_thread(_run_all)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/daily-report/entries")
+async def get_daily_report_entries(start_date: str, end_date: str):
+    """Devuelve las entradas del reporte diario filtradas por rango de fechas."""
+    for d in (start_date, end_date):
+        try:
+            datetime.strptime(d.strip(), "%Y-%m-%d")
+        except (ValueError, AttributeError):
+            raise HTTPException(status_code=400, detail=f"Fecha inválida: {d}. Usa YYYY-MM-DD")
+
+    def _fetch():
+        session = SessionLocal()
+        try:
+            rows = (
+                session.query(DailyReportEntryORM)
+                .filter(
+                    DailyReportEntryORM.report_date >= start_date.strip(),
+                    DailyReportEntryORM.report_date <= end_date.strip(),
+                )
+                .order_by(DailyReportEntryORM.report_date.desc(), DailyReportEntryORM.id.asc())
+                .all()
+            )
+            return [
+                {
+                    "id": row.id,
+                    "waybill_no": row.waybill_no,
+                    "messenger_name": row.messenger_name,
+                    "address": row.address,
+                    "city": row.city,
+                    "status": row.status,
+                    "report_date": row.report_date,
+                }
+                for row in rows
+            ]
+        finally:
+            session.close()
+
+    try:
+        return await asyncio.to_thread(_fetch)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.delete("/api/daily-report/entries/{entry_id}")
+async def delete_daily_report_entry(entry_id: int):
+    """Elimina una entrada individual del reporte diario."""
+    def _delete():
+        session = SessionLocal()
+        try:
+            row = session.query(DailyReportEntryORM).filter_by(id=entry_id).first()
+            if not row:
+                raise HTTPException(status_code=404, detail="Entrada no encontrada")
+            session.delete(row)
+            session.commit()
+        except HTTPException:
+            raise
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+    try:
+        await asyncio.to_thread(_delete)
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))

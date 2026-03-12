@@ -105,3 +105,20 @@ class ConfigORM(Base):
 
     key = Column(String, primary_key=True)
     value = Column(String, nullable=False)
+
+
+class DailyReportEntryORM(Base):
+    __tablename__ = "daily_report_entries"
+    __table_args__ = (
+        Index("ix_daily_report_date", "report_date"),
+        Index("ix_daily_report_waybill", "waybill_no"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    waybill_no = Column(String, nullable=False)
+    messenger_name = Column(String, nullable=True)
+    address = Column(Text, nullable=True)
+    city = Column(String, nullable=True)
+    status = Column(String, nullable=True)
+    report_date = Column(String, nullable=False)  # YYYY-MM-DD
+    created_at = Column(DateTime, server_default=func.current_timestamp(), nullable=False)

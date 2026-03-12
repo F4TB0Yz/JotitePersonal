@@ -46,6 +46,8 @@
 @import url('./css/features/timeline.css');
 @import url('./css/features/command-palette.css');
 @import url('./css/features/kpi-dashboard.css');
+@import url('./css/features/home-view.css');
+@import url('./css/features/daily-report.css');
 
 /* Vendors */
 @import url('./css/vendors/flatpickr.css');
@@ -53,6 +55,7 @@
 /* Print */
 @import url('./css/print/print-cards.css');
 @import url('./css/print/print-table.css');
+@import url('./css/print/print-daily-report.css');
 
 /* Cross-cutting */
 @import url('./css/animations.css');
