@@ -5,7 +5,7 @@
 /* ── Floating button ── */
 .floating-daily-report-wrapper {
     position: fixed;
-    bottom: 340px;
+    bottom: 372px;
     right: 20px;
     z-index: 215;
 }
@@ -13,7 +13,7 @@
 /* ── Mobile: lift above Bottom Tab Bar ── */
 @media (max-width: 768px) {
     .floating-daily-report-wrapper {
-        bottom: calc(var(--bottom-bar-height) + 336px);
+        bottom: calc(var(--bottom-bar-height) + 368px);
     }
 }
 

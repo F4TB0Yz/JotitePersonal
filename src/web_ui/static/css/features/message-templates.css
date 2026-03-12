@@ -6,8 +6,8 @@
 .floating-messages-wrapper {
     position: fixed;
     right: 20px;
-    bottom: 276px;
-    z-index: 213;
+    bottom: 292px;
+    z-index: 214;
 }
 
 .floating-messages-btn {
@@ -238,7 +238,7 @@
 /* ── Mobile adjustments ── */
 @media (max-width: 768px) {
     .floating-messages-wrapper {
-        bottom: calc(var(--bottom-bar-height) + 272px);
+        bottom: calc(var(--bottom-bar-height) + 288px);
     }
 
     .msg-tpl-window {
