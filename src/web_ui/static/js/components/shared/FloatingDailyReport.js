@@ -277,6 +277,11 @@ export default function FloatingDailyReport() {
                                                                 ${entry.status || '—'}
                                                             </span>
                                                         </div>
+                                                        ${entry.address ? html`
+                                                            <div className="dr-entry-address" title=${entry.address}>
+                                                                📍 ${entry.address}
+                                                            </div>
+                                                        ` : null}
                                                         <div className="dr-entry-actions">
                                                             <button
                                                                 type="button"

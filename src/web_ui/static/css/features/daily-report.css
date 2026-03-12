@@ -255,10 +255,11 @@
 .dr-entries-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    max-height: 300px;
+    gap: 10px;
+    max-height: 360px;
     overflow-y: auto;
-    padding-right: 2px;
+    padding-right: 4px;
+    padding-bottom: 4px;
 }
 
 .dr-entry-group-label {
@@ -273,12 +274,12 @@
 .dr-entry-card {
     background: rgba(255,255,255,0.04);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 10px 12px;
+    border-radius: 10px;
+    padding: 12px 14px;
     display: grid;
     grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto;
-    gap: 4px 8px;
+    grid-template-rows: auto auto auto;
+    gap: 5px 8px;
     position: relative;
 }
 
@@ -306,6 +307,17 @@
     align-items: center;
     font-size: 0.75rem;
     color: var(--text-muted);
+}
+
+.dr-entry-address {
+    grid-column: 1;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    opacity: 0.75;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 260px;
 }
 
 .dr-delete-btn {
