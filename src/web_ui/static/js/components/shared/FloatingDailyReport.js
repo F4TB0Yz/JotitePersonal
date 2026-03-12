@@ -62,7 +62,6 @@ function PrintPreviewModal({ groupedEntries, startDate, endDate, groupBy, onClos
             <div className="dr-print-header">
                 <h2>Reporte Diario de Guías</h2>
                 <p>${startDate === endDate ? startDate : startDate + ' — ' + endDate}</p>
-                <p className="dr-print-meta">Generado: ${today} · ${groupLabel}</p>
             </div>
             ${groupedEntries.map(({ key, label, items }) => html`
                 <div className="dr-group" key=${key}>
@@ -147,7 +146,6 @@ function PrintPreviewModal({ groupedEntries, startDate, endDate, groupBy, onClos
                         <div className="dr-print-header">
                             <h2>Reporte Diario de Guías</h2>
                             <p>${startDate === endDate ? startDate : startDate + ' — ' + endDate}</p>
-                            <p className="dr-print-meta">${today} · ${groupLabel}</p>
                         </div>
                         ${groupedEntries.map(({ key, label, items }) => html`
                             <div className="dr-group" key=${key}>
