@@ -5,9 +5,16 @@
 /* ── Floating button ── */
 .floating-daily-report-wrapper {
     position: fixed;
-    bottom: calc(var(--bottom-bar-height, 60px) + 80px);
-    right: 16px;
-    z-index: 900;
+    bottom: 276px;
+    right: 20px;
+    z-index: 214;
+}
+
+/* ── Mobile: lift above Bottom Tab Bar ── */
+@media (max-width: 768px) {
+    .floating-daily-report-wrapper {
+        bottom: calc(var(--bottom-bar-height) + 272px);
+    }
 }
 
 .floating-daily-report-btn {

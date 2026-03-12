@@ -96,14 +96,12 @@ export default function App() {
             <${BottomTabBar} activeView=${activeView} onChange=${setActiveView} />
             <${NovedadesModal} />
             <${WaybillQueryModal} />
-            ${activeView === 'inicio' ? html`
-                <${FloatingMessageTemplates} />
-                <${FloatingPhoneLookup} />
-                <${FloatingReprintButton} />
-                <${FloatingBarcodeScanner} />
-                <${FloatingMessengerPhone} />
-                <${FloatingDailyReport} />
-            ` : null}
+            <${FloatingMessageTemplates} />
+            <${FloatingPhoneLookup} />
+            <${FloatingReprintButton} />
+            <${FloatingBarcodeScanner} />
+            <${FloatingMessengerPhone} />
+            <${FloatingDailyReport} />
             <${CommandPalette} />
         </div>
     `;
