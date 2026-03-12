@@ -71,6 +71,24 @@ Tu paquete con guía {guia} ya está en camino hacia {ciudad}. Estamos trabajand
 
 Si necesitas darnos alguna indicación especial o coordinar la entrega, ¡avísanos!
 
+¡Gracias! 🙏`,
+
+    direccion_formal: `Estimado cliente: {destinatario}, le saludamos de J&T Express Colombia.
+
+Le contactamos para validar la información de entrega de su paquete con guía {guia}.
+
+¿Podría confirmarnos si la dirección {direccion} es correcta para realizar la entrega? En caso de ajuste, por favor indíquenos la dirección completa.
+
+Quedamos atentos a su respuesta, muchas gracias.`,
+
+    direccion_informal: `Hola, {destinatario} 👋
+
+Te saludamos de J&T Express Colombia.
+
+Te escribimos para confirmar la dirección de entrega de tu paquete con guía {guia}.
+
+¿Nos confirmas si la dirección {direccion} está correcta? Si necesitas cambiarla, nos compartes la dirección completa.
+
 ¡Gracias! 🙏`
 };
 
@@ -78,6 +96,7 @@ const CATEGORIES = [
     { id: 'verificacion', label: '🔍 Verificación', description: 'Entrega no reconocida / sin movimiento' },
     { id: 'confirmacion', label: '✅ Confirmación con novedad', description: 'Entregado pero reportado como no recibido' },
     { id: 'confirmacion_simple', label: '📋 Confirmación simple', description: 'Confirmar entrega sin reporte de novedad' },
+    { id: 'direccion', label: '📍 Confirmación de dirección', description: 'Validar o corregir dirección de entrega' },
     { id: 'programada',   label: '📦 Entrega programada', description: 'Paquete en tránsito / próximo a entregar' }
 ];
 
