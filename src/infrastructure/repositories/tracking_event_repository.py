@@ -105,10 +105,6 @@ Dada una lista de guías pendientes, devuelve aquellas que según su historial
                     ).label("rn"),
                 )
                 .filter(TrackingEventORM.waybill_no.in_(chunk))
-                .filter(
-                    (TrackingEventORM.event_code.notin_([4, 6, 8])) | 
-                    (TrackingEventORM.event_code.is_(None))
-                )
                 .subquery()
             )
 
@@ -121,17 +117,21 @@ Dada una lista de guías pendientes, devuelve aquellas que según su historial
             ).filter(subq.c.rn == 1).all()
 
             for wb, e_code, scan_net_id, t_name in rows:                
-                # Broaden what we consider "departed"
-                # 1: Despacho, 5: Entrega, 7: Devolución, 80: Firmado
+                # Lógica agresiva: 
+                # 1. Códigos terminales (Despacho, Entrega, Devolución, Firmado)
                 if e_code in (1, 5, 7, 80):
                     departed_wbs.add(wb)
-                elif current_network_id and scan_net_id:
-                    # Si el escaneo ocurrió en OTRA red, el paquete NO está aquí.
-                    # Esto cubre 'Descarga' (2), 'Excepción' (110) y otros en redes ajenas.
+                    continue
+
+                # 2. Si hay red de escaneo y NO coincide con la actual, se considera fuera.
+                # Ignoramos escaneos sin red (ID vacío o None) para no filtrar por error.
+                if current_network_id and scan_net_id:
                     if str(scan_net_id) != str(current_network_id):
                         departed_wbs.add(wb)
-                elif t_name and "Entregado" in t_name:
-                    # Fallback por nombre si el código falla
+                        continue
+                
+                # 3. Fallback por nombre de estado si el código es nulo
+                if t_name and ("Entregado" in t_name or "Devuelto" in t_name or "Firmado" in t_name):
                     departed_wbs.add(wb)
 
         return departed_wbs
