@@ -106,7 +106,7 @@ Dada una lista de guías pendientes, devuelve aquellas que según su historial
                 )
                 .filter(TrackingEventORM.waybill_no.in_(chunk))
                 .filter(
-                    (TrackingEventORM.event_code.notin_([4, 6, 8])) | 
+                    (TrackingEventORM.event_code.notin_([4, 6, 8, 110])) | 
                     (TrackingEventORM.event_code.is_(None))
                 )
                 .subquery()

@@ -3,7 +3,7 @@ import asyncio
 import io
 from typing import Optional, List
 from urllib.parse import urlparse
-from fastapi import APIRouter, HTTPException, Body, Request
+from fastapi import APIRouter, HTTPException, Body, Request, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from src.infrastructure.database.connection import SessionLocal
 from src.infrastructure.repositories.config_repository import ConfigRepository
@@ -15,6 +15,42 @@ from src.services.novedades_service import novedades_service
 from src.services.kpi_service import kpi_service
 
 router = APIRouter(prefix="/api", tags=["Dashboard & Core"])
+
+def _auto_heal_stale_waybills(waybills: list[str]):
+    if not waybills:
+        return
+        
+    config = ConfigRepository.get_cached()
+    client = JTClient(config=config)
+    
+    with SessionLocal() as db:
+        repo = TrackingEventRepository(db)
+        from src.models.waybill import TrackingEvent
+        
+        for wb in waybills:
+            if not wb: continue
+            try:
+                # Vamos a pedirle la realidad actual a J&T
+                resp = client.get_order_detail(wb)
+                details = resp.get("data", {}).get("details", [])
+                if details:
+                    events = [
+                        TrackingEvent(
+                            time=d.get("scanTime"),
+                            type_name=d.get("scanTypeName"),
+                            network_name=d.get("scanNetworkName"),
+                            scan_network_id=d.get("scanNetworkId"),
+                            staff_name=d.get("scanByName"),
+                            staff_contact="",
+                            status=d.get("status"),
+                            content=d.get("waybillTrackingContent"),
+                            code=d.get("code")
+                        ) for d in details
+                    ]
+                    # Aquí la magia: guardamos los eventos nuevos en tu BD local
+                    repo.save_events(wb, events)
+            except Exception:
+                continue
 
 def _normalize_waybill_record(waybill_no: str, details: dict) -> dict:
     return {
@@ -79,7 +115,7 @@ async def global_search(q: str, limit: int = 6):
         raise HTTPException(status_code=500, detail=str(exc))
 
 @router.post("/network/waybills")
-async def get_network_waybills(req: dict = Body(...)):
+async def get_network_waybills(req: dict = Body(...), background_tasks: BackgroundTasks = BackgroundTasks()):
     network_code = req.get("networkCode")
     start_time = req.get("startTime")
     end_time = req.get("endTime")
@@ -124,12 +160,17 @@ async def get_network_waybills(req: dict = Body(...)):
                 )
 
             if not departed:
+                background_tasks.add_task(_auto_heal_stale_waybills, waybill_nos[:15])
                 return {"records": records}
 
             filtered = [
                 r for r in records
                 if (r.get("waybillNo") or r.get("billCode") or r.get("orderId") or "") not in departed
             ]
+            
+            survivors = [r.get("waybillNo") or r.get("billCode") or r.get("orderId") or "" for r in filtered]
+            background_tasks.add_task(_auto_heal_stale_waybills, survivors[:15])
+
             return {"records": filtered, "_filtered_count": len(records) - len(filtered)}
 
         return await asyncio.to_thread(_fetch_network)
