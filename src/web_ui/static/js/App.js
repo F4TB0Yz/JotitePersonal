@@ -8,60 +8,14 @@ import ReturnsView from './components/dashboard/ReturnsView.js';
 import MessengerAdminView from './components/admin/MessengerAdminView.js';
 import TemuAlertCenter from './components/dashboard/TemuAlertCenter.js';
 import KpiDashboardView from './components/dashboard/KpiDashboardView.js';
-import NovedadesModal from './components/shared/NovedadesModal.js';
-import WaybillQueryModal from './components/shared/WaybillQueryModal.js';
-import FloatingBarcodeScanner from './components/shared/FloatingBarcodeScanner.js';
-import FloatingReprintButton from './components/shared/FloatingReprintButton.js';
-import FloatingPhoneLookup from './components/shared/FloatingPhoneLookup.js';
-import FloatingMessengerPhone from './components/shared/FloatingMessengerPhone.js';
-import FloatingMessageTemplates from './components/shared/FloatingMessageTemplates.js';
-import FloatingDailyReport from './components/shared/FloatingDailyReport.js';
-import CommandPalette from './components/shared/CommandPalette.js';
-import { initNotificationSocket, stopNotificationSocket } from './services/notificationService.js';
+import GlobalOverlays from './components/layout/GlobalOverlays.js';
+import useAppNotifications from './hooks/useAppNotifications.js';
 
 export default function App() {
     const [activeView, setActiveView] = useState('inicio');
-    const [notifications, setNotifications] = useState([]);
-    const [unreadCount, setUnreadCount] = useState(0);
-
-    useEffect(() => {
-        const onNavigate = (event) => {
-            const nextView = event?.detail?.view;
-            if (!nextView) return;
-            setActiveView(nextView);
-        };
-
-        window.addEventListener('navigate-view', onNavigate);
-        return () => window.removeEventListener('navigate-view', onNavigate);
-    }, []);
-
-    useEffect(() => {
-        initNotificationSocket();
-        return () => stopNotificationSocket();
-    }, []);
-
-    useEffect(() => {
-        const onTemuBreach = (event) => {
-            const payload = event?.detail;
-            if (!payload?.billcode) return;
-
-            setNotifications((prev) => {
-                const exists = prev.some(
-                    (item) => item.billcode === payload.billcode && (item.detectedAt || item.predicted96At) === (payload.detectedAt || payload.predicted96At)
-                );
-                if (exists) return prev;
-                const next = [payload, ...prev];
-                return next.slice(0, 50);
-            });
-            setUnreadCount((prev) => Math.min(prev + 1, 999));
-        };
-
-        window.addEventListener('temu-breach-predicted', onTemuBreach);
-        return () => window.removeEventListener('temu-breach-predicted', onTemuBreach);
-    }, []);
+    const { notifications, unreadCount, markAllRead } = useAppNotifications();
 
     const handleOpenAlerts = () => setActiveView('alertas');
-    const handleMarkAllRead = () => setUnreadCount(0);
 
     return html`
         <div className="app-root">
@@ -71,42 +25,27 @@ export default function App() {
                 notifications=${notifications}
                 unreadCount=${unreadCount}
                 onOpenAlerts=${handleOpenAlerts}
-                onMarkAllRead=${handleMarkAllRead}
+                onMarkAllRead=${markAllRead}
             />`}
             <div className="app-container">
-                <section className=${`view-section ${activeView === 'inicio' ? 'active' : ''}`}>
-                    <${HomeView} isActive=${activeView === 'inicio'} />
-                </section>
-                <section className=${`view-section ${activeView === 'reportes' ? 'active' : ''}`}>
-                    <${WaybillProcessorView} isActive=${activeView === 'reportes'} />
-                </section>
-                <section className=${`view-section ${activeView === 'dashboard' ? 'active' : ''}`}>
-                    <${PendingDashboardView} isActive=${activeView === 'dashboard'} />
-                </section>
-                <section className=${`view-section ${activeView === 'devoluciones' ? 'active' : ''}`}>
-                    <${ReturnsView} isActive=${activeView === 'devoluciones'} />
-                </section>
-                <section className=${`view-section ${activeView === 'alertas' ? 'active' : ''}`}>
-                    <${TemuAlertCenter} isActive=${activeView === 'alertas'} />
-                </section>
-                <section className=${`view-section ${activeView === 'mensajeros' ? 'active' : ''}`}>
-                    <${MessengerAdminView} isActive=${activeView === 'mensajeros'} />
-                </section>
-                <section className=${`view-section ${activeView === 'kpis' ? 'active' : ''}`}>
-                    <${KpiDashboardView} isActive=${activeView === 'kpis'} />
+                <section className="view-section active">
+                    ${(() => {
+                        switch (activeView) {
+                            case 'inicio': return html`<${HomeView} />`;
+                            case 'reportes': return html`<${WaybillProcessorView} />`;
+                            case 'dashboard': return html`<${PendingDashboardView} />`;
+                            case 'devoluciones': return html`<${ReturnsView} />`;
+                            case 'alertas': return html`<${TemuAlertCenter} />`;
+                            case 'mensajeros': return html`<${MessengerAdminView} />`;
+                            case 'kpis': return html`<${KpiDashboardView} />`;
+                            default: return null;
+                        }
+                    })()}
                 </section>
             </div>
             
             <${BottomTabBar} activeView=${activeView} onChange=${setActiveView} />
-            <${NovedadesModal} />
-            <${WaybillQueryModal} />
-            <${FloatingMessageTemplates} />
-            <${FloatingPhoneLookup} />
-            <${FloatingReprintButton} />
-            <${FloatingBarcodeScanner} />
-            <${FloatingMessengerPhone} />
-            <${FloatingDailyReport} />
-            <${CommandPalette} />
+            <${GlobalOverlays} />
         </div>
     `;
 }
