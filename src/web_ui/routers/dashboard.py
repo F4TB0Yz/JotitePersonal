@@ -153,7 +153,7 @@ async def get_network_waybills(req: dict = Body(...), background_tasks: Backgrou
                 r.get("waybillNo") or r.get("billCode") or r.get("orderId") or ""
                 for r in records
             ]
-            waybill_nos = [wb for wb in waybill_nos if wb]
+            waybill_nos = [wb.strip().upper() for wb in waybill_nos if wb and wb.strip()]
 
             if not waybill_nos:
                 return {"records": records}
@@ -173,10 +173,36 @@ async def get_network_waybills(req: dict = Body(...), background_tasks: Backgrou
                 background_tasks.add_task(_auto_heal_stale_waybills, sample_to_heal)
                 return {"records": records}
 
-            filtered = [
-                r for r in records
-                if (r.get("waybillNo") or r.get("billCode") or r.get("orderId") or "") not in departed
-            ]
+            filtered = []
+            for r in records:
+                wb = (r.get("waybillNo") or r.get("billCode") or r.get("orderId") or "").strip().upper()
+                if not wb:
+                    continue
+                
+                # 1. Filtro por base de datos local (historial conocido)
+                if wb in departed:
+                    continue
+                
+                # 2. Filtro DIRECTO por información en el record de J&T
+                # Si el record ya dice que está en otra red o tiene estados terminales
+                r_net_id = str(r.get("scanNetworkId") or "")
+                r_net_name = str(r.get("scanNetworkName") or "")
+                r_status = str(r.get("waybillStatus") or r.get("status") or "")
+                r_type = str(r.get("scanTypeName") or "")
+
+                # Si el ID de red en el record no coincide con el buscado (y tenemos ambos)
+                if r_net_id and network_code and r_net_id != str(network_code):
+                    continue
+                
+                # Si el nombre de red indica que está en un centro o bogotá (y nosotros somos un punto periférico)
+                if "Bogota" in r_net_name and "Bogota" not in str(network_code):
+                     # Probable devolución o tránsito superior
+                     continue
+                
+                if any(x in r_type or x in r_status for x in ["Entregado", "Devuelto", "Firmado", "Anulado"]):
+                    continue
+
+                filtered.append(r)
             
             survivors = [r.get("waybillNo") or r.get("billCode") or r.get("orderId") or "" for r in filtered]
             
