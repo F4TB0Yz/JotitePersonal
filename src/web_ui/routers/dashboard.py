@@ -190,21 +190,23 @@ async def get_network_waybills(req: dict = Body(...), background_tasks: Backgrou
                 r_status = str(r.get("waybillStatus") or r.get("status") or "")
                 r_type = str(r.get("scanTypeName") or "")
 
-                # Si el ID de red en el record no coincide con el buscado (y tenemos ambos)
+                # 3. Filtro específico pedido: Carga y expedición en Cund-Punto6 (1009)
+                # Si el estado es "Carga y expedición" y la red es Punto6, se va de la lista de pendientes.
+                if "Carga y expedición" in r_type:
+                    if r_net_id == "1009" or r_net_id == str(network_code) or "Cund-Punto6" in r_net_name:
+                         continue
+                
+                # 4. Filtro por red de rastro (Si el record indica que ya está físicamente en otra red)
                 if r_net_id and network_code and r_net_id != str(network_code):
+                    # Si el ID de red no coincide con el buscado, es porque ya se movió.
                     continue
                 
-                # Si el nombre de red indica que está en un centro o bogotá (y nosotros somos un punto periférico)
-                if "Bogota" in r_net_name and "Bogota" not in str(network_code):
-                     # Probable devolución o tránsito superior
-                     continue
-                
+                # 5. Filtro por nombre de red (Bogotá suele ser punto de retorno/tránsito superior)
+                if ("Bogota" in r_net_name or "Centro" in r_net_name) and "Bogota" not in str(network_code):
+                    continue
+
+                # 6. Estados Terminales
                 if any(x in r_type or x in r_status for x in ["Entregado", "Devuelto", "Firmado", "Anulado"]):
-                    continue
-                
-                # 3. Filtro específico pedido: Carga y expedición en Cund-Punto6
-                # Si el estado es "Carga y expedición" y la red es Punto6 (1009), se va.
-                if "Carga y expedición" in r_type and (r_net_id == "1009" or "Cund-Punto6" in r_net_name):
                     continue
 
                 filtered.append(r)

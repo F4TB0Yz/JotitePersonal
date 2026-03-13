@@ -5,17 +5,18 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
-from src.web_ui.routers import (
-    waybills, 
-    messengers, 
-    returns, 
-    settlements, 
-    novedades, 
-    daily_report, 
-    auth, 
-    ws, 
-    dashboard
-)
+# Inclusión de Routers
+app.include_router(waybills.router)
+app.include_router(messengers.router)
+app.include_router(returns.router)
+app.include_router(settlements.router)
+app.include_router(novedades.router)
+app.include_router(daily_report.router)
+app.include_router(auth.router)
+app.include_router(ws.router)
+app.include_router(dashboard.router)
+
+from src.infrastructure.database.connection import initialize_database
 from src.web_ui import security
 from src.services.temu_prediction_service import temu_prediction_service
 
@@ -89,6 +90,8 @@ async def _returns_sync_loop() -> None:
 @app.on_event("startup")
 async def startup_event():
     global _returns_sync_task
+    # Inicialización de DB una sola vez al arranque
+    await asyncio.to_thread(initialize_database)
     temu_prediction_service.start()
     _returns_sync_task = asyncio.create_task(_returns_sync_loop())
 

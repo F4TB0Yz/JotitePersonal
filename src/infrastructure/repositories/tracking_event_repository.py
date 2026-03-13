@@ -133,6 +133,11 @@ Dada una lista de guías pendientes, devuelve aquellas que según su historial
                 # 3. Fallback por nombre de estado si el código es nulo
                 if t_name and ("Entregado" in t_name or "Devuelto" in t_name or "Firmado" in t_name):
                     departed_wbs.add(wb)
+                    continue
+                
+                # 4. Filtro específico: Carga y expedición en esta red significa que YA SALIÓ.
+                if t_name == "Carga y expedición" and (str(scan_net_id) == str(current_network_id) or str(scan_net_id) == "1009"):
+                    departed_wbs.add(wb)
 
         return departed_wbs
 

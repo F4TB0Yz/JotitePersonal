@@ -9,7 +9,7 @@ from src.infrastructure.database.models import NovedadORM, SettlementORM
 
 class KPIService:
     def __init__(self):
-        initialize_database()
+        pass
 
     @staticmethod
     def _parse_datetime(value: Any) -> datetime | None:

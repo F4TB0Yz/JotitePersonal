@@ -26,11 +26,9 @@ class TemuPredictionService:
         self.jitter_seconds = jitter_seconds
         self.cooldown_hours = cooldown_hours
         self.stale_cycles = stale_cycles
-        self._task: asyncio.Task | None = None
+        self._task = None
         self._stopping = False
         self._failure_count = 0
-
-        initialize_database()
 
     @staticmethod
     def _parse_timezone(tz_string: str | None) -> timezone:
