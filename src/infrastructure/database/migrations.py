@@ -70,6 +70,35 @@ def ensure_daily_report_updated_at_column(engine) -> bool:
         return False
 
 
+def ensure_tracking_event_new_columns(engine) -> bool:
+    """
+    Ensures that the tracking_events table has 'event_code' and 'scan_network_id' columns.
+    """
+    try:
+        inspector = inspect(engine)
+        columns = [col["name"] for col in inspector.get_columns("tracking_events")]
+        
+        with engine.connect() as conn:
+            modified = False
+            if "event_code" not in columns:
+                conn.execute(text("ALTER TABLE tracking_events ADD COLUMN event_code INTEGER"))
+                modified = True
+            if "scan_network_id" not in columns:
+                conn.execute(text("ALTER TABLE tracking_events ADD COLUMN scan_network_id VARCHAR"))
+                modified = True
+            
+            if modified:
+                conn.commit()
+                logger.info("Successfully added missing columns to tracking_events table.")
+        return True
+    except SQLAlchemyError as e:
+        logger.warning(f"Could not add columns to tracking_events: {e}")
+        return False
+    except Exception as e:
+        logger.warning(f"Unexpected error during tracking_events migration: {e}")
+        return False
+
+
 def run_all_migrations(engine) -> None:
     """
     Runs all pending migrations.
@@ -77,6 +106,7 @@ def run_all_migrations(engine) -> None:
     ensure_daily_report_notes_column(engine)
     ensure_daily_report_updated_at_column(engine)
     ensure_return_snapshots_table(engine)
+    ensure_tracking_event_new_columns(engine)
 
 
 def ensure_return_snapshots_table(engine) -> bool:
