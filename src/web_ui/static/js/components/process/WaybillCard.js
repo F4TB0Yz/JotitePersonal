@@ -1,6 +1,6 @@
 import { html, useState } from '../../lib/ui.js';
 import { fetchWaybillPhones } from '../../services/addressService.js';
-import { fetchWaybillPhotos, getPhotosDownloadUrl, getPhotoProxyDownloadUrl } from '../../services/photosService.js';
+import { fetchWaybillPhotos, downloadAllPhotos, downloadPhoto } from '../../services/photosService.js';
 
 export default function WaybillCard({ data, showArribo }) {
     const [phoneState, setPhoneState] = useState({
@@ -17,6 +17,8 @@ export default function WaybillCard({ data, showArribo }) {
     });
     const [lightbox, setLightbox] = useState({ open: false, index: 0 });
     const [downloadName, setDownloadName] = useState('JTC0000');
+    const [downloadingPhoto, setDownloadingPhoto] = useState(false);
+    const [downloadError, setDownloadError] = useState('');
 
     const isDelivered = data.is_delivered;
     const isError = data.status === 'Error';
@@ -89,6 +91,34 @@ export default function WaybillCard({ data, showArribo }) {
             .catch((err) => {
                 setPhotosState({ open: true, loading: false, photos: [], error: err.message || 'Error al cargar fotos' });
             });
+    };
+
+    const handleDownloadAllPhotos = async () => {
+        if (downloadingPhoto) return;
+        setDownloadingPhoto(true);
+        setDownloadError('');
+        try {
+            await downloadAllPhotos(data.waybill_no);
+        } catch (err) {
+            console.error('ZIP download failed:', err);
+            setDownloadError(err.message || 'Error al descargar ZIP');
+        } finally {
+            setDownloadingPhoto(false);
+        }
+    };
+
+    const handleDownloadIndividualPhoto = async (photoUrl, name) => {
+        if (downloadingPhoto) return;
+        setDownloadingPhoto(true);
+        setDownloadError('');
+        try {
+            await downloadPhoto(photoUrl, `${name}.jpeg`);
+        } catch (err) {
+            console.error('Download failed:', err);
+            setDownloadError(err.message || 'Error al descargar');
+        } finally {
+            setDownloadingPhoto(false);
+        }
     };
 
     return html`
@@ -171,11 +201,13 @@ export default function WaybillCard({ data, showArribo }) {
                                         </div>
                                     `)}
                                 </div>
-                                <a
-                                    href=${getPhotosDownloadUrl(data.waybill_no)}
-                                    download
+                                <button
+                                    onClick=${handleDownloadAllPhotos}
+                                    disabled=${downloadingPhoto}
                                     className="photos-download-link no-print"
-                                >⬇ Descargar todas</a>
+                                >
+                                    ${downloadingPhoto ? '⏳ Generando ZIP...' : '⬇ Descargar todas'}
+                                </button>
                             ` : null}
                         </div>
                     ` : null}
@@ -215,12 +247,14 @@ export default function WaybillCard({ data, showArribo }) {
                             placeholder="JTC0000"
                         />
                     </div>
-                    <a
-                        href=${getPhotoProxyDownloadUrl(photosState.photos[lightbox.index], `${downloadName}.jpeg`)}
-                        download
-                        className="lightbox-download"
-                        onClick=${(e) => e.stopPropagation()}
-                    >⬇ Descargar esta foto</a>
+                    <button
+                        className=${`lightbox-download ${downloadingPhoto ? 'loading' : ''}`}
+                        disabled=${downloadingPhoto}
+                        onClick=${(e) => { e.stopPropagation(); handleDownloadIndividualPhoto(photosState.photos[lightbox.index], downloadName); }}
+                    >
+                        ${downloadingPhoto ? '⏳ Descargando...' : '⬇ Descargar esta foto'}
+                    </button>
+                    ${downloadError ? html`<p className="download-error-hint">${downloadError}</p>` : null}
                 </div>
             </div>
         ` : null}

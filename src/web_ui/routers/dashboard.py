@@ -286,21 +286,44 @@ async def get_kpis_overview(
 @router.get("/photos/proxy")
 async def proxy_photo(url: str, filename: str = "foto.jpeg"):
     import requests as _requests
-    _PHOTO_ALLOWED_DOMAINS = {"jtexpress.com.co", "jt-express.com.co"}
+    from fastapi.responses import StreamingResponse
+    
+    # Dominios permitidos (Consolidado de waybills.py y dashboard.py)
+    _ALLOWED = {
+        "jtexpress.com.co", 
+        "jt-express.com.co",
+        "pro-jmsco-file.jtexpress.co",
+        "jmsco-file.jtexpress.co"
+    }
+    
     parsed = urlparse(url)
-    if parsed.hostname not in _PHOTO_ALLOWED_DOMAINS:
-        raise HTTPException(status_code=403, detail="Dominio no permitido")
+    if parsed.hostname not in _ALLOWED:
+        raise HTTPException(status_code=403, detail=f"Dominio '{parsed.hostname}' no permitido para descarga directa.")
+
     safe_filename = re.sub(r"[^\w\.\-]", "_", filename)[:80]
+    if not safe_filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+         safe_filename += ".jpeg"
+
     try:
         def _fetch():
             resp = _requests.get(url, timeout=20)
             resp.raise_for_status()
-            return resp.content, resp.headers.get("Content-Type", "image/jpeg").split(";")[0].strip()
+            # Detectar el tipo de contenido real o usar jpeg por defecto
+            ctype = resp.headers.get("Content-Type", "image/jpeg").split(";")[0].strip()
+            if "image" not in ctype:
+                ctype = "image/jpeg"
+            return resp.content, ctype
+
         content, content_type = await asyncio.to_thread(_fetch)
+        
         return StreamingResponse(
             io.BytesIO(content),
             media_type=content_type,
-            headers={"Content-Disposition": f'attachment; filename="{safe_filename}"'},
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_filename}"',
+                "Cache-Control": "max-age=3600"
+            },
         )
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=str(exc))
+        # Si falla el fetch externo, propagamos un 502 (Bad Gateway) con detalle
+        raise HTTPException(status_code=502, detail=f"Error al obtener imagen remota: {str(exc)}")
