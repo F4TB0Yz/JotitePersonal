@@ -1,125 +1,13 @@
 import { html, useState, useEffect } from '../../lib/ui.js';
 import { usePendingDashboard } from '../../hooks/usePendingDashboard.js';
+import { usePendingExports } from '../../hooks/usePendingExports.js';
 import { formatShortDate } from '../../utils/formatters.js';
-import { fetchWaybillDetails, fetchWaybillIntelligenceExport, fetchWaybillPhones } from '../../services/addressService.js';
+import { fetchWaybillDetails, fetchWaybillPhones } from '../../services/addressService.js';
 import { fetchMessengerContact } from '../../services/messengerService.js';
 import DateRangePicker from '../shared/DateRangePicker.js';
 
-function cellClass(value) {
-    if (!value) return 'dash-cell-empty';
-    if (value <= 5) return 'dash-cell-verylow';
-    if (value <= 15) return 'dash-cell-low';
-    if (value <= 30) return 'dash-cell-med';
-    return 'dash-cell-high';
-}
+import { cellClass, resolveValue, getWaybillId, getReceiverName, getReceiverCity, getReceiverAddress, getPackageStatus, pickFirstDate, getPackageDateByMode, getSortTimestamp, getPhoneButtonLabel, EXPORTABLE_FIELDS } from '../../utils/pendingHelpers.js';
 
-function resolveValue(options, fallback = '—') {
-    for (const value of options) {
-        if (value && value !== 'N/A') return value;
-    }
-    return fallback;
-}
-
-function getWaybillId(record, index) {
-    return record.waybillNo || record.thirdWaybillNo || record.orderId || `registro-${index}`;
-}
-
-function getReceiverName(record) {
-    return resolveValue([record.receiverName, record.receiver, record.receiverRealName, record.customerName], 'Sin destinatario');
-}
-
-function getReceiverCity(record) {
-    return resolveValue([record.receiverCityName, record.receiverCity, record.receiverCitye, record.destCityName], 'Ciudad desconocida');
-}
-
-function getReceiverAddress(record) {
-    return resolveValue([record.receiverAddress, record.receiverAddressDetail, record.receAddress, record.destAddress], 'Sin dirección registrada');
-}
-
-function getPackageStatus(record) {
-    return resolveValue([record.statusName, record.status, record.waybillStatusName], 'Pendiente');
-}
-
-function pickFirstDate(record, fields, fallback = 'Sin Fecha') {
-    for (const field of fields) {
-        const value = record?.[field];
-        if (value && value !== 'N/A') return value;
-    }
-    return fallback;
-}
-
-function getPackageDateByMode(record, dateMode, dateModes) {
-    if (dateMode === dateModes.assignment) {
-        return pickFirstDate(record, [
-            'deliveryScanTimeLatest',
-            'dispatchTime',
-            'assignTime',
-            'deliveryTime',
-            'operateTime',
-            'destArrivalTime',
-            'dateTime',
-            'deadLineTime',
-            'createTime',
-            'updateTime',
-            'scanTime'
-        ]);
-    }
-    return pickFirstDate(record, [
-        'destArrivalTime',
-        'arrivalTime',
-        'arriveTime',
-        'inboundTime',
-        'dispatchTime',
-        'operateTime',
-        'updateTime'
-    ]);
-}
-
-function getSortTimestamp(value) {
-    if (!value || value === 'Sin Fecha') return 0;
-    const ts = new Date(value).getTime();
-    return Number.isNaN(ts) ? 0 : ts;
-}
-
-function getPhoneButtonLabel(info) {
-    if (!info) return '📞 Ver teléfono';
-    if (info.loading) return 'Consultando…';
-    if (info.value && info.visible) return 'Ocultar';
-    return '📞 Ver teléfono';
-}
-
-function safeFileNamePart(value, fallback = 'sin-valor') {
-    const normalized = String(value || '')
-        .normalize('NFKD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-zA-Z0-9_-]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .toLowerCase();
-    return normalized || fallback;
-}
-
-function downloadJsonFile(fileName, payload) {
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-}
-
-const EXPORTABLE_FIELDS = [
-    { key: 'waybillNo', label: 'Guía' },
-    { key: 'receiverName', label: 'Destinatario' },
-    { key: 'receiverCity', label: 'Ciudad' },
-    { key: 'receiverAddress', label: 'Dirección' },
-    { key: 'receiverPhone', label: 'Contacto' },
-    { key: 'date', label: 'Fecha' },
-    { key: 'status', label: 'Estado' },
-    { key: 'staff', label: 'Mensajero' }
-];
 
 export default function PendingDashboardView() {
     const {
@@ -156,19 +44,38 @@ export default function PendingDashboardView() {
     const [detailError, setDetailError] = useState('');
     const [phoneState, setPhoneState] = useState({});
     const [messengerContacts, setMessengerContacts] = useState({});
-    const [showExportMenu, setShowExportMenu] = useState(false);
-    const [exportJsonLoading, setExportJsonLoading] = useState(false);
-    const [exportJsonError, setExportJsonError] = useState('');
-    const [exportFields, setExportFields] = useState(() => ({
-        waybillNo: true,
-        receiverName: true,
-        receiverCity: true,
-        receiverAddress: true,
-        receiverPhone: false,
-        date: true,
-        status: true,
-        staff: false
-    }));
+
+    const detailRows = selectedCell
+        ? [...selectedCell.records].sort((a, b) => {
+            const bValue = getPackageDateByMode(b, dateMode, dateModes);
+            const aValue = getPackageDateByMode(a, dateMode, dateModes);
+            return getSortTimestamp(bValue) - getSortTimestamp(aValue);
+        })
+        : [];
+
+    const {
+        showExportMenu,
+        setShowExportMenu,
+        exportJsonLoading,
+        exportJsonError,
+        exportFields,
+        toggleExportField,
+        handleExportPdf,
+        handleExportDashboardJson,
+        handleExportJson
+    } = usePendingExports({
+        detailMap,
+        dateMode,
+        dateModes,
+        networkCode,
+        startDate,
+        endDate,
+        selectedStaff,
+        activeDateLabel,
+        filteredRecords,
+        detailRows,
+        selectedCell
+    });
 
     useEffect(() => {
         if (loading) {
@@ -379,222 +286,6 @@ export default function PendingDashboardView() {
             });
     };
 
-    const toggleExportField = (key) => {
-        setExportFields((prev) => ({
-            ...prev,
-            [key]: !prev[key]
-        }));
-    };
-
-    const buildIntelligencePackages = (records, exportResults, staffLabelResolver) => records.map((pkg, index) => {
-        const waybillNo = pkg.waybillNo || '';
-        const detail = waybillNo ? (detailMap[waybillNo] || exportResults[waybillNo]?.detail || null) : null;
-        const intelligence = waybillNo ? exportResults[waybillNo] : null;
-
-        return {
-            rowIndex: index + 1,
-            waybillNo: waybillNo || null,
-            visibleSnapshot: {
-                receiverName: detail?.receiverName || getReceiverName(pkg),
-                receiverCity: detail?.receiverCity || getReceiverCity(pkg),
-                receiverAddress: detail?.receiverAddress || getReceiverAddress(pkg),
-                receiverPhone: detail?.receiverPhone || null,
-                status: detail?.status || getPackageStatus(pkg),
-                staff: staffLabelResolver(pkg),
-                referenceDate: getPackageDateByMode(pkg, dateMode, dateModes)
-            },
-            sourceRecord: pkg,
-            officialDetail: intelligence?.detail || detail,
-            rawOfficialData: intelligence?.raw || null,
-            movements: intelligence?.timeline || [],
-            movementSummary: intelligence?.timelineSummary || {
-                eventCount: 0,
-                lastEventTime: '',
-                lastStatus: ''
-            },
-            errors: intelligence?.errors || []
-        };
-    });
-
-    const getExportCellValue = (pkg, detail, fieldKey) => {
-        if (fieldKey === 'waybillNo') return pkg.waybillNo || 'N/A';
-        if (fieldKey === 'receiverName') return detail?.receiverName || getReceiverName(pkg);
-        if (fieldKey === 'receiverCity') return detail?.receiverCity || getReceiverCity(pkg);
-        if (fieldKey === 'receiverAddress') return detail?.receiverAddress || getReceiverAddress(pkg);
-        if (fieldKey === 'receiverPhone') return detail?.receiverPhone || 'N/A';
-        if (fieldKey === 'date') return getPackageDateByMode(pkg, dateMode, dateModes);
-        if (fieldKey === 'status') return detail?.status || getPackageStatus(pkg);
-        if (fieldKey === 'staff') return selectedCell?.staff || 'N/A';
-        return '';
-    };
-
-    const handleExportPdf = () => {
-        if (!selectedCell || detailRows.length === 0) return;
-        const activeFields = EXPORTABLE_FIELDS.filter((field) => exportFields[field.key]);
-        if (!activeFields.length) {
-            window.alert('Selecciona al menos un campo para exportar.');
-            return;
-        }
-
-        const title = `Pendientes - ${selectedCell.staff}`;
-        const periodLabel = selectedCell.day === 'ALL'
-            ? 'Todos los días'
-            : selectedCell.day === 'Sin Fecha'
-                ? 'Sin fecha registrada'
-                : formatShortDate(selectedCell.day);
-
-        const tableHead = activeFields.map((field) => `<th>${field.label}</th>`).join('');
-        const tableRows = detailRows.map((pkg) => {
-            const detail = pkg.waybillNo ? detailMap[pkg.waybillNo] : null;
-            const cells = activeFields
-                .map((field) => `<td>${String(getExportCellValue(pkg, detail, field.key) || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>`)
-                .join('');
-            return `<tr>${cells}</tr>`;
-        }).join('');
-
-        const htmlContent = `
-            <html>
-                <head>
-                    <meta charset="utf-8" />
-                    <title>${title}</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; color: #111; margin: 24px; }
-                        h1 { font-size: 20px; margin: 0 0 6px; }
-                        p { margin: 0 0 6px; font-size: 12px; }
-                        table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 11px; }
-                        th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; vertical-align: top; }
-                        th { background: #f2f2f2; }
-                        @media print { body { margin: 12mm; } }
-                    </style>
-                </head>
-                <body>
-                    <h1>${title}</h1>
-                    <p><strong>Fecha filtro:</strong> ${activeDateLabel} - ${periodLabel}</p>
-                    <p><strong>Total paquetes:</strong> ${detailRows.length}</p>
-                    <table>
-                        <thead><tr>${tableHead}</tr></thead>
-                        <tbody>${tableRows}</tbody>
-                    </table>
-                </body>
-            </html>
-        `;
-
-        const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=900');
-        if (!printWindow) {
-            window.alert('No se pudo abrir la ventana para exportar PDF.');
-            return;
-        }
-
-        printWindow.document.open();
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => {
-            printWindow.print();
-        }, 300);
-    };
-
-    const exportRecordsAsJson = async ({ records, fileLabel, scope, detailDay = null, detailDayLabel = null, staffLabelResolver }) => {
-        if (!records || records.length === 0) return;
-
-        const waybills = Array.from(
-            new Set(
-                records
-                    .map((pkg) => pkg.waybillNo)
-                    .filter((waybillNo) => typeof waybillNo === 'string' && waybillNo.trim().length > 0)
-            )
-        );
-
-        if (waybills.length === 0) {
-            window.alert('No hay guías válidas para exportar.');
-            return;
-        }
-
-        setExportJsonLoading(true);
-        setExportJsonError('');
-
-        try {
-            const exportResponse = await fetchWaybillIntelligenceExport(waybills);
-            const exportResults = exportResponse?.results || {};
-            const packages = buildIntelligencePackages(records, exportResults, staffLabelResolver);
-
-            const payload = {
-                exportedAt: new Date().toISOString(),
-                generatedAt: exportResponse?.generatedAt || '',
-                source: 'dashboard-pendientes',
-                scope,
-                filters: {
-                    networkCode,
-                    startDate,
-                    endDate,
-                    dateMode,
-                    dateLabel: activeDateLabel,
-                    selectedStaff,
-                    detailDay,
-                    detailDayLabel
-                },
-                summary: {
-                    packageCount: packages.length,
-                    waybillCount: waybills.length,
-                    exportedMovementCount: packages.reduce(
-                        (total, item) => total + (item.movements?.length || 0),
-                        0
-                    )
-                },
-                packages
-            };
-
-            const fileName = [
-                'dashboard-pendientes',
-                safeFileNamePart(networkCode, 'red'),
-                safeFileNamePart(fileLabel, 'filtro')
-            ].join('-') + '.json';
-
-            downloadJsonFile(fileName, payload);
-        } catch (err) {
-            setExportJsonError(err?.message || 'No se pudo generar el JSON.');
-        } finally {
-            setExportJsonLoading(false);
-        }
-    };
-
-    const handleExportDashboardJson = async () => {
-        await exportRecordsAsJson({
-            records: filteredRecords,
-            fileLabel: selectedStaff === 'ALL' ? 'tabla-completa' : `tabla-${selectedStaff}`,
-            scope: 'dashboard-table',
-            detailDay: 'ALL',
-            detailDayLabel: 'Todos los días visibles',
-            staffLabelResolver: (pkg) => pkg.deliveryUser || 'Sin enrutar'
-        });
-    };
-
-    const handleExportJson = async () => {
-        if (!selectedCell || detailRows.length === 0) return;
-        const selectedStaffLabel = selectedCell.staff || 'Sin enrutar';
-        const periodLabel = selectedCell.day === 'ALL'
-            ? 'Todos los días'
-            : selectedCell.day === 'Sin Fecha'
-                ? 'Sin fecha registrada'
-                : formatShortDate(selectedCell.day);
-
-        await exportRecordsAsJson({
-            records: detailRows,
-            fileLabel: `${selectedStaffLabel}-${selectedCell.day === 'ALL' ? 'todos' : selectedCell.day}`,
-            scope: 'detail-panel',
-            detailDay: selectedCell.day,
-            detailDayLabel: periodLabel,
-            staffLabelResolver: () => selectedStaffLabel
-        });
-    };
-
-    const detailRows = selectedCell
-        ? [...selectedCell.records].sort((a, b) => {
-            const bValue = getPackageDateByMode(b, dateMode, dateModes);
-            const aValue = getPackageDateByMode(a, dateMode, dateModes);
-            return getSortTimestamp(bValue) - getSortTimestamp(aValue);
-        })
-        : [];
 
     return html`
         <main className="dashboard-main">
