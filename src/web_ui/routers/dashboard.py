@@ -1,6 +1,8 @@
 import re
 import asyncio
 import io
+import random
+import time
 from typing import Optional, List
 from urllib.parse import urlparse
 from fastapi import APIRouter, HTTPException, Body, Request, BackgroundTasks
@@ -49,7 +51,11 @@ def _auto_heal_stale_waybills(waybills: list[str]):
                     ]
                     # Aquí la magia: guardamos los eventos nuevos en tu BD local
                     repo.save_events(wb, events)
+                
+                # LA CRUDA REALIDAD: Si no pones a dormir el hilo, te banean.
+                time.sleep(0.5) 
             except Exception:
+                time.sleep(0.5) # Respira también si hay error
                 continue
 
 def _normalize_waybill_record(waybill_no: str, details: dict) -> dict:
@@ -160,7 +166,8 @@ async def get_network_waybills(req: dict = Body(...), background_tasks: Backgrou
                 )
 
             if not departed:
-                background_tasks.add_task(_auto_heal_stale_waybills, waybill_nos[:15])
+                sample_to_heal = random.sample(waybill_nos, min(15, len(waybill_nos)))
+                background_tasks.add_task(_auto_heal_stale_waybills, sample_to_heal)
                 return {"records": records}
 
             filtered = [
@@ -169,7 +176,10 @@ async def get_network_waybills(req: dict = Body(...), background_tasks: Backgrou
             ]
             
             survivors = [r.get("waybillNo") or r.get("billCode") or r.get("orderId") or "" for r in filtered]
-            background_tasks.add_task(_auto_heal_stale_waybills, survivors[:15])
+            
+            # Curamos 15 AL AZAR para que limpie toda la lista eventualmente
+            sample_survivors = random.sample(survivors, min(15, len(survivors)))
+            background_tasks.add_task(_auto_heal_stale_waybills, sample_survivors)
 
             return {"records": filtered, "_filtered_count": len(records) - len(filtered)}
 

@@ -124,7 +124,7 @@ Dada una lista de guías pendientes, devuelve aquellas que según su historial
                 if e_code == 1:
                     # code=1 es despacho/salida física confirmada
                     departed_wbs.add(wb)
-                elif current_network_id and scan_net_id and scan_net_id != str(current_network_id):
+                elif current_network_id and scan_net_id and str(scan_net_id) != str(current_network_id):
                     # Si el último escaneo se originó en OTRA red
                     departed_wbs.add(wb)
 
