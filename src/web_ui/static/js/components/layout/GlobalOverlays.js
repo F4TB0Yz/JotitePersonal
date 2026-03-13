@@ -1,4 +1,4 @@
-import { html } from '../../lib/ui.js';
+import { html, Fragment } from '../../lib/ui.js';
 import NovedadesModal from '../shared/NovedadesModal.js';
 import WaybillQueryModal from '../shared/WaybillQueryModal.js';
 import FloatingBarcodeScanner from '../shared/FloatingBarcodeScanner.js';
@@ -11,14 +11,16 @@ import CommandPalette from '../shared/CommandPalette.js';
 
 export default function GlobalOverlays() {
     return html`
-        <${NovedadesModal} />
-        <${WaybillQueryModal} />
-        <${FloatingMessageTemplates} />
-        <${FloatingPhoneLookup} />
-        <${FloatingReprintButton} />
-        <${FloatingBarcodeScanner} />
-        <${FloatingMessengerPhone} />
-        <${FloatingDailyReport} />
-        <${CommandPalette} />
+        <${Fragment}>
+            <${NovedadesModal} />
+            <${WaybillQueryModal} />
+            <${FloatingMessageTemplates} />
+            <${FloatingPhoneLookup} />
+            <${FloatingReprintButton} />
+            <${FloatingBarcodeScanner} />
+            <${FloatingMessengerPhone} />
+            <${FloatingDailyReport} />
+            <${CommandPalette} />
+        </${Fragment}>
     `;
 }

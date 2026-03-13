@@ -77,6 +77,7 @@ export default function ReturnsView({ isActive }) {
                                 { value: 'printable', label: 'Para imprimir' },
                             ].map((item) => html`
                                 <button
+                                    key=${item.value}
                                     type="button"
                                     className=${`returns-status-btn ${status === item.value ? 'active' : ''}`}
                                     onClick=${() => setStatus(item.value)}
@@ -94,6 +95,7 @@ export default function ReturnsView({ isActive }) {
                                     { value: 1, label: 'Ya impresas' },
                                 ].map((item) => html`
                                     <button
+                                        key=${item.value}
                                         type="button"
                                         className=${`returns-status-btn ${Number(printableFlag) === item.value ? 'active' : ''}`}
                                         onClick=${() => setPrintableFlag(item.value)}

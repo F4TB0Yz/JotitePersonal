@@ -63,7 +63,8 @@ export default function PendingDashboardView() {
         toggleExportField,
         handleExportPdf,
         handleExportDashboardJson,
-        handleExportJson
+        handleExportJson,
+        setExportJsonError
     } = usePendingExports({
         detailMap,
         dateMode,

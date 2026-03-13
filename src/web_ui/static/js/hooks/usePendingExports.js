@@ -257,6 +257,7 @@ export default function usePendingExports({
         toggleExportField,
         handleExportPdf,
         handleExportDashboardJson,
-        handleExportJson
+        handleExportJson,
+        setExportJsonError
     };
 }
