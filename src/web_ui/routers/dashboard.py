@@ -180,10 +180,10 @@ async def get_network_waybills(req: dict = Body(...), background_tasks: Backgrou
             
             survivors = [r.get("waybillNo") or r.get("billCode") or r.get("orderId") or "" for r in filtered]
             
-            # Curamos los primeros 10 supervivientes y 5 al azar del resto
-            sample_survivors = survivors[:10]
-            if len(survivors) > 10:
-                sample_survivors += random.sample(survivors[10:], min(5, len(survivors) - 10))
+            # Curamos los primeros 20 supervivientes y 10 al azar del resto (Aumentado para limpiar antes)
+            sample_survivors = survivors[:20]
+            if len(survivors) > 20:
+                sample_survivors += random.sample(survivors[20:], min(10, len(survivors) - 20))
             background_tasks.add_task(_auto_heal_stale_waybills, sample_survivors)
 
             return {"records": filtered, "_filtered_count": len(records) - len(filtered)}

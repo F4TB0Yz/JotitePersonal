@@ -121,11 +121,17 @@ Dada una lista de guías pendientes, devuelve aquellas que según su historial
             ).filter(subq.c.rn == 1).all()
 
             for wb, e_code, scan_net_id, t_name in rows:                
+                # Broaden what we consider "departed"
+                # 1: Despacho, 5: Entrega, 7: Devolución, 80: Firmado
                 if e_code in (1, 5, 7, 80):
-                    # 1: Despacho, 5: Entrega, 7: Devolución, 80: Firmado (terminal)
                     departed_wbs.add(wb)
-                elif current_network_id and scan_net_id and str(scan_net_id) != str(current_network_id):
-                    # Si el último escaneo se originó en OTRA red
+                elif current_network_id and scan_net_id:
+                    # Si el escaneo ocurrió en OTRA red, el paquete NO está aquí.
+                    # Esto cubre 'Descarga' (2), 'Excepción' (110) y otros en redes ajenas.
+                    if str(scan_net_id) != str(current_network_id):
+                        departed_wbs.add(wb)
+                elif t_name and "Entregado" in t_name:
+                    # Fallback por nombre si el código falla
                     departed_wbs.add(wb)
 
         return departed_wbs
