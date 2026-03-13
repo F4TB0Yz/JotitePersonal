@@ -5,7 +5,9 @@ from typing import Optional, List
 from urllib.parse import urlparse
 from fastapi import APIRouter, HTTPException, Body, Request
 from fastapi.responses import StreamingResponse
+from src.infrastructure.database.connection import SessionLocal
 from src.infrastructure.repositories.config_repository import ConfigRepository
+from src.infrastructure.repositories.tracking_event_repository import TrackingEventRepository
 from src.jt_api.client import JTClient
 from src.services.temu_alert_service import TemuAlertService
 from src.services.temu_prediction_service import temu_prediction_service
@@ -88,15 +90,47 @@ async def get_network_waybills(req: dict = Body(...)):
 
     try:
         def _fetch_network():
-            config = ConfigRepository.get_cached(); client = JTClient(config=config)
+            config = ConfigRepository.get_cached()
+            client = JTClient(config=config)
             response = client.get_network_signing_detail(
                 network_code=network_code,
                 start_time=start_time,
                 end_time=end_time,
                 sign_type=sign_type
             )
-            records = response.get("data", {}).get("records", [])
-            return {"records": records or []}
+            records = response.get("data", {}).get("records", []) or []
+
+            # El filtro de ubicación solo aplica a guías pendientes (signType=0).
+            # Las ya firmadas (signType=1) no necesitan esta corrección.
+            if not records or sign_type != 0:
+                return {"records": records}
+
+            # Extraer números de guía del response.  J&T puede usar distintos
+            # nombres de campo según el endpoint; probamos los más comunes.
+            waybill_nos: list[str] = [
+                r.get("waybillNo") or r.get("billCode") or r.get("orderId") or ""
+                for r in records
+            ]
+            waybill_nos = [wb for wb in waybill_nos if wb]
+
+            if not waybill_nos:
+                return {"records": records}
+
+            # Consultar la tabla local tracking_events para detectar qué guías
+            # tienen evidencia de haber salido físicamente de esta red, usando el network_code (ej. 1009).
+            with SessionLocal() as db:
+                departed = TrackingEventRepository.get_departed_waybills(
+                    db, waybill_nos, current_network_id=network_code
+                )
+
+            if not departed:
+                return {"records": records}
+
+            filtered = [
+                r for r in records
+                if (r.get("waybillNo") or r.get("billCode") or r.get("orderId") or "") not in departed
+            ]
+            return {"records": filtered, "_filtered_count": len(records) - len(filtered)}
 
         return await asyncio.to_thread(_fetch_network)
     except Exception as e:

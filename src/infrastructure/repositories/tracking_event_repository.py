@@ -1,9 +1,11 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
-from sqlalchemy import insert
+from sqlalchemy import insert, func, and_
 from typing import List, Tuple, Optional
 from src.infrastructure.database.models import TrackingEventORM
 from src.models.waybill import TrackingEvent
+
+_SQLITE_CHUNK = 900  # por debajo del límite de variables de SQLite (999)
 
 class TrackingEventRepository:
     def __init__(self, session: Session):
@@ -39,10 +41,12 @@ class TrackingEventRepository:
 
             if exists:
                 exists.network_name = event.network_name
+                exists.scan_network_id = event.scan_network_id
                 exists.staff_name = event.staff_name
                 exists.staff_contact = event.staff_contact
                 exists.status = event.status
                 exists.content = event.content
+                exists.event_code = event.code
                 exists.fetched_at = now
             else:
                 connection.execute(
@@ -51,15 +55,82 @@ class TrackingEventRepository:
                         time=event_time,
                         type_name=event_type,
                         network_name=event.network_name,
+                        scan_network_id=event.scan_network_id,
                         staff_name=event.staff_name,
                         staff_contact=event.staff_contact,
                         status=event.status,
                         content=event.content,
+                        event_code=event.code,
                         fetched_at=now,
                     )
                 )
 
         self.session.commit()
+
+    @staticmethod
+    def get_departed_waybills(
+        session: Session,
+        waybill_nos: list[str],
+        current_network_id: str | None = None,
+    ) -> set[str]:
+        """
+        Dada una lista de guías pendientes, devuelve aquellas que según su histrial 
+        ya salieron de la sucursal actual (current_network_id).
+        
+        Se considera que el paquete salió:
+        1. Su último estado (por fecha) tiene code = 1 (despacho/Carga y expedición).
+        2. O su último estado (por fecha) se registró en una red diferente (scanNetworkId != current_network_id),
+           siempre y cuando el status no corresponda a un "escaneo de excepción". (Normalmente J&T 
+           usa códigos como 4, 6, 8, etc., para excepciones. Solo validamos salida pura si fue 
+           en otra red y es un escaneo normal o está documentado para ignorar).
+        
+        Rendimiento: usa funciones de ventana para consultar solo el `rn=1` de las guías en `waybill_nos`.
+        """
+        if not waybill_nos:
+            return set()
+
+        # Usar set para mayor velocidad de búsqueda
+        departed_wbs: set[str] = set()
+
+        for offset in range(0, len(waybill_nos), _SQLITE_CHUNK):
+            chunk = waybill_nos[offset : offset + _SQLITE_CHUNK]
+
+            # Subconsulta súper optimizada: saca solo el PRIMER registro (más reciente) de cada guía
+            subq = (
+                session.query(
+                    TrackingEventORM.waybill_no,
+                    TrackingEventORM.event_code,
+                    TrackingEventORM.scan_network_id,
+                    TrackingEventORM.type_name,
+                    func.row_number().over(
+                        partition_by=TrackingEventORM.waybill_no,
+                        order_by=TrackingEventORM.time.desc(),
+                    ).label("rn"),
+                )
+                .filter(TrackingEventORM.waybill_no.in_(chunk))
+                .subquery()
+            )
+
+            # Extraemos el escaneo `rn=1` (el más reciente)
+            rows = session.query(
+                subq.c.waybill_no, 
+                subq.c.event_code, 
+                subq.c.scan_network_id,
+                subq.c.type_name
+            ).filter(subq.c.rn == 1).all()
+
+            for wb, e_code, scan_net_id, t_name in rows:
+                is_exception = t_name and "excepción" in t_name.lower()
+                
+                if e_code == 1:
+                    # code=1 es despacho/salida física confirmada
+                    departed_wbs.add(wb)
+                elif current_network_id and scan_net_id and scan_net_id != str(current_network_id):
+                    # Si el último escaneo se originó en OTRA red, y NO es puramente un reporte de excepción
+                    if not is_exception:
+                        departed_wbs.add(wb)
+
+        return departed_wbs
 
     def get_events_for_waybill(self, waybill_no: str) -> Tuple[List[TrackingEvent], Optional[datetime]]:
         rows = (
@@ -78,10 +149,12 @@ class TrackingEventRepository:
                 time=row.time,
                 type_name=row.type_name,
                 network_name=row.network_name or "N/A",
+                scan_network_id=row.scan_network_id or "",
                 staff_name=row.staff_name,
                 staff_contact=row.staff_contact,
                 status=row.status or "",
                 content=row.content or "",
+                code=row.event_code,
             )
             for row in rows
         ]

@@ -17,6 +17,7 @@ class TrackingEvent:
     time: str
     type_name: str
     network_name: str
+    scan_network_id: str = ""
     staff_name: Optional[str] = None
     staff_contact: Optional[str] = None
     status: str = ""

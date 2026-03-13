@@ -41,6 +41,7 @@ class ReportService:
                     time=item.get("scanTime") or "",
                     type_name=item.get("scanTypeName") or "Desconocido",
                     network_name=item.get("scanNetworkName") or "N/A",
+                    scan_network_id=str(item.get("scanNetworkId") or ""),
                     staff_name=item.get("staffName") or item.get("scanByName"),
                     staff_contact=item.get("staffContact"),
                     status=item.get("status") or "",

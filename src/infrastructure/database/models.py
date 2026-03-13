@@ -39,6 +39,8 @@ class TrackingEventORM(Base):
     staff_contact = Column(String, nullable=True)
     status = Column(String, nullable=True)
     content = Column(Text, nullable=True)
+    event_code = Column(Integer, nullable=True)
+    scan_network_id = Column(String, nullable=True)
     fetched_at = Column(DateTime, server_default=func.current_timestamp(), nullable=False, index=True)
 
 
