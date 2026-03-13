@@ -74,17 +74,12 @@ class TrackingEventRepository:
         current_network_id: str | None = None,
     ) -> set[str]:
         """
-        Dada una lista de guías pendientes, devuelve aquellas que según su histrial 
+Dada una lista de guías pendientes, devuelve aquellas que según su historial
         ya salieron de la sucursal actual (current_network_id).
         
         Se considera que el paquete salió:
-        1. Su último estado (por fecha) tiene code = 1 (despacho/Carga y expedición).
-        2. O su último estado (por fecha) se registró en una red diferente (scanNetworkId != current_network_id),
-           siempre y cuando el status no corresponda a un "escaneo de excepción". (Normalmente J&T 
-           usa códigos como 4, 6, 8, etc., para excepciones. Solo validamos salida pura si fue 
-           en otra red y es un escaneo normal o está documentado para ignorar).
-        
-        Rendimiento: usa funciones de ventana para consultar solo el `rn=1` de las guías en `waybill_nos`.
+        1. Su último estado físico (por fecha) tiene code = 1 (despacho/Carga y expedición).
+        2. O su último estado físico (por fecha) se registró en una red diferente (scanNetworkId != current_network_id).
         """
         if not waybill_nos:
             return set()
@@ -96,6 +91,8 @@ class TrackingEventRepository:
             chunk = waybill_nos[offset : offset + _SQLITE_CHUNK]
 
             # Subconsulta súper optimizada: saca solo el PRIMER registro (más reciente) de cada guía
+            # Filtramos estados de excepción (como los 4, 6, 8 u otros donde e_code puede ser nulo o diferente)
+            # Para que rn=1 corresponda al último evento que marca su posición (despachado, inventariado, etc)
             subq = (
                 session.query(
                     TrackingEventORM.waybill_no,
@@ -108,10 +105,14 @@ class TrackingEventRepository:
                     ).label("rn"),
                 )
                 .filter(TrackingEventORM.waybill_no.in_(chunk))
+                .filter(
+                    (TrackingEventORM.event_code.notin_([4, 6, 8])) | 
+                    (TrackingEventORM.event_code.is_(None))
+                )
                 .subquery()
             )
 
-            # Extraemos el escaneo `rn=1` (el más reciente)
+            # Extraemos el escaneo `rn=1` (el más reciente NO excepcional)
             rows = session.query(
                 subq.c.waybill_no, 
                 subq.c.event_code, 
@@ -119,16 +120,13 @@ class TrackingEventRepository:
                 subq.c.type_name
             ).filter(subq.c.rn == 1).all()
 
-            for wb, e_code, scan_net_id, t_name in rows:
-                is_exception = t_name and "excepción" in t_name.lower()
-                
+            for wb, e_code, scan_net_id, t_name in rows:                
                 if e_code == 1:
                     # code=1 es despacho/salida física confirmada
                     departed_wbs.add(wb)
                 elif current_network_id and scan_net_id and scan_net_id != str(current_network_id):
-                    # Si el último escaneo se originó en OTRA red, y NO es puramente un reporte de excepción
-                    if not is_exception:
-                        departed_wbs.add(wb)
+                    # Si el último escaneo se originó en OTRA red
+                    departed_wbs.add(wb)
 
         return departed_wbs
 
