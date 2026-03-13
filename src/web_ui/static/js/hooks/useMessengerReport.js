@@ -18,7 +18,30 @@ export function useMessengerReport() {
         setError('');
         try {
             const data = await fetchDailyReport(startDate, endDate);
-            const recs = data.records || [];
+            const baseRecs = data.records || [];
+            
+            const recsMap = new Map();
+            for (const r of baseRecs) {
+                const code = r.dispatchStaffCode;
+                if (!recsMap.has(code)) {
+                    recsMap.set(code, {
+                        ...r,
+                        dispatchTotal: 0,
+                        signTotal: 0,
+                        nosignTotal: 0,
+                        signTotalRate: '0%'
+                    });
+                }
+                const current = recsMap.get(code);
+                current.dispatchTotal += parseInt(r.dispatchTotal || 0, 10);
+                current.signTotal += parseInt(r.signTotal || 0, 10);
+                current.nosignTotal += parseInt(r.nosignTotal || 0, 10);
+                if (current.dispatchTotal > 0) {
+                    current.signTotalRate = `${((current.signTotal / current.dispatchTotal) * 100).toFixed(2)}%`;
+                }
+            }
+            
+            const recs = Array.from(recsMap.values());
             setRecords(recs);
             setSelectedCodes(new Set(recs.map((r) => r.dispatchStaffCode)));
         } catch (e) {
