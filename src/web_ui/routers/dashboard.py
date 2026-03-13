@@ -201,6 +201,11 @@ async def get_network_waybills(req: dict = Body(...), background_tasks: Backgrou
                 
                 if any(x in r_type or x in r_status for x in ["Entregado", "Devuelto", "Firmado", "Anulado"]):
                     continue
+                
+                # 3. Filtro específico pedido: Carga y expedición en Cund-Punto6
+                # Si el estado es "Carga y expedición" y la red es Punto6 (1009), se va.
+                if "Carga y expedición" in r_type and (r_net_id == "1009" or "Cund-Punto6" in r_net_name):
+                    continue
 
                 filtered.append(r)
             
