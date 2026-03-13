@@ -5,17 +5,17 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
-# Inclusión de Routers
-app.include_router(waybills.router)
-app.include_router(messengers.router)
-app.include_router(returns.router)
-app.include_router(settlements.router)
-app.include_router(novedades.router)
-app.include_router(daily_report.router)
-app.include_router(auth.router)
-app.include_router(ws.router)
-app.include_router(dashboard.router)
-
+from src.web_ui.routers import (
+    waybills, 
+    messengers, 
+    returns, 
+    settlements, 
+    novedades, 
+    daily_report, 
+    auth, 
+    ws, 
+    dashboard
+)
 from src.infrastructure.database.connection import initialize_database
 from src.web_ui import security
 from src.services.temu_prediction_service import temu_prediction_service
