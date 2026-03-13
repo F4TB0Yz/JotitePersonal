@@ -90,8 +90,8 @@ async def _returns_sync_loop() -> None:
 @app.on_event("startup")
 async def startup_event():
     global _returns_sync_task
-    # Inicialización de DB una sola vez al arranque
-    await asyncio.to_thread(initialize_database)
+    # Inicialización de DB en SEGUNDO PLANO para no bloquear el arranque de Heroku (Boot Timeout)
+    asyncio.create_task(asyncio.to_thread(initialize_database))
     temu_prediction_service.start()
     _returns_sync_task = asyncio.create_task(_returns_sync_loop())
 

@@ -1,3 +1,4 @@
+import os
 import logging
 
 from sqlalchemy import create_engine
@@ -29,6 +30,19 @@ def initialize_database() -> None:
     global _db_initialized
     if _db_initialized:
         return
+    
+    # Aseguramos que el directorio de la base de datos existe (fundamental para SQLite en Heroku)
+    try:
+        db_url = get_database_url()
+        if db_url.startswith("sqlite:///"):
+            path = db_url.replace("sqlite:///", "")
+            dirname = os.path.dirname(os.path.abspath(path))
+            if dirname and not os.path.exists(dirname):
+                os.makedirs(dirname, exist_ok=True)
+                logger.info("Directorio de base de datos creado: %s", dirname)
+    except Exception as e:
+        logger.warning("Error al intentar crear el directorio de la base de datos: %s", e)
+
     try:
         Base.metadata.create_all(bind=_engine)
         run_all_migrations(_engine)
