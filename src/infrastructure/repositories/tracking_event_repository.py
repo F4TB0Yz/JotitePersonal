@@ -106,7 +106,7 @@ Dada una lista de guías pendientes, devuelve aquellas que según su historial
                 )
                 .filter(TrackingEventORM.waybill_no.in_(chunk))
                 .filter(
-                    (TrackingEventORM.event_code.notin_([4, 6, 8, 110])) | 
+                    (TrackingEventORM.event_code.notin_([4, 6, 8])) | 
                     (TrackingEventORM.event_code.is_(None))
                 )
                 .subquery()
@@ -121,8 +121,8 @@ Dada una lista de guías pendientes, devuelve aquellas que según su historial
             ).filter(subq.c.rn == 1).all()
 
             for wb, e_code, scan_net_id, t_name in rows:                
-                if e_code == 1:
-                    # code=1 es despacho/salida física confirmada
+                if e_code in (1, 5, 7, 80):
+                    # 1: Despacho, 5: Entrega, 7: Devolución, 80: Firmado (terminal)
                     departed_wbs.add(wb)
                 elif current_network_id and scan_net_id and str(scan_net_id) != str(current_network_id):
                     # Si el último escaneo se originó en OTRA red
