@@ -380,6 +380,24 @@ async def get_waybills_intelligence_export(payload: WaybillList):
 
     return await asyncio.to_thread(_fetch_all)
 
+@router.post("/export-csv")
+async def export_waybills_csv(payload: List[dict]):
+    """
+    Recibe los datos consolidados del frontend y los devuelve como un CSV streameado.
+    """
+    if not payload:
+        raise HTTPException(status_code=400, detail="No hay datos para exportar.")
+    try:
+        from src.utils.exporter import export_to_csv_stream
+        csv_bytes = export_to_csv_stream(payload)
+        return StreamingResponse(
+            io.BytesIO(csv_bytes),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=reporte_consolidado.csv"}
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
 
 @router.get("/{waybill_no}/timeline")
 async def get_waybill_timeline(waybill_no: str, max_age_minutes: int = 30):

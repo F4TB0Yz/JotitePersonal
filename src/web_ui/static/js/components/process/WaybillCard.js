@@ -143,6 +143,12 @@ export default function WaybillCard({ data, showArribo }) {
                     <span className="info-value">${data.city}</span>
                 </div>
                 <hr className="card-divider" />
+                ${data.exceptions
+                    ? html`<div className="info-row card-exceptions-row">
+                        <span className="info-label">Excepciones</span>
+                        <span className="info-value exception-text" style=${{ color: '#f87171', fontWeight: '600' }}>${data.exceptions}</span>
+                    </div>`
+                    : null}
                 ${showArribo
                     ? html`<div className="info-row arribo-row">
                         <span className="info-label">Arribo P6</span>

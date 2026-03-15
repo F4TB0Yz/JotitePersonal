@@ -21,6 +21,7 @@
 - **2026-03-15**: **Hotfix** en `main_web.py` para corregir el error en el loop de sincronización de devoluciones (`_run_returns_sync_cycle()`). Se añade el uso de `SessionLocal` para inyectar el parámetro `session` requerido por `_build_returns_service()`.
 - **2026-03-15**: Refactorización de `ReportService` y `exporter.py`. Se habilitó el cruce de datos con repositorios locales (`ReturnsRepository`, `NovedadesRepository`) y se transformó la exportación CSV en un generador de streams de dominio puro (flujo de bytes), mitigando dependencias de infraestructura en útiles.
 - **2026-03-15**: **UI**: Añadido el cactus como favicon (`/static/favicon.webp`) en plantillas de `index` y `login`, y ruta explícita `/favicon.ico` en el servidor.
+- **2026-03-15**: **UI/Impresión**: Finalización del sistema de Tarjetas PDF/Impresión (RF4). Se implementó descarga CSV vía streams, Skeleton Loading para carga progresiva de guías, integración de Excepciones cruzadas en el cuerpo de la tarjeta, y refinamiento CSS Ink-Saver para impresión pura.
 
 ## Próximos Pasos
 1. Validar rendimiento y visualización del Dark Mode PDF en los navegadores del usuario (Pendiente).

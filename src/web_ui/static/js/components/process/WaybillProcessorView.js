@@ -39,6 +39,27 @@ export default function WaybillProcessorView() {
         startProcessing
     } = useWaybillProcessor();
 
+    const handleDownloadCSV = async () => {
+        if (!cards.length) return;
+        try {
+            const response = await fetch('/api/waybills/export-csv', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(cards)
+            });
+            if (!response.ok) throw new Error('Error al exportar CSV');
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `reporte_consolidado_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            alert(err.message || 'Error descargando reporte');
+        }
+    };
+
     const handlePrint = () => {
         window.print();
     };
@@ -121,7 +142,8 @@ export default function WaybillProcessorView() {
                             ${filter.label}
                         </button>`)}
                 </div>
-                <div className="print-btn-wrapper">
+                <div className="print-btn-wrapper" style=${{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <button type="button" className="secondary-btn" onClick=${handleDownloadCSV} disabled=${!cards.length}>Descargar CSV</button>
                     <button type="button" className="secondary-btn" onClick=${handlePrint}>Imprimir / PDF</button>
                 </div>
             </div>
@@ -135,11 +157,25 @@ export default function WaybillProcessorView() {
                 <h2>Mensajero: <span>${mensajeroInput || '_________________'}</span></h2>
             </div>
             <div className="cards-grid">
-                ${filteredCards.length === 0
+                ${filteredCards.map((card) => html`<${WaybillCard} key=${card.waybill_no} data=${card} showArribo=${showArribo} />`)}
+                ${isProcessing && (waybillCount > cards.length)
+                    ? Array.from({ length: waybillCount - cards.length }).map((_, i) => html`
+                        <div className="waybill-card skeleton" key=${`skel-${i}`}>
+                            <div className="card-status-bar"></div>
+                            <div className="card-header">
+                                <span className="wb-number">Cargando...</span>
+                            </div>
+                            <div className="card-body">
+                                <p className="skeleton-placeholder" style=${{ height: '14px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', width: '80%', marginBottom: '8px' }}></p>
+                                <p className="skeleton-placeholder" style=${{ height: '14px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', width: '60%' }}></p>
+                            </div>
+                        </div>`)
+                    : null}
+                ${filteredCards.length === 0 && !isProcessing
                     ? html`<div className="empty-state">
                         <p>${cards.length === 0 ? 'Ingresa tus números de guía y presiona "Procesar"' : 'Sin resultados para los filtros seleccionados.'}</p>
                     </div>`
-                    : filteredCards.map((card) => html`<${WaybillCard} key=${card.waybill_no} data=${card} showArribo=${showArribo} />`)}
+                    : null}
             </div>
         </main>
         </div>
