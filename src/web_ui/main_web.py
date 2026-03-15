@@ -16,7 +16,7 @@ from src.web_ui.routers import (
     ws, 
     dashboard
 )
-from src.infrastructure.database.connection import initialize_database
+from src.infrastructure.database.connection import initialize_database, SessionLocal
 from src.web_ui import security
 from src.services.temu_prediction_service import temu_prediction_service
 
@@ -65,14 +65,15 @@ def _run_returns_sync_cycle() -> dict:
     sync_size = int(os.getenv("RETURNS_SYNC_PAGE_SIZE", "50"))
     sync_max_pages = int(os.getenv("RETURNS_SYNC_MAX_PAGES", "20"))
     start_time, end_time = returns._resolve_returns_range(None, None, lookback_days=lookback_days)
-    service = returns._build_returns_service()
-    return service.sync_statuses(
-        apply_time_from=start_time,
-        apply_time_to=end_time,
-        statuses=(1, 2, 3),
-        size=sync_size,
-        max_pages=sync_max_pages,
-    )
+    with SessionLocal() as db_session:
+        service = returns._build_returns_service(db_session)
+        return service.sync_statuses(
+            apply_time_from=start_time,
+            apply_time_to=end_time,
+            statuses=(1, 2, 3),
+            size=sync_size,
+            max_pages=sync_max_pages,
+        )
 
 async def _returns_sync_loop() -> None:
     interval = max(60, int(os.getenv("RETURNS_SYNC_INTERVAL_SECONDS", "900")))
