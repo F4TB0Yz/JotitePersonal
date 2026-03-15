@@ -2,7 +2,10 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Body
 from typing import List, Optional
 import os
 import shutil
-from src.services.novedades_service import novedades_service
+from src.services.novedades_service import NovedadesService
+from src.infrastructure.repositories.novedades_repository import NovedadesRepository
+from src.infrastructure.database.connection import SessionLocal
+from src.domain.exceptions import EntityNotFoundError
 
 router = APIRouter(prefix="/api/novedades", tags=["Novedades"])
 
@@ -29,19 +32,25 @@ async def create_novedad(
                     # Store web-accessible path
                     images_paths.append(f"/static/uploads/novedades/{waybill}_{safe_filename}")
         
-        nid = novedades_service.create_novedad(waybill, description, status, type_cat, images_paths)
-        return {"success": True, "id": nid, "message": "Novedad creada exitosamente."}
+        with SessionLocal() as db:
+            repo = NovedadesRepository(db)
+            service = NovedadesService(repo)
+            nid = service.create_novedad(waybill, description, status, type_cat, images_paths)
+            return {"success": True, "id": nid, "message": "Novedad creada exitosamente."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/")
 async def get_novedades(waybill: Optional[str] = None):
     try:
-        if waybill:
-            items = novedades_service.get_novedades_by_waybill(waybill)
-        else:
-            items = novedades_service.get_all_novedades()
-        return items
+        with SessionLocal() as db:
+            repo = NovedadesRepository(db)
+            service = NovedadesService(repo)
+            if waybill:
+                items = service.get_novedades_by_waybill(waybill)
+            else:
+                items = service.get_all_novedades()
+            return items
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -51,9 +60,15 @@ async def update_novedad_status(novedad_id: int, payload: dict = Body(...)):
         new_status = payload.get("status")
         if not new_status:
             raise HTTPException(status_code=400, detail="Missing status")
-        success = novedades_service.update_novedad_status(novedad_id, new_status)
-        if not success:
-            raise HTTPException(status_code=404, detail="Novedad not found")
-        return {"success": True}
+        with SessionLocal() as db:
+            repo = NovedadesRepository(db)
+            service = NovedadesService(repo)
+            try:
+                service.update_novedad_status(novedad_id, new_status)
+                return {"success": True}
+            except EntityNotFoundError:
+                raise HTTPException(status_code=404, detail="Novedad not found")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

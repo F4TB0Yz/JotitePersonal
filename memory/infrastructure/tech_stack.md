@@ -29,7 +29,9 @@ Todos los endpoints son `POST` a `https://gw.jtexpress.co/operatingplatform/`.
 
 ## Stack Técnico
 - **Backend**: Python (FastAPI)
-- **Frontend**: React 18 + HTM renderizado como ES Modules nativos (sin bundler). Los componentes viven en `src/web_ui/static/js`, con `main.js` montando la SPA sobre `#root` definido en la plantilla.
+- **Persistencia**: SQLAlchemy (1.4+/2.0) con soporte para SQLite como base de datos local.
+- **Migraciones**: Sistema de inicialización automática y migraciones en `src/infrastructure/database/migrations.py`.
+- **Frontend**: React 18 vía ESM/Import Maps sin build step. Los componentes viven en `src/web_ui/static/js`, con `main.js` montando la SPA sobre `#root` definido en la plantilla.
 - **Estilos**: CSS sin preprocesador, manteniendo el diseño glassmorphism y reglas de impresión existentes.
 - **Fase Actual**: Fase 2 (Interfaz Web).
 - **Formato de Salida**: 

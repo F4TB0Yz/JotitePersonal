@@ -1,7 +1,7 @@
 # Context: Session & Current State
 
 ## Current Focus
-- Definir el stack tecnológico y explorar los endpoints de la API interna de J&T.
+- Refactorizando servicios para cumplir con el patrón Repository y desacoplar SQLAlchemy de la lógica de negocio.
 
 ## Recent Decisions
 - **2026-02-24**: Estructura de memoria "Clean Architecture" aprobada e implementada en `/memory/`.
@@ -16,8 +16,10 @@
 - **2026-02-24**: Agregada dirección detallada del destinatario (`receiverDetailedAddress`) al reporte.
 - **2026-02-24**: El usuario aprueba el inicio de la Fase 2 (Interfaz web con FastAPI y Vanilla UI) para visualizar tarjetas de paquetes y generar PDFs.
 - **2026-02-24**: Implementada la Fase 2 web. Se añadió procesamiento en tiempo real con WebSockets y soporte para exportar PDFs respetando el modo oscuro original.
+- **2026-02-26**: Implementación de la capa de persistencia y refactorización de `ReturnsService` para incluir sincronización de snapshots.
+- **2026-03-15**: Refactorización completa de los servicios `ReturnsService`, `NovedadesService` y `KPIService` aplicando el patrón **Repository** y desacoplando SQLAlchemy de la lógica de aplicación. Creación de `ReturnsRepository`, `NovedadesRepository` y `KPIRepository`, y estandarización de excepciones de dominio.
 
 ## Próximos Pasos
-1. Validar rendimiento y visualización del Dark Mode PDF en los navegadores del usuario.
-2. Desplegar aplicación o empaquetar en ejecutable si fuera necesario en el futuro.
+1. Validar rendimiento y visualización del Dark Mode PDF en los navegadores del usuario (Pendiente).
+2. Monitorear estabilidad del sistema tras el desacoplamiento de persistencia.
 

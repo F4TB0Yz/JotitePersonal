@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 from src.infrastructure.repositories.config_repository import ConfigRepository
 from src.jt_api.client import JTClient
 from src.services.returns_service import ReturnsService
+from src.infrastructure.repositories.returns_repository import ReturnsRepository
+from src.infrastructure.database.connection import SessionLocal
 
 router = APIRouter(prefix="/api/returns", tags=["Returns"])
 
@@ -45,10 +47,11 @@ def _resolve_returns_range(date_from: str | None, date_to: str | None, lookback_
         _format_returns_datetime(date_to, is_end=True) or default_to,
     )
 
-def _build_returns_service() -> ReturnsService:
+def _build_returns_service(session) -> ReturnsService:
     cfg = ConfigRepository.get_cached()
     apply_network_id = int(os.getenv("RETURNS_APPLY_NETWORK_ID", "1009"))
-    return ReturnsService(JTClient(config=cfg), apply_network_id=apply_network_id)
+    repo = ReturnsRepository(session)
+    return ReturnsService(repo, JTClient(config=cfg), apply_network_id=apply_network_id)
 
 @router.get("/applications")
 async def get_return_applications(
@@ -66,15 +69,16 @@ async def get_return_applications(
 
     try:
         def _run():
-            service = _build_returns_service()
-            return service.fetch_applications(
-                status=status,
-                apply_time_from=start_time,
-                apply_time_to=end_time,
-                current=current,
-                size=size,
-                save_snapshot=save_snapshot,
-            )
+            with SessionLocal() as db_session:
+                service = _build_returns_service(db_session)
+                return service.fetch_applications(
+                    status=status,
+                    apply_time_from=start_time,
+                    apply_time_to=end_time,
+                    current=current,
+                    size=size,
+                    save_snapshot=save_snapshot,
+                )
 
         data = await asyncio.to_thread(_run)
         return {"success": True, "data": data}
@@ -100,15 +104,16 @@ async def get_return_snapshots(
 
     try:
         def _run():
-            service = _build_returns_service()
-            return service.list_snapshots(
-                status=status,
-                waybill_no=waybill_no,
-                date_from=start_time or None,
-                date_to=end_time or None,
-                limit=limit,
-                offset=offset,
-            )
+            with SessionLocal() as db_session:
+                service = _build_returns_service(db_session)
+                return service.list_snapshots(
+                    status=status,
+                    waybill_no=waybill_no,
+                    date_from=start_time or None,
+                    date_to=end_time or None,
+                    limit=limit,
+                    offset=offset,
+                )
 
         data = await asyncio.to_thread(_run)
         return {"success": True, "data": data}
@@ -128,14 +133,15 @@ async def sync_return_snapshots(payload: ReturnsSyncPayload):
     try:
         async with returns_sync_lock:
             def _run():
-                service = _build_returns_service()
-                return service.sync_statuses(
-                    apply_time_from=start_time,
-                    apply_time_to=end_time,
-                    statuses=statuses,
-                    size=payload.size,
-                    max_pages=payload.max_pages,
-                )
+                with SessionLocal() as db_session:
+                    service = _build_returns_service(db_session)
+                    return service.sync_statuses(
+                        apply_time_from=start_time,
+                        apply_time_to=end_time,
+                        statuses=statuses,
+                        size=payload.size,
+                        max_pages=payload.max_pages,
+                    )
 
             data = await asyncio.to_thread(_run)
 
@@ -160,17 +166,18 @@ async def get_return_printable(
 
     try:
         def _run():
-            service = _build_returns_service()
-            return service.fetch_printable_list(
-                apply_time_from=start_time,
-                apply_time_to=end_time,
-                current=current,
-                size=size,
-                pring_flag=pring_flag,
-                printer=printer,
-                template_size=template_size,
-                pring_type=pring_type,
-            )
+            with SessionLocal() as db_session:
+                service = _build_returns_service(db_session)
+                return service.fetch_printable_list(
+                    apply_time_from=start_time,
+                    apply_time_to=end_time,
+                    current=current,
+                    size=size,
+                    pring_flag=pring_flag,
+                    printer=printer,
+                    template_size=template_size,
+                    pring_type=pring_type,
+                )
 
         data = await asyncio.to_thread(_run)
         return {"success": True, "data": data}
@@ -183,13 +190,14 @@ async def get_return_printable(
 async def get_return_print_url(payload: ReturnPrintUrlPayload):
     try:
         def _run():
-            service = _build_returns_service()
-            return service.get_print_waybill_url(
-                waybill_no=payload.waybill_no,
-                template_size=payload.template_size,
-                pring_type=payload.pring_type,
-                printer=payload.printer,
-            )
+            with SessionLocal() as db_session:
+                service = _build_returns_service(db_session)
+                return service.get_print_waybill_url(
+                    waybill_no=payload.waybill_no,
+                    template_size=payload.template_size,
+                    pring_type=payload.pring_type,
+                    printer=payload.printer,
+                )
 
         data = await asyncio.to_thread(_run)
         return {"success": True, "data": data}

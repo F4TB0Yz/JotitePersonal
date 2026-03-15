@@ -13,8 +13,10 @@ from src.infrastructure.repositories.tracking_event_repository import TrackingEv
 from src.jt_api.client import JTClient
 from src.services.temu_alert_service import TemuAlertService
 from src.services.temu_prediction_service import temu_prediction_service
-from src.services.novedades_service import novedades_service
-from src.services.kpi_service import kpi_service
+from src.services.novedades_service import NovedadesService
+from src.services.kpi_service import KPIService
+from src.infrastructure.repositories.novedades_repository import NovedadesRepository
+from src.infrastructure.repositories.kpi_repository import KPIRepository
 
 router = APIRouter(prefix="/api", tags=["Dashboard & Core"])
 
@@ -105,7 +107,10 @@ async def global_search(q: str, limit: int = 6):
             pass
 
         try:
-            novedades_results = novedades_service.search_novedades(query, limit=max_items)
+            with SessionLocal() as db:
+                novedades_repo = NovedadesRepository(db)
+                novedades_svc = NovedadesService(novedades_repo)
+                novedades_results = novedades_svc.search_novedades(query, limit=max_items)
         except Exception:
             pass
 
@@ -273,11 +278,14 @@ async def get_kpis_overview(
 ):
     try:
         def _run():
-            return kpi_service.get_overview(
-                start_date=start_date,
-                end_date=end_date,
-                ranking_limit=ranking_limit,
-            )
+            with SessionLocal() as db:
+                repo = KPIRepository(db)
+                svc = KPIService(repo)
+                return svc.get_overview(
+                    start_date=start_date,
+                    end_date=end_date,
+                    ranking_limit=ranking_limit,
+                )
         data = await asyncio.to_thread(_run)
         return {"success": True, "data": data}
     except Exception as exc:

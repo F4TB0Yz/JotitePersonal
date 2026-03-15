@@ -3,13 +3,13 @@ from collections import defaultdict
 from datetime import datetime, date
 from typing import Any
 
-from src.infrastructure.database.connection import SessionLocal, initialize_database
+from src.infrastructure.repositories.kpi_repository import KPIRepository
 from src.infrastructure.database.models import NovedadORM, SettlementORM
 
 
 class KPIService:
-    def __init__(self):
-        pass
+    def __init__(self, repository: KPIRepository):
+        self.repository = repository
 
     @staticmethod
     def _parse_datetime(value: Any) -> datetime | None:
@@ -44,29 +44,11 @@ class KPIService:
             end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
         return start, end
 
-    @staticmethod
-    def _in_range(value: datetime | None, start: datetime | None, end: datetime | None) -> bool:
-        if value is None:
-            return False
-        if start and value < start:
-            return False
-        if end and value > end:
-            return False
-        return True
-
     def _load_settlements(self, start: datetime | None, end: datetime | None) -> list[SettlementORM]:
-        with SessionLocal() as session:
-            rows = session.query(SettlementORM).order_by(SettlementORM.generated_at.desc()).all()
-            if not start and not end:
-                return rows
-            return [row for row in rows if self._in_range(row.generated_at, start, end)]
+        return self.repository.get_settlements(start, end)
 
     def _load_novedades(self, start: datetime | None, end: datetime | None) -> list[NovedadORM]:
-        with SessionLocal() as session:
-            rows = session.query(NovedadORM).order_by(NovedadORM.created_at.desc()).all()
-            if not start and not end:
-                return rows
-            return [row for row in rows if self._in_range(row.created_at, start, end)]
+        return self.repository.get_novedades(start, end)
 
     def _calculate_average_delivery_hours(self, settlements: list[SettlementORM]) -> float:
         total_hours = 0.0
@@ -222,6 +204,3 @@ class KPIService:
             "trend": self._build_daily_trend(settlements, novedades),
             "generated_at": datetime.utcnow().isoformat(),
         }
-
-
-kpi_service = KPIService()

@@ -11,6 +11,7 @@
 3. Visualizar el estado de los paquetes en una interfaz web moderna, ágil y reactiva.
 4. Generar tarjetas de paquetes no entregados optimizadas para impresión en PDF directamente desde el navegador.
 5. Exportar el consolidado a formato CSV.
+6. **Sincronización de Estados**: El sistema debe ser capaz de traer aplicaciones de devolución y guardar una "fotografía" (snapshot) del estado en ese momento.
 
 ## Datos para Informes (Extraídos de API)
 Para los informes de **paquetes, guías y mensajeros**, usaremos:
@@ -28,6 +29,6 @@ Para los informes de **paquetes, guías y mensajeros**, usaremos:
 - [x] Filtrar paquetes entregados y no entregados.
 - [x] Exportar vistas filtradas a PDF utilizando las características de impresión del navegador.
 
-## Notas de Implementación (2026-02-26)
-- La interfaz web ahora es un SPA en React 18 (ES Modules) que consume los endpoints existentes a través de servicios dedicados (`src/web_ui/static/js/services`).
-- La lógica de presentación se divide en hooks (capa de aplicación) y componentes por dominio (procesador de guías, dashboard de pendientes y administración de mensajeros), cumpliendo con la arquitectura limpia solicitada.
+## Notas de Implementación
+- **2026-02-26**: La interfaz web ahora es un SPA en React 18 (ES Modules) que consume los endpoints existentes a través de servicios dedicados (`src/web_ui/static/js/services`).
+- **2026-03-15**: Refactorización de servicios (`Returns`, `Novedades`, `KPIs`) para cumplimiento de **Clean Architecture** mediante la extracción de capas de repositorio (`*Repository`) e inyección de dependencias en constructores.

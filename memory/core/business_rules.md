@@ -18,3 +18,5 @@ Optimizar el tiempo dedicado a la generación de **informes de paquetes, guías 
 1. **Autenticación via Cookies**: El login de J&T tiene CAPTCHA. La autenticación se gestiona manualmente por el usuario y se pasan las cookies directamente a la API interna. **Nunca** intentar automatizar el login.
 2. **API Interna**: Se consume la API interna de J&T, no una API pública ni scraping del DOM.
 3. **Informes**: Los informes deben cubrir: **paquetes**, **guías** y **mensajeros**.
+4. **Persistencia Local**: Toda entidad crítica (como las Devoluciones/Snapshots) debe ser persistida localmente para permitir auditoría y trabajo offline.
+5. **Gestión de Errores**: Es obligatorio el uso de las excepciones de dominio definidas en `src/domain/exceptions.py` (`DomainException`, `APIError`, etc.) en lugar de excepciones nativas genéricas.

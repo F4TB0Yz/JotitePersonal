@@ -5,13 +5,13 @@ from typing import Any
 from src.infrastructure.database.connection import SessionLocal, initialize_database
 from src.infrastructure.database.models import MessengerRateORM, SettlementORM
 from src.jt_api.client import JTClient
-from src.services.novedades_service import novedades_service
+from src.services.novedades_service import NovedadesService
 
 
 class SettlementService:
-    def __init__(self, client: JTClient):
+    def __init__(self, client: JTClient, novedades_svc: NovedadesService):
         self.client = client
-        initialize_database()
+        self.novedades_svc = novedades_svc
 
     @staticmethod
     def _to_decimal(value: Any, default: str = "0") -> Decimal:
@@ -105,7 +105,7 @@ class SettlementService:
         delivered_rows = [row for row in records if self._is_delivered(row)]
         pending_rows = [row for row in records if not self._is_delivered(row)]
 
-        novedades = novedades_service.get_all_novedades()
+        novedades = self.novedades_svc.get_all_novedades()
         unresolved_waybills = {
             item.get("waybill")
             for item in novedades

@@ -15,3 +15,11 @@ class ConfigError(DomainException):
 class EntityNotFoundError(DomainException):
     """Raised when a requested entity cannot be found in the system."""
     pass
+
+class InvalidStatusError(DomainException):
+    """Raised when an invalid status is provided."""
+    pass
+
+class ValidationError(DomainException):
+    """Raised when data validation fails."""
+    pass
