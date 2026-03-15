@@ -44,8 +44,12 @@ async def ingest_daily_report_entries(payload: DailyReportIngestPayload, db: Ses
             # Concurrencia requiere sesiones separadas por hilo
             session_worker = SessionLocal()
             try:
+                from src.infrastructure.repositories.returns_repository import ReturnsRepository
+                from src.infrastructure.repositories.novedades_repository import NovedadesRepository
+                returns_repo = ReturnsRepository(session_worker)
+                novedades_repo = NovedadesRepository(session_worker)
                 tracking_repo = TrackingEventRepository(session_worker)
-                service = ReportService(shared_client, tracking_repo=tracking_repo)
+                service = ReportService(shared_client, returns_repo, novedades_repo, tracking_repo=tracking_repo)
                 try:
                     row = service.get_consolidated_data(waybill_no)
                     return {

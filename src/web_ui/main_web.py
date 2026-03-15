@@ -113,6 +113,10 @@ static_dir = os.path.join(os.path.dirname(__file__), "static")
 templates_dir = os.path.join(os.path.dirname(__file__), "templates")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+@app.get("/favicon.ico", include_in_schema=False)
+async def serve_favicon():
+    return FileResponse(os.path.join(static_dir, "favicon.webp"), media_type="image/webp")
+
 @app.get("/")
 async def serve_index():
     return FileResponse(os.path.join(templates_dir, "index.html"))

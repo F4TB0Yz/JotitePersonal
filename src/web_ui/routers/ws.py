@@ -29,13 +29,23 @@ async def websocket_process(websocket: WebSocket):
             await websocket.close()
             return
 
+        db_session = SessionLocal()
         try:
             config = ConfigRepository.get_cached(); client = JTClient(config=config)
-            service = ReportService(client, TrackingEventRepository(SessionLocal()))
+            from src.infrastructure.repositories.returns_repository import ReturnsRepository
+            from src.infrastructure.repositories.novedades_repository import NovedadesRepository
+            service = ReportService(
+                client, 
+                returns_repo=ReturnsRepository(db_session),
+                novedades_repo=NovedadesRepository(db_session),
+                tracking_repo=TrackingEventRepository(db_session)
+            )
         except Exception as e:
+            db_session.close()
             await websocket.send_json({"type": "error", "message": f"Error inicializando cliente: {e}"})
             await websocket.close()
             return
+
 
         for wb in waybills:
             wb = wb.strip()
@@ -84,6 +94,11 @@ async def websocket_process(websocket: WebSocket):
         except:
             pass
     finally:
+        if 'db_session' in locals():
+            try:
+                db_session.close()
+            except:
+                pass
         try:
             await websocket.close()
         except:

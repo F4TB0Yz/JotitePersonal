@@ -255,7 +255,7 @@ async def get_waybills_intelligence_export(payload: WaybillList):
 
     def _fetch_all():
         config = ConfigRepository.get_cached(); client = JTClient(config=config)
-        report_service = ReportService(client)
+        from src.infrastructure.database.connection import SessionLocal
         results = {}
 
         def extract_export_payload(waybill_no: str):
@@ -323,8 +323,18 @@ async def get_waybills_intelligence_export(payload: WaybillList):
             except Exception as exc:
                 payload_item["errors"].append(f"detail: {exc}")
 
+            db_worker = SessionLocal()
             try:
-                events = report_service.get_timeline(waybill_no, max_age_minutes=60)
+                from src.infrastructure.repositories.returns_repository import ReturnsRepository
+                from src.infrastructure.repositories.novedades_repository import NovedadesRepository
+                from src.infrastructure.repositories.tracking_event_repository import TrackingEventRepository
+                worker_report_service = ReportService(
+                    client, 
+                    returns_repo=ReturnsRepository(db_worker), 
+                    novedades_repo=NovedadesRepository(db_worker), 
+                    tracking_repo=TrackingEventRepository(db_worker)
+                )
+                events = worker_report_service.get_timeline(waybill_no, max_age_minutes=60)
                 timeline = [
                     {
                         "time": event.time,
@@ -349,6 +359,8 @@ async def get_waybills_intelligence_export(payload: WaybillList):
                 }
             except Exception as exc:
                 payload_item["errors"].append(f"timeline: {exc}")
+            finally:
+                db_worker.close()
 
             return waybill_no, payload_item
 
@@ -378,9 +390,14 @@ async def get_waybill_timeline(waybill_no: str, max_age_minutes: int = 30):
     try:
         def _fetch():
             config = ConfigRepository.get_cached(); client = JTClient(config=config)
-            service = ReportService(client)
-            return service.get_timeline(normalized_wb, max_age_minutes=max_age_minutes)
-
+            from src.infrastructure.database.connection import SessionLocal
+            from src.infrastructure.repositories.returns_repository import ReturnsRepository
+            from src.infrastructure.repositories.novedades_repository import NovedadesRepository
+            with SessionLocal() as db_session:
+                returns_repo = ReturnsRepository(db_session)
+                novedades_repo = NovedadesRepository(db_session)
+                service = ReportService(client, returns_repo, novedades_repo)
+                return service.get_timeline(normalized_wb, max_age_minutes=max_age_minutes)
         events = await asyncio.to_thread(_fetch)
 
         current_status = events[0].status if events else "Desconocido"
