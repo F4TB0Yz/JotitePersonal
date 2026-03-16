@@ -53,25 +53,8 @@ async def websocket_process(websocket: WebSocket):
                 continue
             try:
                 data = await asyncio.to_thread(service.get_consolidated_data, wb)
-                result_dict = {
-                    "waybill_no": data.waybill_no,
-                    "status": data.status,
-                    "order_source": data.order_source,
-                    "sender": data.sender,
-                    "receiver": data.receiver,
-                    "city": data.city,
-                    "weight": data.weight,
-                    "last_event_time": data.last_event_time,
-                    "last_network": data.last_network,
-                    "last_staff": data.last_staff,
-                    "staff_contact": data.staff_contact,
-                    "is_delivered": data.is_delivered,
-                    "arrival_punto6_time": data.arrival_punto6_time,
-                    "delivery_time": data.delivery_time,
-                    "address": data.address,
-                    "exceptions": data.exceptions,
-                    "last_remark": data.last_remark
-                }
+                import dataclasses
+                result_dict = dataclasses.asdict(data)
                 await websocket.send_json({"type": "result", "data": result_dict})
             except Exception as e:
                 await websocket.send_json({

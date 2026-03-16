@@ -25,6 +25,7 @@
 - **2026-03-15**: **Refactorización**: Unificación de lógica de estados y saneamiento de `waybills.py`. Moviendo búsqueda de firmas (`signer_name`) y prioridad de direcciones redundantes hacia `ReportService.py`, acortando y estabilizando el consumo de endpoints en el router.
 - **2026-03-15**: **UI/Frontend**: Estabilización de reactividad y orden en el procesador de guías (`useWaybillProcessor.js`). Se introdujo placeholders precargados para conservar el orden visualizado, monitor pre-flight de estado de sesión (detección de 401), y lógica pura `parseInternalDate` para el filtrado seguro de tiempos.
 - **2026-03-15**: **Configuración**: Cierre del ciclo de sincronización automática. Integración de `ConfigRepository.set_key` y `/api/config/token` para salvado inmediato del token de Tampermonkey, y refactorización de `JTClient._post` para inyección de token en cada petición.
+- **2026-03-15**: **Inteligencia**: Activación del motor de predicción de entregas para Temu. Se introdujo el método `predict_delivery_failure` con heurísticas para evaluar Riesgo Crítico/Medio y asignación de `prediction_score` en la consolidación de guías.
 
 ## Próximos Pasos
 1. Validar rendimiento y visualización del Dark Mode PDF en los navegadores del usuario (Pendiente).
