@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from '../lib/ui.js';
-import { parseWaybillInput } from '../utils/formatters.js';
+import { parseWaybillInput, parseInternalDate } from '../utils/formatters.js';
 import { searchMessengers } from '../services/messengerService.js';
 
 function filterCard(record, filterTab, from, to) {
@@ -11,9 +11,11 @@ function filterCard(record, filterTab, from, to) {
     if (!matchesStatus) return false;
 
     if (!from && !to) return true;
-    if (!record.arrival_punto6_time || record.arrival_punto6_time === 'N/A') return false;
+    if (record.loading) return true; // Mostrar placeholders mientras cargan
+    
+    const cardDate = parseInternalDate(record.arrival_punto6_time);
+    if (!cardDate) return false;
 
-    const cardDate = new Date(record.arrival_punto6_time.split(' ')[0]);
     if (from) {
         const min = new Date(from);
         if (cardDate < min) return false;
@@ -72,10 +74,23 @@ export function useWaybillProcessor() {
         setIsProcessing(false);
     }, []);
 
-    const startProcessing = useCallback(() => {
+    const startProcessing = useCallback(async () => {
         if (!waybillList.length || isProcessing) return;
+
+        try {
+            const check = await fetch('/api/waybills/details', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ waybills: ["PING"] })
+            });
+            if (check.status === 401) {
+                setStatusMessage('Sesión expirada. Por favor inicia sesión nuevamente');
+                return;
+            }
+        } catch (_) {}
+
         closeWebSocket();
-        setCards([]);
+        setCards(waybillList.map(wb => ({ waybill_no: wb, loading: true })));
         processedRef.current = 0;
         setStatusMessage(`Consultando 0 / ${waybillList.length} guías...`);
         setIsProcessing(true);
@@ -109,7 +124,15 @@ export function useWaybillProcessor() {
                         console.warn('Resultado WS sin datos utilizables en useWaybillProcessor:', payload);
                         return;
                     }
-                    setCards((prev) => [...prev, record]);
+                    setCards((prev) => {
+                        const index = prev.findIndex(c => c.waybill_no === record.waybill_no);
+                        if (index !== -1) {
+                            const updated = [...prev];
+                            updated[index] = { ...record, loading: false };
+                            return updated;
+                        }
+                        return [...prev, { ...record, loading: false }];
+                    });
                     setStatusMessage(`Consultando ${processedRef.current} / ${waybillList.length} guías...`);
                 } else if (payload.type === 'done') {
                     setStatusMessage('¡Proceso completado!');
@@ -168,7 +191,7 @@ export function useWaybillProcessor() {
     }, []);
 
     useEffect(() => {
-        const pending = cards.filter((card) => !card.is_delivered && card.status !== 'Error' && card.last_staff && card.last_staff !== 'N/A');
+        const pending = cards.filter((card) => !card.loading && !card.is_delivered && card.status !== 'Error' && card.last_staff && card.last_staff !== 'N/A');
         const staffSet = new Set(pending.map((card) => card.last_staff));
         if (pending.length > 0 && staffSet.size === 1 && !mensajeroInput) {
             setMensajeroInput([...staffSet][0]);

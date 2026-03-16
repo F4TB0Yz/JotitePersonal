@@ -157,20 +157,20 @@ export default function WaybillProcessorView() {
                 <h2>Mensajero: <span>${mensajeroInput || '_________________'}</span></h2>
             </div>
             <div className="cards-grid">
-                ${filteredCards.map((card) => html`<${WaybillCard} key=${card.waybill_no} data=${card} showArribo=${showArribo} />`)}
-                ${isProcessing && (waybillCount > cards.length)
-                    ? Array.from({ length: waybillCount - cards.length }).map((_, i) => html`
-                        <div className="waybill-card skeleton" key=${`skel-${i}`}>
+                ${filteredCards.map((card) => card.loading 
+                    ? html`
+                        <div className="waybill-card skeleton" key=${card.waybill_no}>
                             <div className="card-status-bar"></div>
                             <div className="card-header">
-                                <span className="wb-number">Cargando...</span>
+                                <span className="wb-number">${card.waybill_no} (Cargando...)</span>
                             </div>
                             <div className="card-body">
                                 <p className="skeleton-placeholder" style=${{ height: '14px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', width: '80%', marginBottom: '8px' }}></p>
                                 <p className="skeleton-placeholder" style=${{ height: '14px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', width: '60%' }}></p>
                             </div>
-                        </div>`)
-                    : null}
+                        </div>`
+                    : html`<${WaybillCard} key=${card.waybill_no} data=${card} showArribo=${showArribo} />`
+                )}
                 ${filteredCards.length === 0 && !isProcessing
                     ? html`<div className="empty-state">
                         <p>${cards.length === 0 ? 'Ingresa tus números de guía y presiona "Procesar"' : 'Sin resultados para los filtros seleccionados.'}</p>

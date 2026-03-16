@@ -23,6 +23,7 @@
 - **2026-03-15**: **UI**: Añadido el cactus como favicon (`/static/favicon.webp`) en plantillas de `index` y `login`, y ruta explícita `/favicon.ico` en el servidor.
 - **2026-03-15**: **UI/Impresión**: Finalización del sistema de Tarjetas PDF/Impresión (RF4). Se implementó descarga CSV vía streams, Skeleton Loading para carga progresiva de guías, integración de Excepciones cruzadas en el cuerpo de la tarjeta, y refinamiento CSS Ink-Saver para impresión pura.
 - **2026-03-15**: **Refactorización**: Unificación de lógica de estados y saneamiento de `waybills.py`. Moviendo búsqueda de firmas (`signer_name`) y prioridad de direcciones redundantes hacia `ReportService.py`, acortando y estabilizando el consumo de endpoints en el router.
+- **2026-03-15**: **UI/Frontend**: Estabilización de reactividad y orden en el procesador de guías (`useWaybillProcessor.js`). Se introdujo placeholders precargados para conservar el orden visualizado, monitor pre-flight de estado de sesión (detección de 401), y lógica pura `parseInternalDate` para el filtrado seguro de tiempos.
 
 ## Próximos Pasos
 1. Validar rendimiento y visualización del Dark Mode PDF en los navegadores del usuario (Pendiente).

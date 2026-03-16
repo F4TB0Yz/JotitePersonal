@@ -84,3 +84,14 @@ export function formatCurrencyCOP(value) {
         maximumFractionDigits: 0
     });
 }
+
+export function parseInternalDate(dateStr) {
+    if (!dateStr || dateStr === 'N/A') return null;
+    try {
+        const [rawDate] = dateStr.split(' ');
+        const parsed = new Date(rawDate);
+        return isNaN(parsed.getTime()) ? null : parsed;
+    } catch (_) {
+        return null;
+    }
+}
