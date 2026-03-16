@@ -170,7 +170,7 @@ class ReportService:
             or "N/A"
         )
 
-        row = ConsolidatedReportRow(
+        return ConsolidatedReportRow(
             waybill_no=waybill_no,
             status=display_status or "Desconocido",
             order_source=details.get("orderSourceName") or "N/A",
@@ -191,10 +191,3 @@ class ReportService:
             last_remark=last_exception_remark or "",
             signer_name=signer_name or "N/A"
         )
-
-        from src.services.temu_prediction_service import temu_prediction_service
-        prediction = temu_prediction_service.predict_delivery_failure(row)
-        row.prediction_score = prediction.get("prediction_score", 0)
-        row.risk_level = prediction.get("risk_level", "Bajo")
-
-        return row

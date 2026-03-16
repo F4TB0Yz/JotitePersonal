@@ -54,5 +54,3 @@ class ConsolidatedReportRow:
     exceptions: str = ""
     last_remark: str = ""
     signer_name: str = ""
-    prediction_score: int = 0
-    risk_level: str = "Bajo"

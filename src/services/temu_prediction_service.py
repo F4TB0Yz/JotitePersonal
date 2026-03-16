@@ -88,39 +88,6 @@ class TemuPredictionService:
             "predicted96At": predicted_at.isoformat(),
         }
 
-    def predict_delivery_failure(self, row: "ConsolidatedReportRow") -> dict:
-        """Determina el riesgo de fallo de entrega de un paquete (Heurística).
-        Regla: si >2 intentos fallidos o Dirección Errónea sin novedad local, riesgo crítico.
-        """
-        if row.is_delivered:
-            return {"prediction_score": 0, "risk_level": "Bajo"}
-
-        exceptions = (row.exceptions or "").lower()
-        last_remark = (row.last_remark or "").lower()
-
-        # Intentos fallidos - buscamos conteo de palabras clave
-        fail_count = exceptions.count("fallido") + exceptions.count("intento")
-        has_failed_attempts = fail_count >= 2
-
-        is_wrong_address = "dirección" in exceptions or "errónea" in exceptions or "erronea" in last_remark
-
-        score = 0
-        risk_level = "Bajo"
-
-        if has_failed_attempts:
-            score = 100
-            risk_level = "Crítico"
-        elif is_wrong_address:
-            # Si hay novedad registrada mitiga el bloqueo crítico
-            if "novedad" in exceptions:
-                score = 50
-                risk_level = "Medio"
-            else:
-                score = 100
-                risk_level = "Crítico"
-
-        return {"prediction_score": score, "risk_level": risk_level}
-
     def start(self) -> None:
         if self._task and not self._task.done():
             return
