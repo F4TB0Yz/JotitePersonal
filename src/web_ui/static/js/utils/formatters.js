@@ -88,8 +88,8 @@ export function formatCurrencyCOP(value) {
 export function parseInternalDate(dateStr) {
     if (!dateStr || dateStr === 'N/A') return null;
     try {
-        const [rawDate] = dateStr.split(' ');
-        const parsed = new Date(rawDate);
+        const rawDate = dateStr.substring(0, 10);
+        const parsed = new Date(`${rawDate}T00:00:00`);
         return isNaN(parsed.getTime()) ? null : parsed;
     } catch (_) {
         return null;

@@ -31,6 +31,7 @@
 - **2026-03-16**: **Filtrado**: Corrección de lógica de Fecha de Arribo por Nodo Local. Se ajustó `arrival_punto6` para leer estrictamente la última "Descarga/Llegada" dentro del `home_node_id` (1009), con fallback a eventos de recolección en el origen.
 - **2026-03-16**: **Filtrado**: Optimización de detección de Arribo Local para historiales extensos. Se implementó filtrado de subsets `local_events` para hallar la primera presencia física absoluta del paquete en el Nodo.
 - **2026-03-16**: **Filtrado**: Ampliación de ventana para paquetes rezagados. Se integró la pestaña "Rezagos (>15 días)" en la UI y se refinaron los logs de auditoría ante bloqueos del Filtro de Jurisdicción.
+- **2026-03-16**: **Filtrado**: Saneamiento total de visualización: Arribo Local y Filtros de Fecha. Normalización de `parseInternalDate` a 10 caracteres (solo YYYY-MM-DD) y rango inclusivo `T23:59:59` para evitar desvíos por zona horaria de Javascript.
 
 ## Próximos Pasos
 - **2026-03-16**: **Filtrado**: Corrección de falsos positivos en detección de firmas (Código 94 vs 100). Se excluyó estrictamente el id 94 de la función `_is_signed_event` y se añadió un flag de rollback si el último evento es una Excepción.
