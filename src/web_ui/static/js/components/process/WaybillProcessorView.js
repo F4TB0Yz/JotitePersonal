@@ -7,7 +7,8 @@ import DateRangePicker from '../shared/DateRangePicker.js';
 const FILTERS = [
     { id: 'all', label: 'Todos' },
     { id: 'delivered', label: 'Entregados' },
-    { id: 'pending', label: 'Pendientes' }
+    { id: 'pending', label: 'Pendientes' },
+    { id: 'rezagos', label: 'Rezagos (>15 días)' }
 ];
 
 export default function WaybillProcessorView() {

@@ -3,19 +3,25 @@ import { parseWaybillInput, parseInternalDate } from '../utils/formatters.js';
 import { searchMessengers } from '../services/messengerService.js';
 
 function filterCard(record, filterTab, from, to) {
+    const cardDate = parseInternalDate(record.arrival_punto6_time);
+    const isRezago = !record.is_delivered && cardDate && ((new Date() - cardDate) / (1000 * 60 * 60 * 24) > 15);
+
     const matchesStatus =
         filterTab === 'all' ||
         (filterTab === 'delivered' && record.is_delivered) ||
-        (filterTab === 'pending' && !record.is_delivered);
+        (filterTab === 'pending' && !record.is_delivered) ||
+        (filterTab === 'rezagos' && isRezago);
 
     if (!matchesStatus) return false;
 
-    if (record.is_out_of_jurisdiction) return false;
+    if (record.is_out_of_jurisdiction) {
+        console.warn(`WARNING: Guía ${record.waybill_no} bloqueada por filtro Jurisdicción`);
+        return false;
+    }
 
     if (!from && !to) return true;
     if (record.loading) return true; // Mostrar placeholders mientras cargan
     
-    const cardDate = parseInternalDate(record.arrival_punto6_time);
     if (!cardDate) return false;
 
     if (from) {
