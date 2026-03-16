@@ -196,15 +196,6 @@ class WaybillNetworkService:
 
         survivors = [r.canonical_waybill_no for r in filtered]
         
-        # HOTFIX MANUAL SÍNCRONO: Forzar curación de la guía en discusión para actualizar BD
-        if "JTC000040515135" in survivors:
-            try:
-                WaybillHealerWorker.heal_stale_waybills(["JTC000040515135"])
-            except Exception:
-                pass
-
-        self._enqueue_healing(survivors, background_tasks)
-
         # Sobreescribir deliveryUser con el historial local detallado (Healing)
         if survivors:
             staff_map = self.tracking_repo.get_assigned_staff_map(self.db, survivors)
@@ -213,16 +204,20 @@ class WaybillNetworkService:
                 if wb in staff_map:
                     r_raw["deliveryUser"] = staff_map[wb]
 
+            # Saneamiento Inteligente en segundo plano
+            mandatory = [wb for wb in survivors if wb not in staff_map]
+            periodic = [wb for wb in survivors if wb in staff_map]
+            self._enqueue_healing(mandatory, periodic, background_tasks)
+
         return NetworkWaybillResponse(
             records=filtered_raw, 
             _filtered_count=len(records_raw) - len(filtered_raw)
         )
 
-    def _enqueue_healing(self, waybill_nos: List[str], background_tasks: BackgroundTasks):
-        if not waybill_nos:
-            return
-        # Priorizamos los primeros 15 y luego 5 al azar del resto (Acomodado a 20 total)
-        sample = waybill_nos[:15]
-        if len(waybill_nos) > 15:
-            sample += random.sample(waybill_nos[15:], min(5, len(waybill_nos) - 15))
-        background_tasks.add_task(WaybillHealerWorker.heal_stale_waybills, sample)
+    def _enqueue_healing(self, mandatory: List[str], periodic: List[str], background_tasks: BackgroundTasks):
+        to_process = list(mandatory)
+        if periodic:
+            to_process += random.sample(periodic, min(10, len(periodic)))
+            
+        if to_process:
+            background_tasks.add_task(WaybillHealerWorker.heal_stale_waybills, to_process)
