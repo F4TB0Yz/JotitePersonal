@@ -154,7 +154,7 @@ export default function WaybillCard({ data, showArribo }) {
                     : null}
                 ${showArribo
                     ? html`<div className="info-row arribo-row">
-                        <span className="info-label">Arribo P6</span>
+                        <span className="info-label">Llegada al Punto</span>
                         <span className="info-value">${data.arrival_punto6_time || 'N/A'}</span>
                     </div>`
                     : null}

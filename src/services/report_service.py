@@ -172,12 +172,22 @@ class ReportService:
         signer_name = ""
 
         for event in events:
-            if self.home_node_name in (event.network_name or "") and "Descarga" in (event.type_name or ""):
+            type_name = event.type_name or ""
+            if arrival_punto6 == "N/A" and str(event.scan_network_id) == self.home_node_id and ("Descarga" in type_name or "Llegada" in type_name):
                 arrival_punto6 = event.time
+            
             if self._is_signed_event(event) and signing_event is None:
                 delivery_date = event.time
                 signing_event = event
                 signer_name = (event.remark3 or "").strip()
+
+        # Fallback a Recolección si no hay arribo al nodo local
+        if arrival_punto6 == "N/A":
+            for event in reversed(events):
+                type_name = event.type_name or ""
+                if "Recolectado" in type_name or "Recolección" in type_name or "Colección" in type_name:
+                    arrival_punto6 = event.time
+                    break
 
         # Segunda pasada para firmante si no se encontró en el evento de firma
         if not signer_name:

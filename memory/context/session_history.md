@@ -28,6 +28,7 @@
 - **2026-03-15**: **Configuración**: Reparación del backend para sincronización automática de sesión. Se habilitaron respuestas estables y logs sobre `/api/config/token` para alinearse con script de Tampermonkey con telemetría.
 - **2026-03-16**: **Configuración**: Desacoplamiento de la identidad del nodo (Home Node Config). Se centralizó `home_network_id` ("1009") y `home_network_name` ("Cund-Punto6") en la base de datos de configuración y se pasó dinámicamente a `ReportService` y WebSocket metadata para uso reactivo.
 - **2026-03-16**: **Filtrado**: Implementación de Jurisdicción Estricta por Paradero Actual. Se forzó `is_out_of_jurisdiction = True` en backend para cualquier escaneo fuera del Home Node (excepto si viene en ruta de arribo), y se retiró la excepción de devoluciones en el cliente.
+- **2026-03-16**: **Filtrado**: Corrección de lógica de Fecha de Arribo por Nodo Local. Se ajustó `arrival_punto6` para leer estrictamente la última "Descarga/Llegada" dentro del `home_node_id` (1009), con fallback a eventos de recolección en el origen.
 
 ## Próximos Pasos
 1. Validar rendimiento y visualización del Dark Mode PDF en los navegadores del usuario (Pendiente).
