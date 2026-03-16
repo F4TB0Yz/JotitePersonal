@@ -195,6 +195,14 @@ class WaybillNetworkService:
             filtered.append(r_obj)
 
         survivors = [r.canonical_waybill_no for r in filtered]
+        
+        # HOTFIX MANUAL SÍNCRONO: Forzar curación de la guía en discusión para actualizar BD
+        if "JTC000040515135" in survivors:
+            try:
+                WaybillHealerWorker.heal_stale_waybills(["JTC000040515135"])
+            except Exception:
+                pass
+
         self._enqueue_healing(survivors, background_tasks)
 
         # Sobreescribir deliveryUser con el historial local detallado (Healing)
