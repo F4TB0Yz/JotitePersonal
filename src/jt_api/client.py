@@ -47,10 +47,19 @@ class JTClient:
         self.session.headers.update(self.headers)
 
     def _post(self, endpoint, data, base=None, extra_headers=None):
+        from src.infrastructure.repositories.config_repository import ConfigRepository
+        
+        # Actualizar token dinámicamente si hay cache/cambio
+        latest_config = ConfigRepository.get_cached(ttl=0)
+        dynamic_token = latest_config.get("authToken")
+
         base_url = base if base else self.base_url
         url = f"{base_url}{endpoint}"
         
         request_headers = self.headers.copy()
+        if dynamic_token:
+            request_headers["authToken"] = dynamic_token
+
         if extra_headers:
             request_headers.update(extra_headers)
             

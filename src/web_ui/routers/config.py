@@ -1,8 +1,11 @@
 import os
+import logging
 from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
 from src.infrastructure.database.connection import SessionLocal
 from src.infrastructure.repositories.config_repository import ConfigRepository
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/config", tags=["Config"])
 
@@ -26,6 +29,7 @@ async def sync_token(payload: TokenPayload, x_sync_key: str = Header(None, alias
             
         repo = ConfigRepository(db)
         repo.set_key("authToken", payload.authToken)
+        logger.info(f"Sincronización exitosa: Token actualizado en DB")
         return {"status": "success"}
     finally:
         db.close()
