@@ -19,6 +19,19 @@ async def websocket_process(websocket: WebSocket):
 
     await websocket.accept()
     
+    # Enviar metadatos de configuración para consumo del Frontend
+    try:
+        config = ConfigRepository.get_cached()
+        await websocket.send_json({
+            "type": "metadata",
+            "data": {
+                "home_node_id": config.get("home_network_id", "1009"),
+                "home_node_name": config.get("home_network_name", "Cund-Punto6")
+            }
+        })
+    except Exception:
+        pass
+
     try:
         data = await websocket.receive_text()
         request_data = json.loads(data)

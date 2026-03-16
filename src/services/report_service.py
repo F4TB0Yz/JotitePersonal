@@ -14,6 +14,10 @@ class ReportService:
         self.returns_repo = returns_repo
         self.novedades_repo = novedades_repo
         self.tracking_repo = tracking_repo if tracking_repo is not None else TrackingEventRepository(returns_repo.session)
+        
+        cfg = client.config or {}
+        self.home_node_id = str(cfg.get("home_network_id") or "1009")
+        self.home_node_name = str(cfg.get("home_network_name") or "Cund-Punto6")
 
     @staticmethod
     def _is_signed_event(event: "TrackingEvent") -> bool:
@@ -135,12 +139,12 @@ class ReportService:
             next_stop = str(last_event.next_stop_name or "")
             type_name = (last_event.type_name or "").lower()
 
-            # 1. Salida de Nodo o NextStop diferente de 1009
-            if scan_net_id and scan_net_id != "1009" and "Cund-Punto6" not in next_stop:
+            # 1. Salida de Nodo o NextStop diferente de Home Node
+            if scan_net_id and scan_net_id != self.home_node_id and self.home_node_name not in next_stop:
                 is_out_of_jurisdiction = True
 
-            # 2. Excepción/Devolución fuera de 1009
-            if scan_net_id and scan_net_id != "1009" and ("excepción" in type_name or "devolución" in type_name):
+            # 2. Excepción/Devolución fuera de Home Node
+            if scan_net_id and scan_net_id != self.home_node_id and ("excepción" in type_name or "devolución" in type_name):
                 is_out_of_jurisdiction = True
 
         # Buscar fechas específicas
@@ -150,7 +154,7 @@ class ReportService:
         signer_name = ""
 
         for event in events:
-            if "Cund-Punto6" in (event.network_name or "") and "Descarga" in (event.type_name or ""):
+            if self.home_node_name in (event.network_name or "") and "Descarga" in (event.type_name or ""):
                 arrival_punto6 = event.time
             if self._is_signed_event(event) and signing_event is None:
                 delivery_date = event.time

@@ -37,6 +37,7 @@ function filterCard(record, filterTab, from, to) {
 export function useWaybillProcessor() {
     const [inputValue, setInputValue] = useState('');
     const [cards, setCards] = useState([]);
+    const [homeNode, setHomeNode] = useState({ home_node_id: '1009', home_node_name: 'Cund-Punto6' });
     const [statusMessage, setStatusMessage] = useState('Esperando ingreso...');
     const [isProcessing, setIsProcessing] = useState(false);
     const [filterTab, setFilterTab] = useState('all');
@@ -124,7 +125,9 @@ export function useWaybillProcessor() {
                     return;
                 }
 
-                if (payload.type === 'result') {
+                if (payload.type === 'metadata') {
+                    setHomeNode(payload.data);
+                } else if (payload.type === 'result') {
                     processedRef.current += 1;
                     const record = payload.data || payload.result_dict || payload.results?.[0];
                     if (!record) {

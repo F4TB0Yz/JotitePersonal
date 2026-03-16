@@ -34,7 +34,9 @@ class ConfigRepository:
     def load_config(self) -> dict:
         config = {
             "baseUrl": "https://gw.jtexpress.co/operatingplatform",
-            "lang": "es"
+            "lang": "es",
+            "home_network_id": "1009",
+            "home_network_name": "Cund-Punto6"
         }
 
         if os.path.exists(self.config_path):

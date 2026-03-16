@@ -26,6 +26,7 @@
 - **2026-03-15**: **UI/Frontend**: Estabilización de reactividad y orden en el procesador de guías (`useWaybillProcessor.js`). Se introdujo placeholders precargados para conservar el orden visualizado, monitor pre-flight de estado de sesión (detección de 401), y lógica pura `parseInternalDate` para el filtrado seguro de tiempos.
 - **2026-03-15**: **Configuración**: Cierre del ciclo de sincronización automática. Integración de `ConfigRepository.set_key` y `/api/config/token` para salvado inmediato del token de Tampermonkey, y refactorización de `JTClient._post` para inyección de token en cada petición.
 - **2026-03-15**: **Configuración**: Reparación del backend para sincronización automática de sesión. Se habilitaron respuestas estables y logs sobre `/api/config/token` para alinearse con script de Tampermonkey con telemetría.
+- **2026-03-16**: **Configuración**: Desacoplamiento de la identidad del nodo (Home Node Config). Se centralizó `home_network_id` ("1009") y `home_network_name` ("Cund-Punto6") en la base de datos de configuración y se pasó dinámicamente a `ReportService` y WebSocket metadata para uso reactivo.
 
 ## Próximos Pasos
 1. Validar rendimiento y visualización del Dark Mode PDF en los navegadores del usuario (Pendiente).
