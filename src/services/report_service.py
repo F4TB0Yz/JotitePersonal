@@ -171,10 +171,13 @@ class ReportService:
         signing_event = None
         signer_name = ""
 
+        local_events = [e for e in events if str(e.scan_network_id) == self.home_node_id]
+        if local_events:
+            arrival_punto6 = local_events[-1].time
+            print(f"DEBUG: Guía {waybill_no}: Detectados {len(local_events)} eventos locales. Arribo: {arrival_punto6}")
+
         for event in events:
             type_name = event.type_name or ""
-            if arrival_punto6 == "N/A" and str(event.scan_network_id) == self.home_node_id and ("Descarga" in type_name or "Llegada" in type_name):
-                arrival_punto6 = event.time
             
             if self._is_signed_event(event) and signing_event is None:
                 delivery_date = event.time
