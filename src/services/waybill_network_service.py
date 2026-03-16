@@ -126,8 +126,12 @@ class WaybillHealerWorker:
             for wb in waybills:
                 if not wb: continue
                 try:
-                    resp = client.get_order_detail(wb)
-                    details = resp.get("data", {}).get("details", [])
+                    resp = client.get_tracking_list(wb)
+                    data_list = resp.get("data") or []
+                    details = []
+                    if data_list and isinstance(data_list, list):
+                        details = data_list[0].get("details", [])
+                        
                     if details:
                         events = [
                             TrackingEvent(
