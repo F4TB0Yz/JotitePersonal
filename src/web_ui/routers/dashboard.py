@@ -5,7 +5,7 @@ import random
 import time
 from typing import Optional, List
 from urllib.parse import urlparse
-from fastapi import APIRouter, HTTPException, Body, Request, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Body, Request, BackgroundTasks, Depends
 from fastapi.responses import StreamingResponse
 from src.infrastructure.database.connection import SessionLocal
 from src.infrastructure.repositories.config_repository import ConfigRepository
@@ -17,48 +17,13 @@ from src.services.novedades_service import NovedadesService
 from src.services.kpi_service import KPIService
 from src.infrastructure.repositories.novedades_repository import NovedadesRepository
 from src.infrastructure.repositories.kpi_repository import KPIRepository
+from src.infrastructure.database.deps import get_db
+from src.services.waybill_network_service import WaybillNetworkService, WaybillFilterCriteria
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api", tags=["Dashboard & Core"])
 
-def _auto_heal_stale_waybills(waybills: list[str]):
-    if not waybills:
-        return
-        
-    config = ConfigRepository.get_cached()
-    client = JTClient(config=config)
-    
-    with SessionLocal() as db:
-        repo = TrackingEventRepository(db)
-        from src.models.waybill import TrackingEvent
-        
-        for wb in waybills:
-            if not wb: continue
-            try:
-                # Vamos a pedirle la realidad actual a J&T
-                resp = client.get_order_detail(wb)
-                details = resp.get("data", {}).get("details", [])
-                if details:
-                    events = [
-                        TrackingEvent(
-                            time=d.get("scanTime"),
-                            type_name=d.get("scanTypeName"),
-                            network_name=d.get("scanNetworkName"),
-                            scan_network_id=d.get("scanNetworkId"),
-                            staff_name=d.get("scanByName"),
-                            staff_contact="",
-                            status=d.get("status"),
-                            content=d.get("waybillTrackingContent"),
-                            code=d.get("code")
-                        ) for d in details
-                    ]
-                    # Aquí la magia: guardamos los eventos nuevos en tu BD local
-                    repo.save_events(wb, events)
-                
-                # LA CRUDA REALIDAD: Si no pones a dormir el hilo, te banean.
-                time.sleep(0.5) 
-            except Exception:
-                time.sleep(0.5) # Respira también si hay error
-                continue
+
 
 def _normalize_waybill_record(waybill_no: str, details: dict) -> dict:
     return {
@@ -125,108 +90,34 @@ async def global_search(q: str, limit: int = 6):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
-@router.post("/network/waybills")
-async def get_network_waybills(req: dict = Body(...), background_tasks: BackgroundTasks = BackgroundTasks()):
-    network_code = req.get("networkCode")
-    start_time = req.get("startTime")
-    end_time = req.get("endTime")
-    sign_type = req.get("signType", 0)
+def get_jt_client() -> JTClient:
+    config = ConfigRepository.get_cached()
+    return JTClient(config=config)
 
-    if not all([network_code, start_time, end_time]):
+def get_tracking_repository(db: Session = Depends(get_db)) -> TrackingEventRepository:
+    return TrackingEventRepository(db)
+
+def get_waybill_network_service(
+    client: JTClient = Depends(get_jt_client),
+    repo: TrackingEventRepository = Depends(get_tracking_repository),
+    db: Session = Depends(get_db)
+) -> WaybillNetworkService:
+    return WaybillNetworkService(client, repo, db)
+
+@router.post("/network/waybills")
+async def get_network_waybills(
+    req: dict = Body(...), 
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    service: WaybillNetworkService = Depends(get_waybill_network_service)
+):
+    try:
+        criteria = WaybillFilterCriteria(**req)
+    except Exception:
         raise HTTPException(status_code=400, detail="Faltan parámetros requeridos.")
 
     try:
-        def _fetch_network():
-            config = ConfigRepository.get_cached()
-            client = JTClient(config=config)
-            response = client.get_network_signing_detail(
-                network_code=network_code,
-                start_time=start_time,
-                end_time=end_time,
-                sign_type=sign_type
-            )
-            records = response.get("data", {}).get("records", []) or []
-
-            # El filtro de ubicación solo aplica a guías pendientes (signType=0).
-            # Las ya firmadas (signType=1) no necesitan esta corrección.
-            if not records or sign_type != 0:
-                return {"records": records}
-
-            # Extraer números de guía del response.  J&T puede usar distintos
-            # nombres de campo según el endpoint; probamos los más comunes.
-            waybill_nos: list[str] = [
-                r.get("waybillNo") or r.get("billCode") or r.get("orderId") or ""
-                for r in records
-            ]
-            waybill_nos = [wb.strip().upper() for wb in waybill_nos if wb and wb.strip()]
-
-            if not waybill_nos:
-                return {"records": records}
-
-            # Consultar la tabla local tracking_events para detectar qué guías
-            # tienen evidencia de haber salido físicamente de esta red, usando el network_code (ej. 1009).
-            with SessionLocal() as db:
-                departed = TrackingEventRepository.get_departed_waybills(
-                    db, waybill_nos, current_network_id=network_code
-                )
-
-            if not departed:
-                # Priorizamos los primeros 10 y luego 5 al azar del resto
-                sample_to_heal = waybill_nos[:10]
-                if len(waybill_nos) > 10:
-                    sample_to_heal += random.sample(waybill_nos[10:], min(5, len(waybill_nos) - 10))
-                background_tasks.add_task(_auto_heal_stale_waybills, sample_to_heal)
-                return {"records": records}
-
-            filtered = []
-            for r in records:
-                wb = (r.get("waybillNo") or r.get("billCode") or r.get("orderId") or "").strip().upper()
-                if not wb:
-                    continue
-                
-                # 1. Filtro por base de datos local (historial conocido)
-                if wb in departed:
-                    continue
-                
-                # 2. Filtro DIRECTO por información en el record de J&T
-                # Si el record ya dice que está en otra red o tiene estados terminales
-                r_net_id = str(r.get("scanNetworkId") or "")
-                r_net_name = str(r.get("scanNetworkName") or "")
-                r_status = str(r.get("waybillStatus") or r.get("status") or "")
-                r_type = str(r.get("scanTypeName") or "")
-
-                # 3. Filtro específico pedido: Carga y expedición en Cund-Punto6 (1009)
-                # Si el estado es "Carga y expedición" y la red es Punto6, se va de la lista de pendientes.
-                if "Carga y expedición" in r_type:
-                    if r_net_id == "1009" or r_net_id == str(network_code) or "Cund-Punto6" in r_net_name:
-                         continue
-                
-                # 4. Filtro por red de rastro (Si el record indica que ya está físicamente en otra red)
-                if r_net_id and network_code and r_net_id != str(network_code):
-                    # Si el ID de red no coincide con el buscado, es porque ya se movió.
-                    continue
-                
-                # 5. Filtro por nombre de red (Bogotá suele ser punto de retorno/tránsito superior)
-                if ("Bogota" in r_net_name or "Centro" in r_net_name) and "Bogota" not in str(network_code):
-                    continue
-
-                # 6. Estados Terminales
-                if any(x in r_type or x in r_status for x in ["Entregado", "Devuelto", "Firmado", "Anulado"]):
-                    continue
-
-                filtered.append(r)
-            
-            survivors = [r.get("waybillNo") or r.get("billCode") or r.get("orderId") or "" for r in filtered]
-            
-            # Curamos los primeros 15 supervivientes y 5 al azar del resto (Acomodado a 20 total)
-            sample_survivors = survivors[:15]
-            if len(survivors) > 15:
-                sample_survivors += random.sample(survivors[15:], min(5, len(survivors) - 15))
-            background_tasks.add_task(_auto_heal_stale_waybills, sample_survivors)
-
-            return {"records": filtered, "_filtered_count": len(records) - len(filtered)}
-
-        return await asyncio.to_thread(_fetch_network)
+        response = await asyncio.to_thread(service.get_network_waybills, criteria, background_tasks)
+        return response.dict(exclude_none=True)
     except Exception as e:
         return {"records": [], "error": str(e)}
 
