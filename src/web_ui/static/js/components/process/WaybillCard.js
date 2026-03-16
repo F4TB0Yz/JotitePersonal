@@ -129,6 +129,9 @@ export default function WaybillCard({ data, showArribo }) {
                 <span className="wb-number">${data.waybill_no}</span>
                 <span className="wb-status-badge">${badge}</span>
             </div>
+            ${data.last_exception_reason 
+                ? html`<div className="last-exception-banner" style=${{ background: '#fffbeb', borderBottom: '1px solid #fde68a', color: '#b45309', padding: '6px 12px', fontSize: '12px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>⚠️ <b>Motivo de Excepción:</b> ${data.last_exception_reason}</div>` 
+                : null}
             <div className="card-body">
                 <div className="info-row">
                     <span className="info-label">Destinatario</span>

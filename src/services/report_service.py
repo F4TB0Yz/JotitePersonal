@@ -37,6 +37,24 @@ class ReportService:
         )
 
     @staticmethod
+    def _extract_last_exception_reason(events: list[TrackingEvent]) -> str:
+        """Busca el motivo más reciente del evento Excepción/Anormal.
+        Limpia caracteres chinos si se presentan.
+        """
+        import re
+        for event in events:
+            type_name = (event.type_name or "").lower()
+            if "excepción" in type_name or "problema" in type_name or "anormal" in type_name:
+                reason = (event.remark1 or "").strip()
+                if reason:
+                    # Limpiar chino: \u4e00-\u9fff
+                    cleaned = re.sub(r'[\u4e00-\u9fff]+', '', reason).strip()
+                    if cleaned:
+                        return cleaned
+                    return reason
+        return ""
+
+    @staticmethod
     def _parse_tracking_events(tracking_json: dict) -> list[TrackingEvent]:
         tracking_data = tracking_json.get("data", [])
         events = []
@@ -54,7 +72,8 @@ class ReportService:
                     code=item.get("code"),
                     remark3=item.get("remark3"),
                     scan_by_code=item.get("scanByCode") or item.get("staffCode") or item.get("scanBy"),
-                    next_stop_name=item.get("nextStopName") or ""
+                    next_stop_name=item.get("nextStopName") or "",
+                    remark1=item.get("remark1")
                 ))
         return events
 

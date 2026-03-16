@@ -26,6 +26,7 @@ class TrackingEvent:
     remark3: Optional[str] = None
     scan_by_code: Optional[str] = None
     next_stop_name: str = ""
+    remark1: Optional[str] = None
 
 @dataclass
 class AbnormalScan:
@@ -56,3 +57,4 @@ class ConsolidatedReportRow:
     exceptions: str = ""
     last_remark: str = ""
     signer_name: str = ""
+    last_exception_reason: str = ""
