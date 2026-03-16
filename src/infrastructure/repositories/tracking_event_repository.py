@@ -169,3 +169,36 @@ Dada una lista de guías pendientes, devuelve aquellas que según su historial
             for row in rows
         ]
         return events, last_fetch
+
+    @staticmethod
+    def get_assigned_staff_map(session: Session, waybill_nos: List[str]) -> dict:
+        if not waybill_nos:
+            return {}
+            
+        staff_map = {}
+        chunks = [waybill_nos[i : i + _SQLITE_CHUNK] for i in range(0, len(waybill_nos), _SQLITE_CHUNK)]
+        
+        for chunk in chunks:
+            subq = (
+                session.query(
+                    TrackingEventORM.waybill_no,
+                    TrackingEventORM.staff_name,
+                    func.row_number().over(
+                        partition_by=TrackingEventORM.waybill_no,
+                        order_by=TrackingEventORM.time.desc(),
+                    ).label("rn"),
+                )
+                .filter(
+                    and_(
+                        TrackingEventORM.waybill_no.in_(chunk),
+                        TrackingEventORM.type_name == "Escaneo de entrega"
+                    )
+                )
+                .subquery()
+            )
+            rows = session.query(subq.c.waybill_no, subq.c.staff_name).filter(subq.c.rn == 1).all()
+            for wb, name in rows:
+                if name:
+                    staff_map[wb] = name
+                    
+        return staff_map

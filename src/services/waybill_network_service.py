@@ -135,8 +135,8 @@ class WaybillHealerWorker:
                                 type_name=d.get("scanTypeName"),
                                 network_name=d.get("scanNetworkName"),
                                 scan_network_id=d.get("scanNetworkId"),
-                                staff_name=d.get("scanByName"),
-                                staff_contact="",
+                                staff_name=d.get("staffName") or d.get("scanByName"),
+                                staff_contact=d.get("staffContact") or "",
                                 status=d.get("status"),
                                 content=d.get("waybillTrackingContent"),
                                 code=d.get("code")
@@ -196,6 +196,14 @@ class WaybillNetworkService:
 
         survivors = [r.canonical_waybill_no for r in filtered]
         self._enqueue_healing(survivors, background_tasks)
+
+        # Sobreescribir deliveryUser con el historial local detallado (Healing)
+        if survivors:
+            staff_map = self.tracking_repo.get_assigned_staff_map(self.db, survivors)
+            for r_raw in filtered_raw:
+                wb = (r_raw.get("waybillNo") or r_raw.get("billCode") or r_raw.get("orderId") or "").strip().upper()
+                if wb in staff_map:
+                    r_raw["deliveryUser"] = staff_map[wb]
 
         return NetworkWaybillResponse(
             records=filtered_raw, 
