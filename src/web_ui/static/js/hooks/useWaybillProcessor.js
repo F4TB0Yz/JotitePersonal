@@ -10,12 +10,7 @@ function filterCard(record, filterTab, from, to) {
 
     if (!matchesStatus) return false;
 
-    if (record.is_out_of_jurisdiction) {
-        const exceptions = (record.exceptions || "").toLowerCase();
-        const status = (record.status || "").toLowerCase();
-        const isReturnPending = exceptions.includes("devolución") || status.includes("devolución");
-        if (!isReturnPending) return false;
-    }
+    if (record.is_out_of_jurisdiction) return false;
 
     if (!from && !to) return true;
     if (record.loading) return true; // Mostrar placeholders mientras cargan

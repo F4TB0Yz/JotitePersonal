@@ -137,15 +137,14 @@ class ReportService:
         if last_event:
             scan_net_id = str(last_event.scan_network_id)
             next_stop = str(last_event.next_stop_name or "")
-            type_name = (last_event.type_name or "").lower()
 
-            # 1. Salida de Nodo o NextStop diferente de Home Node
-            if scan_net_id and scan_net_id != self.home_node_id and self.home_node_name not in next_stop:
+            # Por defecto, fuera de jurisdicción si el escaneo no es del nodo local
+            if scan_net_id and scan_net_id != self.home_node_id:
                 is_out_of_jurisdiction = True
 
-            # 2. Excepción/Devolución fuera de Home Node
-            if scan_net_id and scan_net_id != self.home_node_id and ("excepción" in type_name or "devolución" in type_name):
-                is_out_of_jurisdiction = True
+            # Excepción: si el destino del envío es el nodo local (Paquete en ruta de llegada)
+            if self.home_node_name in next_stop:
+                is_out_of_jurisdiction = False
 
         # Buscar fechas específicas
         arrival_punto6 = "N/A"
