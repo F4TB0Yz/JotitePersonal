@@ -30,6 +30,7 @@
 - **2026-03-16**: **Filtrado**: Implementación de Jurisdicción Estricta por Paradero Actual. Se forzó `is_out_of_jurisdiction = True` en backend para cualquier escaneo fuera del Home Node (excepto si viene en ruta de arribo), y se retiró la excepción de devoluciones en el cliente.
 - **2026-03-16**: **Filtrado**: Corrección de lógica de Fecha de Arribo por Nodo Local. Se ajustó `arrival_punto6` para leer estrictamente la última "Descarga/Llegada" dentro del `home_node_id` (1009), con fallback a eventos de recolección en el origen.
 - **2026-03-16**: **Filtrado**: Optimización de detección de Arribo Local para historiales extensos. Se implementó filtrado de subsets `local_events` para hallar la primera presencia física absoluta del paquete en el Nodo.
+- **2026-03-16**: **Filtrado**: Corrección de falsos positivos en detección de firmas (Código 94 vs 100). Se excluyó estrictamente el id 94 de la función `_is_signed_event` y se añadió un flag de rollback si el último evento es una Excepción.
 
 ## Próximos Pasos
 1. Validar rendimiento y visualización del Dark Mode PDF en los navegadores del usuario (Pendiente).

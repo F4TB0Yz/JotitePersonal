@@ -22,10 +22,15 @@ class ReportService:
     @staticmethod
     def _is_signed_event(event: "TrackingEvent") -> bool:
         """Detecta evento de entrega/firma sin importar idioma del status.
-        code=100 es el código universal de J&T para 'Paquete firmado'.
+        code=100 o 11 son códigos universales de J&T para 'Paquete firmado'.
+        94 es Escaneo de Entrega (En ruta), NO significa firmado.
         """
-        if event.code == 100:
+        if event.code == 94:
+            return False
+            
+        if event.code in [100, 11]:
             return True
+            
         status = (event.status or "").lower()
         type_name = (event.type_name or "").lower()
         return (
@@ -199,6 +204,13 @@ class ReportService:
                 if candidate:
                     signer_name = candidate
                     break
+
+        # Lógica de Excepción: si el último evento es de excepción o anormal, anular firmas previas
+        if last_event:
+            type_name = (last_event.type_name or "").lower()
+            if last_event.code == 110 or "excepción" in type_name or "problema" in type_name:
+                signer_name = ""
+                is_delivered = False
 
         display_status = (
             signing_event.type_name if signing_event
