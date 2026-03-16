@@ -32,6 +32,7 @@ class NetworkWaybillRecord(BaseModel):
     waybill_status: Optional[str] = Field(None, alias="waybillStatus")
     status: Optional[str] = Field(None, alias="status")
     scan_type_name: Optional[str] = Field(None, alias="scanTypeName")
+    delivery_user: Optional[str] = Field(None, alias="deliveryUser")
 
     class Config:
         populate_by_name = True
@@ -202,11 +203,10 @@ class WaybillNetworkService:
         
         # Sobreescribir deliveryUser con el historial local detallado (Healing)
         if survivors:
-            staff_map = self.tracking_repo.get_assigned_staff_map(self.db, survivors)
-            for r_raw in filtered_raw:
-                wb = (r_raw.get("waybillNo") or r_raw.get("billCode") or r_raw.get("orderId") or "").strip().upper()
-                if wb in staff_map:
-                    r_raw["deliveryUser"] = staff_map[wb]
+            staff_map = self._enrich_latest_messenger(filtered)
+            for r_obj, r_raw in zip(filtered, filtered_raw):
+                if r_obj.delivery_user:
+                    r_raw["deliveryUser"] = r_obj.delivery_user
 
             # Saneamiento Inteligente en segundo plano
             mandatory = [wb for wb in survivors if wb not in staff_map]
@@ -217,6 +217,17 @@ class WaybillNetworkService:
             records=filtered_raw, 
             _filtered_count=len(records_raw) - len(filtered_raw)
         )
+
+    def _enrich_latest_messenger(self, records: List[NetworkWaybillRecord]) -> dict:
+        if not records:
+            return {}
+        waybill_nos = [r.canonical_waybill_no for r in records if r.canonical_waybill_no]
+        staff_map = self.tracking_repo.get_latest_delivery_events(self.db, waybill_nos)
+        for r in records:
+            wb = r.canonical_waybill_no
+            if wb in staff_map:
+                r.delivery_user = staff_map[wb]
+        return staff_map
 
     def _enqueue_healing(self, mandatory: List[str], periodic: List[str], background_tasks: BackgroundTasks):
         to_process = list(mandatory)

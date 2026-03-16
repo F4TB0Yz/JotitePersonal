@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
-from sqlalchemy import insert, func, and_
+from sqlalchemy import insert, func, and_, or_
 from typing import List, Tuple, Optional
 from src.infrastructure.database.models import TrackingEventORM
 from src.models.waybill import TrackingEvent
@@ -171,7 +171,7 @@ Dada una lista de guías pendientes, devuelve aquellas que según su historial
         return events, last_fetch
 
     @staticmethod
-    def get_assigned_staff_map(session: Session, waybill_nos: List[str]) -> dict:
+    def get_latest_delivery_events(session: Session, waybill_nos: List[str]) -> dict:
         if not waybill_nos:
             return {}
             
@@ -191,7 +191,10 @@ Dada una lista de guías pendientes, devuelve aquellas que según su historial
                 .filter(
                     and_(
                         TrackingEventORM.waybill_no.in_(chunk),
-                        TrackingEventORM.type_name == "Escaneo de entrega"
+                        or_(
+                            TrackingEventORM.type_name == "Escaneo de entrega",
+                            TrackingEventORM.event_code == 94
+                        )
                     )
                 )
                 .subquery()
