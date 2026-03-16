@@ -25,11 +25,11 @@ function filterCard(record, filterTab, from, to) {
     if (!cardDate) return false;
 
     if (from) {
-        const min = new Date(from);
+        const min = new Date(`${from}T00:00:00`);
         if (cardDate < min) return false;
     }
     if (to) {
-        const max = new Date(to);
+        const max = new Date(`${to}T23:59:59`);
         if (cardDate > max) return false;
     }
     return true;

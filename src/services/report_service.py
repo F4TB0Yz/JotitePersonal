@@ -66,7 +66,7 @@ class ReportService:
         if tracking_data:
             for item in tracking_data[0].get("details", []):
                 events.append(TrackingEvent(
-                    time=item.get("scanTime") or "",
+                    time=(item.get("scanTime") or "").replace(" ", "T"),
                     type_name=item.get("scanTypeName") or "Desconocido",
                     network_name=item.get("scanNetworkName") or "N/A",
                     scan_network_id=str(item.get("scanNetworkId") or ""),
@@ -159,7 +159,7 @@ class ReportService:
 
         is_out_of_jurisdiction = False
         if last_event:
-            scan_net_id = str(last_event.scan_network_id)
+            scan_net_id = str(last_event.scan_network_id).split('.')[0]
             next_stop = str(last_event.next_stop_name or "")
 
             # Por defecto, fuera de jurisdicción si el escaneo no es del nodo local
@@ -176,7 +176,7 @@ class ReportService:
         signing_event = None
         signer_name = ""
 
-        local_events = [e for e in events if str(e.scan_network_id) == self.home_node_id]
+        local_events = [e for e in events if str(e.scan_network_id).split('.')[0] == self.home_node_id]
         if local_events:
             arrival_punto6 = local_events[-1].time
             print(f"DEBUG: Guía {waybill_no}: Detectados {len(local_events)} eventos locales. Arribo: {arrival_punto6}")
