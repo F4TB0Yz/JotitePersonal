@@ -4,6 +4,7 @@ from sqlalchemy import insert, func, and_
 from typing import List, Tuple, Optional
 from src.infrastructure.database.models import TrackingEventORM
 from src.models.waybill import TrackingEvent
+from src.domain.enums.waybill_enums import are_networks_equivalent
 
 _SQLITE_CHUNK = 900  # por debajo del límite de variables de SQLite (999)
 
@@ -126,7 +127,7 @@ Dada una lista de guías pendientes, devuelve aquellas que según su historial
                 # 2. Si hay red de escaneo y NO coincide con la actual, se considera fuera.
                 # Ignoramos escaneos sin red (ID vacío o None) para no filtrar por error.
                 if current_network_id and scan_net_id:
-                    if str(scan_net_id) != str(current_network_id):
+                    if not are_networks_equivalent(scan_net_id, current_network_id):
                         departed_wbs.add(wb)
                         continue
                 
@@ -136,7 +137,7 @@ Dada una lista de guías pendientes, devuelve aquellas que según su historial
                     continue
                 
                 # 4. Filtro específico: Carga y expedición en esta red significa que YA SALIÓ.
-                if t_name == "Carga y expedición" and (str(scan_net_id) == str(current_network_id) or str(scan_net_id) == "1009"):
+                if t_name == "Carga y expedición" and (are_networks_equivalent(scan_net_id, current_network_id) or str(scan_net_id) == "1009"):
                     departed_wbs.add(wb)
 
         return departed_wbs

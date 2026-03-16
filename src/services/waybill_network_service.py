@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from fastapi import BackgroundTasks
 
-from src.domain.enums.waybill_enums import SignTypeEnum, WaybillStatusEnum, ScanTypeNameEnum, NetworkCodesEnum
+from src.domain.enums.waybill_enums import SignTypeEnum, WaybillStatusEnum, ScanTypeNameEnum, NetworkCodesEnum, are_networks_equivalent
 from src.infrastructure.repositories.tracking_event_repository import TrackingEventRepository
 from src.infrastructure.database.connection import SessionLocal
 from src.infrastructure.repositories.config_repository import ConfigRepository
@@ -84,7 +84,7 @@ class ExcludeRulesComposite:
             self.network_code = network_code
         def is_satisfied_by(self, record: NetworkWaybillRecord) -> bool:
             r_net_id = record.scan_network_id or ""
-            if r_net_id and self.network_code and r_net_id != str(self.network_code):
+            if r_net_id and self.network_code and not are_networks_equivalent(r_net_id, self.network_code):
                 return True
             return False
 
