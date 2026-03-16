@@ -23,6 +23,8 @@ class TrackingEvent:
     status: str = ""
     content: str = ""
     code: Optional[int] = None
+    remark3: Optional[str] = None
+    scan_by_code: Optional[str] = None
 
 @dataclass
 class AbnormalScan:
@@ -48,5 +50,7 @@ class ConsolidatedReportRow:
     arrival_punto6_time: str = "N/A"
     delivery_time: str = "N/A"
     address: str = "N/A"
+    phone: str = ""
     exceptions: str = ""
     last_remark: str = ""
+    signer_name: str = ""

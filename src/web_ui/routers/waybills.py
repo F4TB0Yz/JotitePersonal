@@ -28,28 +28,6 @@ _PHOTO_ALLOWED_DOMAINS = frozenset({
     "jmsco-file.jtexpress.co",
 })
 
-def _find_signing_event(tracking_data: list) -> tuple[str | None, str | None]:
-    """Retorna (scanTime, scanByCode) del primer evento de firma/entrega.
-    Usa code==100 como detección principal (language-agnostic).
-    """
-    for item in (tracking_data[0].get("details") or [] if tracking_data else []):
-        scan_by = (
-            item.get("scanByCode")
-            or item.get("staffCode")
-            or item.get("scanBy")
-        )
-        code = item.get("code")
-        status = (item.get("status") or "").lower()
-        type_name = (item.get("scanTypeName") or "").lower()
-        if scan_by and (
-            code == 100
-            or "firmado" in status
-            or "签收" in (item.get("status") or "")
-            or "signing" in type_name
-            or "firmado" in type_name
-        ):
-            return item.get("scanTime"), scan_by
-    return None, None
 
 @router.post("/addresses")
 async def get_waybills_addresses(payload: WaybillList):
@@ -137,93 +115,33 @@ async def get_waybills_details(payload: WaybillList):
         results = {}
 
         def extract_detail(wb):
+            from src.infrastructure.database.connection import SessionLocal
+            from src.infrastructure.repositories.returns_repository import ReturnsRepository
+            from src.infrastructure.repositories.novedades_repository import NovedadesRepository
+
+            db_worker = SessionLocal()
             try:
-                resp = client.get_order_detail(wb)
-                if resp.get("code") != 1:
-                    return wb, None
-                data = resp.get("data", {})
-                details = data.get("details", {}) or {}
-                order_info = data.get("orderInfo") or data.get("waybillInfo") or {}
-
-                receiver_name = (
-                    details.get("receiverName")
-                    or order_info.get("receiverName")
-                    or details.get("receiver")
+                service = ReportService(
+                    client, 
+                    returns_repo=ReturnsRepository(db_worker), 
+                    novedades_repo=NovedadesRepository(db_worker)
                 )
-                receiver_city = (
-                    details.get("receiverCityName")
-                    or order_info.get("receiverCityName")
-                    or details.get("receiverCity")
-                )
-                receiver_address = (
-                    details.get("receiverDetailedAddress")
-                    or details.get("receiverAddress")
-                    or order_info.get("receiverDetailedAddress")
-                )
-                status = (
-                    details.get("waybillStatusName")
-                    or details.get("statusName")
-                    or details.get("status")
-                    or order_info.get("waybillStatusName")
-                )
-                receiver_phone = (
-                    details.get("receiverPhone")
-                    or order_info.get("receiverPhone")
-                    or details.get("consigneePhone")
-                )
-
-                sign_time = details.get("signTime") or order_info.get("signTime") or ""
-                signer_name = ""
-
-                # Only call tracking API for packages that appear delivered — no-op for in-transit
-                status_lower = (status or "").lower()
-                if "firmado" in status_lower or "entregado" in status_lower or "签收" in (status or ""):
-                    try:
-                        tracking_resp = client.get_tracking_list(wb)
-                        tracking_data = tracking_resp.get("data", [])
-                        if tracking_data:
-                            tracking_items = tracking_data[0].get("details", [])
-                            # First pass: look for a "firmado" event (preferred)
-                            for item in tracking_items:
-                                scan_type = (item.get("scanTypeName") or "").lower()
-                                item_status = (item.get("status") or "")
-                                is_signed = (
-                                    item.get("code") == 100
-                                    or "firmado" in scan_type
-                                    or "签收" in item_status
-                                    or "firmado" in item_status.lower()
-                                )
-                                if is_signed:
-                                    if not sign_time:
-                                        sign_time = item.get("scanTime") or ""
-                                    signer_name = (item.get("remark3") or "").strip()
-                                    break
-                            # Second pass: if still no signer, use the last item with a non-empty remark3
-                            if not signer_name:
-                                for item in reversed(tracking_items):
-                                    candidate = (item.get("remark3") or "").strip()
-                                    if candidate:
-                                        signer_name = candidate
-                                        if not sign_time:
-                                            sign_time = item.get("scanTime") or ""
-                                        break
-                    except Exception:
-                        pass
-
+                row = service.get_consolidated_data(wb)
                 return wb, {
                     "waybillNo": wb,
-                    "receiverName": receiver_name,
-                    "receiverCity": receiver_city,
-                    "receiverAddress": receiver_address,
-                    "receiverPhone": receiver_phone,
-                    "status": status,
-                    "weight": details.get("packageChargeWeight") or order_info.get("packageChargeWeight"),
-                    "lastEventTime": sign_time,
-                    "signerName": signer_name
+                    "receiverName": row.receiver,
+                    "receiverCity": row.city,
+                    "receiverAddress": row.address,
+                    "receiverPhone": row.phone,
+                    "status": row.status,
+                    "weight": row.weight,
+                    "lastEventTime": row.delivery_time if row.is_delivered else "",
+                    "signerName": row.signer_name
                 }
             except Exception:
                 return wb, None
-
+            finally:
+                db_worker.close()
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             futures = {executor.submit(extract_detail, wb): wb for wb in payload.waybills}
             for future in concurrent.futures.as_completed(futures):
@@ -279,43 +197,29 @@ async def get_waybills_intelligence_export(payload: WaybillList):
                 detail_response = client.get_order_detail(waybill_no)
                 if detail_response.get("code") == 1:
                     data = detail_response.get("data", {}) or {}
-                    details = data.get("details", {}) or {}
-                    order_info = data.get("orderInfo") or data.get("waybillInfo") or {}
                     payload_item["raw"] = {
-                        "details": details,
-                        "orderInfo": order_info,
+                        "details": data.get("details", {}) or {},
+                        "orderInfo": data.get("orderInfo") or data.get("waybillInfo") or {},
                     }
-                    payload_item["detail"] = {
-                        "waybillNo": waybill_no,
-                        "receiverName": (
-                            details.get("receiverName")
-                            or order_info.get("receiverName")
-                            or details.get("receiver")
-                        ),
-                        "receiverCity": (
-                            details.get("receiverCityName")
-                            or order_info.get("receiverCityName")
-                            or details.get("receiverCity")
-                        ),
-                        "receiverAddress": (
-                            details.get("receiverDetailedAddress")
-                            or details.get("receiverAddress")
-                            or order_info.get("receiverDetailedAddress")
-                        ),
-                        "receiverPhone": (
-                            details.get("receiverPhone")
-                            or order_info.get("receiverPhone")
-                            or details.get("consigneePhone")
-                        ),
-                        "status": (
-                            details.get("waybillStatusName")
-                            or details.get("statusName")
-                            or details.get("status")
-                            or order_info.get("waybillStatusName")
-                        ),
-                        "weight": details.get("packageChargeWeight") or order_info.get("packageChargeWeight"),
-                        "signTime": details.get("signTime") or order_info.get("signTime") or "",
-                    }
+
+                    from src.infrastructure.repositories.returns_repository import ReturnsRepository
+                    from src.infrastructure.repositories.novedades_repository import NovedadesRepository
+                    db_worker = SessionLocal()
+                    try:
+                        service = ReportService(client, ReturnsRepository(db_worker), NovedadesRepository(db_worker))
+                        row = service.get_consolidated_data(waybill_no)
+                        payload_item["detail"] = {
+                            "waybillNo": waybill_no,
+                            "receiverName": row.receiver,
+                            "receiverCity": row.city,
+                            "receiverAddress": row.address,
+                            "receiverPhone": row.phone,
+                            "status": row.status,
+                            "weight": row.weight,
+                            "signTime": row.delivery_time if row.is_delivered else ""
+                        }
+                    finally:
+                        db_worker.close()
                 else:
                     payload_item["errors"].append(
                         detail_response.get("msg") or "No se pudo consultar el detalle oficial."
@@ -486,9 +390,24 @@ async def get_waybill_photos(waybill_no: str):
     try:
         def _fetch():
             config = ConfigRepository.get_cached(); client = JTClient(config=config)
-            tracking = client.get_tracking_list(normalized_wb)
-            data = tracking.get("data") or []
-            scan_time, scan_by_code = _find_signing_event(data)
+            from src.infrastructure.database.connection import SessionLocal
+            from src.infrastructure.repositories.returns_repository import ReturnsRepository
+            from src.infrastructure.repositories.novedades_repository import NovedadesRepository
+            
+            scan_time = None
+            scan_by_code = None
+
+            db_worker = SessionLocal()
+            try:
+                service = ReportService(client, ReturnsRepository(db_worker), NovedadesRepository(db_worker))
+                events = service.get_timeline(normalized_wb)
+                for event in events:
+                    if service._is_signed_event(event):
+                        scan_time = event.time
+                        scan_by_code = event.scan_by_code
+                        break
+            finally:
+                db_worker.close()
 
             if not scan_time or not scan_by_code:
                 return {"waybill_no": normalized_wb, "photos": [], "error": "No se encontró evento de firma/entrega"}

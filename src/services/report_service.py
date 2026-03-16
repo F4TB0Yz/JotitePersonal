@@ -48,6 +48,8 @@ class ReportService:
                     status=item.get("status") or "",
                     content=item.get("waybillTrackingContent") or "",
                     code=item.get("code"),
+                    remark3=item.get("remark3"),
+                    scan_by_code=item.get("scanByCode") or item.get("staffCode") or item.get("scanBy")
                 ))
         return events
 
@@ -79,9 +81,12 @@ class ReportService:
         # 1. Obtener detalles básicos
         try:
             order_json = self.client.get_order_detail(waybill_no)
-            details = order_json.get("data", {}).get("details", {}) or {}
+            data_dict = order_json.get("data", {}) or {}
+            details = data_dict.get("details", {}) or {}
+            order_info = data_dict.get("orderInfo") or data_dict.get("waybillInfo") or {}
         except APIError:
             details = {}
+            order_info = {}
         
         # 2. Obtener rastreo (Timeline)
         try:
@@ -127,6 +132,7 @@ class ReportService:
         arrival_punto6 = "N/A"
         delivery_date = "N/A"
         signing_event = None
+        signer_name = ""
 
         for event in events:
             if "Cund-Punto6" in (event.network_name or "") and "Descarga" in (event.type_name or ""):
@@ -134,6 +140,15 @@ class ReportService:
             if self._is_signed_event(event) and signing_event is None:
                 delivery_date = event.time
                 signing_event = event
+                signer_name = (event.remark3 or "").strip()
+
+        # Segunda pasada para firmante si no se encontró en el evento de firma
+        if not signer_name:
+            for event in reversed(events):
+                candidate = (event.remark3 or "").strip()
+                if candidate:
+                    signer_name = candidate
+                    break
 
         display_status = (
             signing_event.type_name if signing_event
@@ -141,14 +156,28 @@ class ReportService:
             else "Desconocido"
         )
 
+        address = (
+            details.get("receiverDetailedAddress")
+            or details.get("receiverAddress")
+            or order_info.get("receiverDetailedAddress")
+            or "N/A"
+        )
+
+        phone = (
+            details.get("receiverPhone")
+            or order_info.get("receiverPhone")
+            or details.get("consigneePhone")
+            or "N/A"
+        )
+
         return ConsolidatedReportRow(
             waybill_no=waybill_no,
             status=display_status or "Desconocido",
             order_source=details.get("orderSourceName") or "N/A",
             sender=details.get("senderName") or "N/A",
-            receiver=details.get("receiverName") or "N/A",
-            city=details.get("receiverCityName") or "N/A",
-            weight=float(details.get("packageChargeWeight") or 0.0),
+            receiver=details.get("receiverName") or order_info.get("receiverName") or "N/A",
+            city=details.get("receiverCityName") or order_info.get("receiverCityName") or "N/A",
+            weight=float(details.get("packageChargeWeight") or order_info.get("packageChargeWeight") or 0.0),
             last_event_time=last_event.time if last_event else "N/A",
             last_network=last_event.network_name if last_event else "N/A",
             last_staff=last_event.staff_name if last_event else "N/A",
@@ -156,7 +185,9 @@ class ReportService:
             is_delivered=is_delivered,
             arrival_punto6_time=arrival_punto6 or "N/A",
             delivery_time=delivery_date or "N/A",
-            address=details.get("receiverDetailedAddress") or "N/A",
+            address=address,
+            phone=phone,
             exceptions=", ".join(all_exceptions),
-            last_remark=last_exception_remark or ""
+            last_remark=last_exception_remark or "",
+            signer_name=signer_name or "N/A"
         )
