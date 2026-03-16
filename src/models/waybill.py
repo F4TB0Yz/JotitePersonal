@@ -25,6 +25,7 @@ class TrackingEvent:
     code: Optional[int] = None
     remark3: Optional[str] = None
     scan_by_code: Optional[str] = None
+    next_stop_name: str = ""
 
 @dataclass
 class AbnormalScan:
@@ -47,6 +48,7 @@ class ConsolidatedReportRow:
     last_staff: str
     staff_contact: str
     is_delivered: bool = False
+    is_out_of_jurisdiction: bool = False
     arrival_punto6_time: str = "N/A"
     delivery_time: str = "N/A"
     address: str = "N/A"

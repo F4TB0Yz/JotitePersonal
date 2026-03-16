@@ -49,7 +49,8 @@ class ReportService:
                     content=item.get("waybillTrackingContent") or "",
                     code=item.get("code"),
                     remark3=item.get("remark3"),
-                    scan_by_code=item.get("scanByCode") or item.get("staffCode") or item.get("scanBy")
+                    scan_by_code=item.get("scanByCode") or item.get("staffCode") or item.get("scanBy"),
+                    next_stop_name=item.get("nextStopName") or ""
                 ))
         return events
 
@@ -128,6 +129,20 @@ class ReportService:
         last_event = events[0] if events else None
         is_delivered = any(self._is_signed_event(e) for e in events)
 
+        is_out_of_jurisdiction = False
+        if last_event:
+            scan_net_id = str(last_event.scan_network_id)
+            next_stop = str(last_event.next_stop_name or "")
+            type_name = (last_event.type_name or "").lower()
+
+            # 1. Salida de Nodo o NextStop diferente de 1009
+            if scan_net_id and scan_net_id != "1009" and "Cund-Punto6" not in next_stop:
+                is_out_of_jurisdiction = True
+
+            # 2. Excepción/Devolución fuera de 1009
+            if scan_net_id and scan_net_id != "1009" and ("excepción" in type_name or "devolución" in type_name):
+                is_out_of_jurisdiction = True
+
         # Buscar fechas específicas
         arrival_punto6 = "N/A"
         delivery_date = "N/A"
@@ -183,6 +198,7 @@ class ReportService:
             last_staff=last_event.staff_name if last_event else "N/A",
             staff_contact=last_event.staff_contact if last_event else "N/A",
             is_delivered=is_delivered,
+            is_out_of_jurisdiction=is_out_of_jurisdiction,
             arrival_punto6_time=arrival_punto6 or "N/A",
             delivery_time=delivery_date or "N/A",
             address=address,
