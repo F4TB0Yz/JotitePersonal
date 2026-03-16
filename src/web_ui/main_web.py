@@ -14,7 +14,8 @@ from src.web_ui.routers import (
     daily_report, 
     auth, 
     ws, 
-    dashboard
+    dashboard,
+    config
 )
 from src.infrastructure.database.connection import initialize_database, SessionLocal
 from src.web_ui import security
@@ -33,6 +34,7 @@ app.include_router(daily_report.router)
 app.include_router(auth.router)
 app.include_router(ws.router)
 app.include_router(dashboard.router)
+app.include_router(config.router)
 
 logger = logging.getLogger(__name__)
 

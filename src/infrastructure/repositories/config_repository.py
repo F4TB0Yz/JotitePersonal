@@ -55,3 +55,20 @@ class ConfigRepository:
             pass
 
         return config
+
+    @classmethod
+    def clear_cache(cls):
+        """Limpia el caché global de configuración."""
+        global _config_cache
+        _config_cache = None
+
+    def set_key(self, key: str, value: str):
+        """Guarda o actualiza una llave en ConfigORM y limpia el caché."""
+        record = self.session.query(ConfigORM).filter_by(key=key).first()
+        if record:
+            record.value = value
+        else:
+            record = ConfigORM(key=key, value=value)
+            self.session.add(record)
+        self.session.commit()
+        self.__class__.clear_cache()
