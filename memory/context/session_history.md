@@ -35,5 +35,6 @@
 
 ## Próximos Pasos
 - **2026-03-16**: **Filtrado**: Corrección de falsos positivos en detección de firmas (Código 94 vs 100). Se excluyó estrictamente el id 94 de la función `_is_signed_event` y se añadió un flag de rollback si el último evento es una Excepción.
+- **2026-03-16**: **Investigación/API**: Se determinó que la API de J&T (`/bigdataReport/detail/bis_network_today_sign_detail`) excluye guías de meses anteriores si han recibido "Escaneos de Excepción" recientes (ej. Control de Tráfico), ya que esto empuja su `scanTime` operativo al mes actual causando aparentes desapariciones en los Rezagos filtrados por mes antiguo.
 1. Validar rendimiento y visualización del Dark Mode PDF en los navegadores del usuario (Pendiente).
 2. Monitorear estabilidad del sistema tras el desacoplamiento de persistencia.
