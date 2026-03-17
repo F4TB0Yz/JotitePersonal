@@ -19,7 +19,6 @@ function PrintableReport({ data, totals, startDate, endDate, visibleCols }) {
         html`
             <div id="print-table-report">
                 <h2>Informe de Mensajeros — ${dateLabel}</h2>
-                <p><strong>Mensajeros seleccionados:</strong> ${data.length}</p>
                 <table>
                     <thead>
                         <tr>
