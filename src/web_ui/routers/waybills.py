@@ -412,7 +412,8 @@ async def get_waybill_photos(waybill_no: str):
             if not scan_time:
                 return {"waybill_no": normalized_wb, "photos": [], "error": "No se encontró evento de firma/entrega"}
 
-            photos_resp = client.get_delivery_photos(normalized_wb, scan_time, scan_by_code or "")
+            formatted_scan_time = scan_time.replace("T", " ") if scan_time else ""
+            photos_resp = client.get_delivery_photos(normalized_wb, formatted_scan_time, scan_by_code or "")
 
             if photos_resp.get("code") != 1:
                 return {
@@ -464,7 +465,8 @@ async def download_waybill_photos(waybill_no: str):
         if not scan_time:
             raise HTTPException(status_code=404, detail="No se encontró evento de firma/entrega")
 
-        photos_resp = client.get_delivery_photos(normalized_wb, scan_time, scan_by_code or "")
+        formatted_scan_time = scan_time.replace("T", " ") if scan_time else ""
+        photos_resp = client.get_delivery_photos(normalized_wb, formatted_scan_time, scan_by_code or "")
 
         if photos_resp.get("code") != 1:
             raise HTTPException(
