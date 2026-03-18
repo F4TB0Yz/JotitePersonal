@@ -409,10 +409,10 @@ async def get_waybill_photos(waybill_no: str):
             finally:
                 db_worker.close()
 
-            if not scan_time or not scan_by_code:
+            if not scan_time:
                 return {"waybill_no": normalized_wb, "photos": [], "error": "No se encontró evento de firma/entrega"}
 
-            photos_resp = client.get_delivery_photos(normalized_wb, scan_time, scan_by_code)
+            photos_resp = client.get_delivery_photos(normalized_wb, scan_time, scan_by_code or "")
 
             if photos_resp.get("code") != 1:
                 return {
@@ -442,14 +442,29 @@ async def download_waybill_photos(waybill_no: str):
 
     def _fetch():
         config = ConfigRepository.get_cached(); client = JTClient(config=config)
-        tracking = client.get_tracking_list(normalized_wb)
-        data = tracking.get("data") or []
-        scan_time, scan_by_code = _find_signing_event(data)
+        from src.infrastructure.database.connection import SessionLocal
+        from src.infrastructure.repositories.returns_repository import ReturnsRepository
+        from src.infrastructure.repositories.novedades_repository import NovedadesRepository
+        
+        scan_time = None
+        scan_by_code = None
 
-        if not scan_time or not scan_by_code:
+        db_worker = SessionLocal()
+        try:
+            service = ReportService(client, ReturnsRepository(db_worker), NovedadesRepository(db_worker))
+            events = service.get_timeline(normalized_wb)
+            for event in events:
+                if service._is_signed_event(event):
+                    scan_time = event.time
+                    scan_by_code = event.scan_by_code
+                    break
+        finally:
+            db_worker.close()
+
+        if not scan_time:
             raise HTTPException(status_code=404, detail="No se encontró evento de firma/entrega")
 
-        photos_resp = client.get_delivery_photos(normalized_wb, scan_time, scan_by_code)
+        photos_resp = client.get_delivery_photos(normalized_wb, scan_time, scan_by_code or "")
 
         if photos_resp.get("code") != 1:
             raise HTTPException(
