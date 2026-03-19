@@ -94,7 +94,10 @@ class ReportService:
             return cached_events
 
         events = self._parse_tracking_events(tracking_json)
-        self.tracking_repo.save_events(waybill_no, events)
+        try:
+            self.tracking_repo.save_events(waybill_no, events)
+        except Exception:
+            self.tracking_repo.session.rollback()
         return events
 
     def get_consolidated_data(self, waybill_no: str) -> ConsolidatedReportRow:
@@ -118,12 +121,7 @@ class ReportService:
             order_info = {}
         
         # 2. Obtener rastreo (Timeline)
-        try:
-            tracking_json = self.client.get_tracking_list(waybill_no)
-            events = self._parse_tracking_events(tracking_json)
-            self.tracking_repo.save_events(waybill_no, events)
-        except APIError:
-            events, _ = self.tracking_repo.get_events_for_waybill(waybill_no)
+        events = self.get_timeline(waybill_no, max_age_minutes=30)
 
         # 3. Obtener excepciones API
         try:

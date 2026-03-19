@@ -38,6 +38,7 @@ app.include_router(config.router)
 
 logger = logging.getLogger(__name__)
 
+
 # Middleware de Autenticación
 def _is_public_path(path: str) -> bool:
     if path in {"/login", "/api/auth/login", "/api/auth/logout", "/favicon.ico"}:
