@@ -400,7 +400,7 @@ async def get_waybill_photos(waybill_no: str):
             db_worker = SessionLocal()
             try:
                 service = ReportService(client, ReturnsRepository(db_worker), NovedadesRepository(db_worker))
-                events = service.get_timeline(normalized_wb)
+                events = service.get_timeline(normalized_wb, max_age_minutes=0)
                 for event in events:
                     if service._is_signed_event(event):
                         scan_time = event.time
@@ -414,6 +414,13 @@ async def get_waybill_photos(waybill_no: str):
 
             formatted_scan_time = scan_time.replace("T", " ") if scan_time else ""
             photos_resp = client.get_delivery_photos(normalized_wb, formatted_scan_time, scan_by_code or "")
+
+            with open("/Users/f4tb0y/Documents/Proyectos/Trabajo/JotitePersonal/tmp/waybills_log.txt", "w", encoding="utf-8") as f_log:
+                f_log.write(f"WAYBILL: {normalized_wb}\n")
+                f_log.write(f"scan_time: {scan_time}\n")
+                f_log.write(f"formatted_scan_time: {formatted_scan_time}\n")
+                f_log.write(f"scan_by_code: {scan_by_code}\n")
+                f_log.write(f"photos_resp: {photos_resp}\n")
 
             if photos_resp.get("code") != 1:
                 return {
@@ -453,7 +460,7 @@ async def download_waybill_photos(waybill_no: str):
         db_worker = SessionLocal()
         try:
             service = ReportService(client, ReturnsRepository(db_worker), NovedadesRepository(db_worker))
-            events = service.get_timeline(normalized_wb)
+            events = service.get_timeline(normalized_wb, max_age_minutes=0)
             for event in events:
                 if service._is_signed_event(event):
                     scan_time = event.time
@@ -503,3 +510,24 @@ async def download_waybill_photos(waybill_no: str):
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/photos/proxy")
+async def proxy_photo(url: str):
+    import requests as _requests
+    from urllib.parse import urlparse
+    
+    parsed = urlparse(url)
+    if parsed.hostname not in _PHOTO_ALLOWED_DOMAINS:
+        raise HTTPException(status_code=400, detail="Dominio no permitido")
+        
+    def _fetch_img():
+        resp = _requests.get(url, timeout=20)
+        resp.raise_for_status()
+        return resp.content, resp.headers.get("Content-Type", "image/jpeg")
+
+    try:
+        content, content_type = await asyncio.to_thread(_fetch_img)
+        return StreamingResponse(io.BytesIO(content), media_type=content_type)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error cargando foto: {e}")

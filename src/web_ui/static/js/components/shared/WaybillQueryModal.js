@@ -347,7 +347,7 @@ export default function WaybillQueryModal() {
                                         <div className="photos-grid">
                                             ${photos.map((url, i) => html`
                                                 <div key=${i} className="photo-thumb-link" onClick=${() => setLightbox({ open: true, index: i })}>
-                                                    <img src=${url} alt=${'Foto ' + (i + 1)} className="photo-thumb" loading="lazy" />
+                                                    <img src=${getPhotoProxyDownloadUrl(url)} alt=${'Foto ' + (i + 1)} className="photo-thumb" loading="lazy" />
                                                 </div>
                                             `)}
                                         </div>
@@ -379,7 +379,7 @@ export default function WaybillQueryModal() {
                 <div className="photo-lightbox-box" onClick=${(e) => e.stopPropagation()}>
                     <button className="lightbox-close" onClick=${() => setLightbox((prev) => ({ ...prev, open: false }))}>×</button>
                     <img
-                        src=${photos[lightbox.index]}
+                        src=${getPhotoProxyDownloadUrl(photos[lightbox.index])}
                         alt=${'Foto ' + (lightbox.index + 1)}
                         className="lightbox-img"
                     />

@@ -13,7 +13,7 @@ export function getPhotosDownloadUrl(waybillNo) {
 
 export function getPhotoProxyDownloadUrl(photoUrl, filename) {
     const params = new URLSearchParams({ url: photoUrl, filename: filename || 'foto.jpeg' });
-    return `/api/photos/proxy?${params.toString()}`;
+    return `/api/waybills/photos/proxy?${params.toString()}`;
 }
 
 export async function downloadPhoto(photoUrl, filename) {

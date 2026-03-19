@@ -1,6 +1,6 @@
 import { html, useState } from '../../lib/ui.js';
 import { fetchWaybillPhones } from '../../services/addressService.js';
-import { fetchWaybillPhotos, downloadAllPhotos, downloadPhoto } from '../../services/photosService.js';
+import { fetchWaybillPhotos, downloadAllPhotos, downloadPhoto, getPhotoProxyDownloadUrl } from '../../services/photosService.js';
 
 export default function WaybillCard({ data, showArribo }) {
     const [phoneState, setPhoneState] = useState({
@@ -206,7 +206,7 @@ export default function WaybillCard({ data, showArribo }) {
                                 <div className="photos-grid">
                                     ${photosState.photos.map((url, i) => html`
                                         <div key=${i} className="photo-thumb-link" onClick=${() => setLightbox({ open: true, index: i })}>
-                                            <img src=${url} alt=${'Foto ' + (i + 1)} className="photo-thumb" loading="lazy" />
+                                            <img src=${getPhotoProxyDownloadUrl(url)} alt=${'Foto ' + (i + 1)} className="photo-thumb" loading="lazy" />
                                         </div>
                                     `)}
                                 </div>
@@ -229,7 +229,7 @@ export default function WaybillCard({ data, showArribo }) {
                 <div className="photo-lightbox-box" onClick=${(e) => e.stopPropagation()}>
                     <button className="lightbox-close" onClick=${() => setLightbox({ open: false, index: 0 })}>×</button>
                     <img
-                        src=${photosState.photos[lightbox.index]}
+                        src=${getPhotoProxyDownloadUrl(photosState.photos[lightbox.index])}
                         alt=${'Foto ' + (lightbox.index + 1)}
                         className="lightbox-img"
                     />
