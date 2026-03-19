@@ -48,7 +48,7 @@ async def login(payload: LoginPayload):
         key=security.SESSION_COOKIE_NAME,
         value=session_token,
         httponly=True,
-        secure=True,
+        secure=False,
         samesite="lax",
         max_age=security.SESSION_TTL_SECONDS,
     )

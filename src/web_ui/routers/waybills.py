@@ -415,12 +415,6 @@ async def get_waybill_photos(waybill_no: str):
             formatted_scan_time = scan_time.replace("T", " ") if scan_time else ""
             photos_resp = client.get_delivery_photos(normalized_wb, formatted_scan_time, scan_by_code or "")
 
-            with open("/Users/f4tb0y/Documents/Proyectos/Trabajo/JotitePersonal/tmp/waybills_log.txt", "w", encoding="utf-8") as f_log:
-                f_log.write(f"WAYBILL: {normalized_wb}\n")
-                f_log.write(f"scan_time: {scan_time}\n")
-                f_log.write(f"formatted_scan_time: {formatted_scan_time}\n")
-                f_log.write(f"scan_by_code: {scan_by_code}\n")
-                f_log.write(f"photos_resp: {photos_resp}\n")
 
             if photos_resp.get("code") != 1:
                 return {
