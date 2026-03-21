@@ -351,6 +351,8 @@ async def get_waybill_timeline(waybill_no: str, max_age_minutes: int = 30):
 
 @router.post("/reprint")
 async def reprint_waybills(payload: WaybillReprintPayload):
+    import logging
+    logger = logging.getLogger(__name__)
     try:
         def _fetch():
             config = ConfigRepository.get_cached(); client = JTClient(config=config)
@@ -363,9 +365,25 @@ async def reprint_waybills(payload: WaybillReprintPayload):
             raise HTTPException(status_code=400, detail=message)
 
         data = response.get("data") or {}
-        pdf_url = data.get("centrePrintUrl") or data.get("centerPrintUrl")
+        logger.warning("[reprint] raw data from J&T: %s", data)
+
+        # Intentar todos los nombres conocidos del campo de URL
+        _URL_FIELD_CANDIDATES = [
+            "centrePrintUrl", "centerPrintUrl",
+            "printUrl", "pdfUrl", "url",
+            "printAddress", "fileUrl",
+        ]
+        pdf_url = next(
+            (data.get(k) for k in _URL_FIELD_CANDIDATES if data.get(k)),
+            None
+        )
+
         if not pdf_url:
-            raise HTTPException(status_code=502, detail="La API de J&T no devolvió URL de PDF")
+            logger.error("[reprint] URL field not found. Full data: %s", data)
+            raise HTTPException(
+                status_code=502,
+                detail=f"La API de J&T no devolvió URL de PDF. Campos recibidos: {list(data.keys())}"
+            )
 
         return {
             "success": True,
@@ -379,6 +397,7 @@ async def reprint_waybills(payload: WaybillReprintPayload):
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
 
 
 @router.get("/{waybill_no}/photos")
