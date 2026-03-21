@@ -37,14 +37,17 @@ function BarcodeSlide({ value, goods, weight, staff, operateTime }) {
     `;
 }
 
-export default function BarcodeModal({ items, index, onClose, onPrev, onNext }) {
+export default function BarcodeModal({ items, index, onClose, onPrev, onNext, festivo = false }) {
     const current = items[index];
     return html`
         <div className="barcode-overlay" onClick=${onClose}>
             <div className="barcode-window" onClick=${(event) => event.stopPropagation()}>
                 <header>
                     <div>
-                        <p>Modo escáner</p>
+                        <p>
+                            Modo escáner
+                            ${festivo ? html`<span className="barcode-festivo-badge">🎉 Modo Festivo</span>` : null}
+                        </p>
                         <h4>${current?.value || 'Sin datos'}</h4>
                     </div>
                     <button type="button" className="barcode-close" onClick=${onClose}>Cerrar ✕</button>

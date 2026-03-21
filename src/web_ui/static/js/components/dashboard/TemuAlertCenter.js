@@ -11,6 +11,8 @@ export default function TemuAlertCenter({ isActive }) {
         loading, error, data, realtimeNote, loadData 
     } = useTemuAlerts({ isActive });
 
+    const [festivoMode, setFestivoMode] = useState(false);
+
     const alerts = data.alerts || [];
     const { warningCount = 0, breachedCount = 0, totalCandidates = 0 } = data;
     const summary = data.summary || {};
@@ -22,16 +24,18 @@ export default function TemuAlertCenter({ isActive }) {
         warning: alerts.filter((item) => item.status === 'warning')
     }), [alerts]);
 
-    const barcodeItems = useMemo(() =>
-        grouped.breached.map((alert) => ({
+    const barcodeItems = useMemo(() => {
+        const source = festivoMode
+            ? [...grouped.breached, ...grouped.warning]
+            : grouped.breached;
+        return source.map((alert) => ({
             value: alert.billcode,
             goods: alert.goodsName,
             weight: alert.weight,
             staff: alert.staff,
             operateTime: alert.operateTime
-        })),
-        [grouped.breached]
-    );
+        }));
+    }, [grouped.breached, grouped.warning, festivoMode]);
 
     const { barcodeModal, openBarcodeViewer, closeBarcodeViewer, shiftBarcode } = useBarcodeCarousel(barcodeItems);
 
@@ -93,6 +97,13 @@ export default function TemuAlertCenter({ isActive }) {
                         />
                         <span>Incluir guías ya vencidas</span>
                     </label>
+                    <button
+                        type="button"
+                        className=${`temu-alert-festivo-btn${festivoMode ? ' active' : ''}`}
+                        onClick=${() => setFestivoMode((prev) => !prev)}
+                    >
+                        ${festivoMode ? '🎉 Desactivar Modo Festivo' : '🎉 Modo Festivo'}
+                    </button>
                     <button type="button" className="primary-btn" onClick=${loadData} disabled=${loading}>
                         ${loading ? 'Actualizando…' : 'Actualizar ahora'}
                     </button>
@@ -134,9 +145,9 @@ export default function TemuAlertCenter({ isActive }) {
                     variant: 'critical'
                 }, {
                     enableBarcode: true,
-                    action: grouped.breached.length
+                    action: barcodeItems.length
                         ? html`<button type="button" className="temu-alert-barcode-btn" onClick=${() => openBarcodeViewer(0)}>
-                            Modo escáner (${grouped.breached.length})
+                            Modo escáner (${barcodeItems.length})
                         </button>`
                         : null
                 })}
@@ -155,6 +166,7 @@ export default function TemuAlertCenter({ isActive }) {
                     onClose=${closeBarcodeViewer}
                     onPrev=${() => shiftBarcode(-1)}
                     onNext=${() => shiftBarcode(1)}
+                    festivo=${festivoMode}
                 />`
                 : null}
         </main>
