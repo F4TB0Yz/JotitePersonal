@@ -379,6 +379,15 @@ async def reprint_waybills(payload: WaybillReprintPayload):
         )
 
         if not pdf_url:
+            # J&T devuelve code=1 pero centrePrintUrl=null cuando la guía
+            # no tiene registro de impresión previo (ej. 911008002).
+            jt_reason = data.get("msg") or data.get("message") or ""
+            if jt_reason:
+                logger.warning("[reprint] J&T rejected reprint: %s", jt_reason)
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"J&T no puede reimprimir: {jt_reason}"
+                )
             logger.error("[reprint] URL field not found. Full data: %s", data)
             raise HTTPException(
                 status_code=502,
