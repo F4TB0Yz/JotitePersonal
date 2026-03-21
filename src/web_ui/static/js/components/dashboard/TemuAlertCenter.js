@@ -4,6 +4,7 @@ import useBarcodeCarousel from '../../hooks/useBarcodeCarousel.js';
 import AlertEntry from './AlertEntry.js';
 import BarcodeModal from './BarcodeViewer.js';
 import { formatHours, formatDateTimeLabel } from '../../utils/formatters.js';
+import { fetchTemuAlerts } from '../../services/alertService.js';
 
 export default function TemuAlertCenter({ isActive }) {
     const { 
@@ -12,6 +13,8 @@ export default function TemuAlertCenter({ isActive }) {
     } = useTemuAlerts({ isActive });
 
     const [festivoMode, setFestivoMode] = useState(false);
+    const [festivoItems, setFestivoItems] = useState([]);
+    const [festivoLoading, setFestivoLoading] = useState(false);
 
     const alerts = data.alerts || [];
     const { warningCount = 0, breachedCount = 0, totalCandidates = 0 } = data;
@@ -24,18 +27,39 @@ export default function TemuAlertCenter({ isActive }) {
         warning: alerts.filter((item) => item.status === 'warning')
     }), [alerts]);
 
-    const barcodeItems = useMemo(() => {
-        const source = festivoMode
-            ? [...grouped.breached, ...grouped.warning]
-            : grouped.breached;
-        return source.map((alert) => ({
-            value: alert.billcode,
-            goods: alert.goodsName,
-            weight: alert.weight,
-            staff: alert.staff,
-            operateTime: alert.operateTime
-        }));
-    }, [grouped.breached, grouped.warning, festivoMode]);
+    // Cuando se activa el modo festivo, carga TODOS los paquetes ≥72h desde el API
+    const loadFestivoData = useCallback(() => {
+        setFestivoLoading(true);
+        fetchTemuAlerts({ thresholdHours: 72, windowHours: 9999, includeOverdue: true })
+            .then((response) => {
+                const all72 = (response.alerts || []).map((alert) => ({
+                    value: alert.billcode,
+                    goods: alert.goodsName,
+                    weight: alert.weight,
+                    staff: alert.staff,
+                    operateTime: alert.operateTime
+                }));
+                setFestivoItems(all72);
+            })
+            .catch(() => setFestivoItems([]))
+            .finally(() => setFestivoLoading(false));
+    }, []);
+
+    useEffect(() => {
+        if (festivoMode) {
+            loadFestivoData();
+        } else {
+            setFestivoItems([]);
+        }
+    }, [festivoMode, loadFestivoData]);
+
+    const barcodeItems = festivoMode ? festivoItems : grouped.breached.map((alert) => ({
+        value: alert.billcode,
+        goods: alert.goodsName,
+        weight: alert.weight,
+        staff: alert.staff,
+        operateTime: alert.operateTime
+    }));
 
     const { barcodeModal, openBarcodeViewer, closeBarcodeViewer, shiftBarcode } = useBarcodeCarousel(barcodeItems);
 
@@ -101,8 +125,9 @@ export default function TemuAlertCenter({ isActive }) {
                         type="button"
                         className=${`temu-alert-festivo-btn${festivoMode ? ' active' : ''}`}
                         onClick=${() => setFestivoMode((prev) => !prev)}
+                        disabled=${festivoLoading}
                     >
-                        ${festivoMode ? '🎉 Desactivar Modo Festivo' : '🎉 Modo Festivo'}
+                        ${festivoLoading ? 'Cargando 72h…' : festivoMode ? '🎉 Desactivar Modo Festivo' : '🎉 Modo Festivo'}
                     </button>
                     <button type="button" className="primary-btn" onClick=${loadData} disabled=${loading}>
                         ${loading ? 'Actualizando…' : 'Actualizar ahora'}
