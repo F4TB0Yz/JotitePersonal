@@ -10,6 +10,13 @@ export function fetchPendingWaybills(networkCode, start, end, dateMode) {
     });
 }
 
-export function fetchCellDetails(networkCode, staff, date, dateMode) {
-    return get(`/api/network/waybills?networkCode=${encodeURIComponent(networkCode)}&staff=${encodeURIComponent(staff)}&date=${encodeURIComponent(date)}&dateMode=${encodeURIComponent(dateMode || '')}`);
+export function fetchCellDetails(networkCode, start, end, staff, date, dateMode) {
+    return post('/api/network/waybills', {
+        networkCode,
+        startTime: start,
+        endTime: end,
+        signType: 0,
+        target_staff: staff,
+        target_date: date === 'ALL' ? null : date
+    });
 }

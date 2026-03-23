@@ -71,8 +71,8 @@ export function usePendingDashboard() {
 
     const loadCellDetails = useCallback((staff, day) => {
         setCellLoading(true);
-        const dateParam = day === 'ALL' ? '' : day;
-        fetchCellDetails(networkCode, staff, dateParam, dateMode)
+        const { start, end } = buildDateRange(startDate, endDate);
+        fetchCellDetails(networkCode, start, end, staff, day, dateMode)
             .then(data => {
                 // Ensure robust data extraction whether it's wrapped in { records: [] } or just []
                 const records = Array.isArray(data) ? data : (data.records || []);
@@ -85,7 +85,7 @@ export function usePendingDashboard() {
             .finally(() => {
                 setCellLoading(false);
             });
-    }, [networkCode, dateMode]);
+    }, [networkCode, startDate, endDate, dateMode]);
 
     return {
         dateMode,

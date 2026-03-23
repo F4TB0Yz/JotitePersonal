@@ -398,7 +398,7 @@ export default function PendingDashboardView() {
                                                     : null}
                                             </td>
                                             ${tableData.dates.map((date) => {
-                                                const value = row.data[date] || 0;
+                                                const value = row.dates[date] || 0;
                                                 const clickable = value > 0;
                                                 const classes = `${cellClass(value)} ${clickable ? 'dash-cell-clickable' : ''}`.trim();
                                                 return html`<td
@@ -412,12 +412,12 @@ export default function PendingDashboardView() {
                                                 </td>`;
                                             })}
                                             <td
-                                                className=${`dash-total-cell ${row.data.total > 0 ? 'dash-cell-clickable' : ''}`}
-                                                onClick=${row.data.total > 0 ? () => handleTotalClick(row.staff) : undefined}
-                                                role=${row.data.total > 0 ? 'button' : undefined}
-                                                title=${row.data.total > 0 ? 'Ver todos los paquetes del mensajero' : undefined}
+                                                className=${`dash-total-cell ${row.total > 0 ? 'dash-cell-clickable' : ''}`}
+                                                onClick=${row.total > 0 ? () => handleTotalClick(row.staff) : undefined}
+                                                role=${row.total > 0 ? 'button' : undefined}
+                                                title=${row.total > 0 ? 'Ver todos los paquetes del mensajero' : undefined}
                                             >
-                                                ${row.data.total}
+                                                ${row.total}
                                             </td>
                                         </tr>`;
                                     })}
