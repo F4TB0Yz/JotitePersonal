@@ -37,14 +37,14 @@ async def search_messengers(q: str):
         return []
 
 @router.get("/contact")
-async def get_messenger_contact(name: str, network_code: str | None = None, waybill: str | None = None):
+async def get_messenger_contact(name: str, network_code: str | None = "1009", waybill: str | None = None):
     if not name or not name.strip():
         raise HTTPException(status_code=400, detail="Nombre requerido")
 
     def _fetch_contact():
         config = ConfigRepository.get_cached(); client = JTClient(config=config)
         normalized = name.strip().lower()
-        response = client.search_messengers(name.strip(), network_id=None)
+        response = client.search_messengers(name.strip(), network_id=network_code)
         data = response.get("data") or {}
         records = data.get("records") if isinstance(data, dict) else data
         if records and not isinstance(records, list):
