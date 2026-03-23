@@ -7,7 +7,7 @@ import { fetchMessengerContact } from '../../services/messengerService.js';
 import DateRangePicker from '../shared/DateRangePicker.js';
 import PendingDetailPanel from './PendingDetailPanel.js';
 
-import { cellClass, getPackageDateByMode, getSortTimestamp } from '../../utils/pendingHelpers.js';
+import { cellClass } from '../../utils/pendingHelpers.js';
 
 
 export default function PendingDashboardView() {
@@ -29,30 +29,28 @@ export default function PendingDashboardView() {
         error,
         subtitle,
         summary,
-        filteredRecords,
         tableData,
-        getRecordsByCell,
-        getRecordsByStaff,
+        matrixData,
+        loadCellDetails,
+        selectedCell,
+        setSelectedCell,
+        cellLoading,
         getSampleWaybillForStaff
     } = usePendingDashboard();
 
     const assignmentModeActive = dateMode === dateModes.assignment;
     const activeDateLabel = assignmentModeActive ? 'Asignación mensajero' : 'Arribo destino';
 
-    const [selectedCell, setSelectedCell] = useState(null);
     const [detailMap, setDetailMap] = useState({});
     const [detailLoading, setDetailLoading] = useState(false);
     const [detailError, setDetailError] = useState('');
     const [phoneState, setPhoneState] = useState({});
     const [messengerContacts, setMessengerContacts] = useState({});
 
-    const detailRows = selectedCell
-        ? [...selectedCell.records].sort((a, b) => {
-            const bValue = getPackageDateByMode(b, dateMode, dateModes);
-            const aValue = getPackageDateByMode(a, dateMode, dateModes);
-            return getSortTimestamp(bValue) - getSortTimestamp(aValue);
-        })
-        : [];
+    // Since the backend already returns data sorted/grouped, and we don't have getPackageDateByMode anymore
+    // we can just use the records array as is, or sort it if it has standard date fields.
+    // Omit sorting here if data is already in order, or keep a simpler sort if necessary.
+    const detailRows = selectedCell ? [...selectedCell.records] : [];
 
     const {
         showExportMenu,
@@ -74,7 +72,7 @@ export default function PendingDashboardView() {
         endDate,
         selectedStaff,
         activeDateLabel,
-        filteredRecords,
+        filteredRecords: matrixData?.rows || [], // For backward compatibility if usePendingExports needs it
         detailRows,
         selectedCell
     });
@@ -93,7 +91,7 @@ export default function PendingDashboardView() {
     }, [networkCode]);
 
     useEffect(() => {
-        if (!selectedCell) {
+        if (!selectedCell || !selectedCell.records) {
             setDetailMap({});
             setDetailError('');
             setDetailLoading(false);
@@ -137,7 +135,7 @@ export default function PendingDashboardView() {
     }, [selectedCell]);
 
     useEffect(() => {
-        if (!selectedCell) return;
+        if (!selectedCell || !selectedCell.records) return;
         const allowed = new Set(
             selectedCell.records
                 .map((item) => item.waybillNo)
@@ -155,29 +153,11 @@ export default function PendingDashboardView() {
     }, [selectedCell]);
 
     const handleCellClick = (staff, day) => {
-        const records = getRecordsByCell(staff, day);
-        if (!records.length) {
-            setSelectedCell(null);
-            return;
-        }
-        setSelectedCell({
-            staff,
-            day,
-            records
-        });
+        loadCellDetails(staff, day);
     };
 
     const handleTotalClick = (staff) => {
-        const records = getRecordsByStaff(staff);
-        if (!records.length) {
-            setSelectedCell(null);
-            return;
-        }
-        setSelectedCell({
-            staff,
-            day: 'ALL',
-            records
-        });
+        loadCellDetails(staff, 'ALL');
     };
 
     const handleMessengerClick = (staff) => {
@@ -341,7 +321,7 @@ export default function PendingDashboardView() {
                         <button
                             type="button"
                             className="dash-json-export-btn"
-                            disabled=${loading || exportJsonLoading || filteredRecords.length === 0}
+                            disabled=${loading || exportJsonLoading || !matrixData?.rows?.length}
                             onClick=${handleExportDashboardJson}
                             title="Exportar todos los paquetes visibles en JSON para análisis con IA"
                         >

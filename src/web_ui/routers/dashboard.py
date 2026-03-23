@@ -112,14 +112,16 @@ async def get_network_waybills(
 ):
     try:
         criteria = WaybillFilterCriteria(**req)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Faltan parámetros requeridos.")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Faltan parámetros requeridos: {str(e)}")
 
     try:
         response = await asyncio.to_thread(service.get_network_waybills, criteria, background_tasks)
+        if isinstance(response, list):
+            return [r.dict(exclude_none=True) for r in response]
         return response.dict(exclude_none=True)
     except Exception as e:
-        return {"records": [], "error": str(e)}
+        return {"summary": {"total_packages": 0, "total_staff": 0, "dates": []}, "rows": [], "error": str(e)}
 
 @router.get("/alerts/temu")
 async def get_temu_alerts(

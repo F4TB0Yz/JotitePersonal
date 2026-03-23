@@ -19,9 +19,35 @@ class WaybillFilterCriteria(BaseModel):
     start_time: str = Field(..., alias="startTime")
     end_time: str = Field(..., alias="endTime")
     sign_type: int = Field(SignTypeEnum.PENDING.value, alias="signType")
+    target_staff: Optional[str] = None
+    target_date: Optional[str] = None
 
     class Config:
         populate_by_name = True
+
+class WaybillDTO(BaseModel):
+    waybill_no: str
+    status: str
+    date: str
+    staff: str
+    city: str = "N/A"
+    receiver: str = "N/A"
+    address: str = "N/A"
+    phone: str = "N/A"
+
+class DashboardRowDTO(BaseModel):
+    staff: str
+    total: int
+    dates: dict[str, int]
+
+class DashboardSummaryDTO(BaseModel):
+    total_packages: int
+    total_staff: int
+    dates: List[str]
+
+class DashboardMatrixResponse(BaseModel):
+    summary: DashboardSummaryDTO
+    rows: List[DashboardRowDTO]
 
 class NetworkWaybillRecord(BaseModel):
     waybill_no: Optional[str] = Field(None, alias="waybillNo")
@@ -42,10 +68,6 @@ class NetworkWaybillRecord(BaseModel):
     def canonical_waybill_no(self) -> str:
         wb = self.waybill_no or self.bill_code or self.order_id or ""
         return wb.strip().upper()
-
-class NetworkWaybillResponse(BaseModel):
-    records: List[dict]
-    _filtered_count: Optional[int] = None
 
 # --- Specification Pattern for Rules ---
 
@@ -161,7 +183,92 @@ class WaybillNetworkService:
         self.tracking_repo = tracking_repo
         self.db = db
 
-    def get_network_waybills(self, criteria: WaybillFilterCriteria, background_tasks: BackgroundTasks) -> NetworkWaybillResponse:
+    def _normalize_staff(self, delivery_user: Optional[str]) -> str:
+        if not delivery_user or not delivery_user.strip():
+            return "Sin enrutar"
+        return delivery_user.strip()
+
+    def _resolve_date(self, record: dict, mode: str) -> str:
+        if mode == 'assignment':
+            fields = [
+                'deliveryScanTimeLatest', 'dispatchTime', 'assignTime',
+                'deliveryTime', 'operateTime', 'destArrivalTime', 'dateTime',
+                'deadLineTime', 'createTime', 'updateTime', 'scanTime'
+            ]
+        else:
+            fields = [
+                'destArrivalTime', 'arrivalTime', 'arriveTime', 'inboundTime',
+                'dispatchTime', 'operateTime', 'updateTime'
+            ]
+        
+        for field in fields:
+            val = record.get(field)
+            if val and str(val) != 'N/A':
+                return str(val)[:10]
+        return 'Sin Fecha'
+
+    def _aggregate_waybills(self, records_raw: List[dict], criteria: WaybillFilterCriteria, mode: str):
+        waybills = []
+        for r_raw in records_raw:
+            staff = self._normalize_staff(r_raw.get("deliveryUser") or r_raw.get("staffName"))
+            date = self._resolve_date(r_raw, mode)
+            wb_no = r_raw.get("waybillNo") or r_raw.get("billCode") or r_raw.get("orderId") or "Desconocido"
+            status = r_raw.get("waybillStatus") or r_raw.get("status") or r_raw.get("statusName") or "Pendiente"
+            
+            city = r_raw.get("receiverCityName") or r_raw.get("receiverCity") or "N/A"
+            receiver = r_raw.get("receiverName") or r_raw.get("receiver") or "N/A"
+            address = r_raw.get("receiverAddress") or r_raw.get("receiverAddressDetail") or "N/A"
+            phone = r_raw.get("receiverPhone") or r_raw.get("receiverMobile") or "N/A"
+
+            waybills.append(WaybillDTO(
+                waybill_no=wb_no,
+                status=status,
+                date=date,
+                staff=staff,
+                city=city,
+                receiver=receiver,
+                address=address,
+                phone=phone
+            ))
+
+        if criteria.target_staff and criteria.target_date:
+            return [wb for wb in waybills if wb.staff == criteria.target_staff and wb.date == criteria.target_date]
+
+        staff_map = {}
+        all_dates = set()
+        
+        for wb in waybills:
+            staff = wb.staff
+            date = wb.date
+            all_dates.add(date)
+            
+            if staff not in staff_map:
+                staff_map[staff] = {'total': 0, 'dates': {}}
+            
+            staff_map[staff]['total'] += 1
+            staff_map[staff]['dates'][date] = staff_map[staff]['dates'].get(date, 0) + 1
+            
+        sorted_dates = sorted(list(all_dates))
+        
+        rows = []
+        for staff, data in staff_map.items():
+            rows.append(DashboardRowDTO(
+                staff=staff,
+                total=data['total'],
+                dates=data['dates']
+            ))
+            
+        rows.sort(key=lambda x: x.total, reverse=True)
+
+        summary = DashboardSummaryDTO(
+            total_packages=len(waybills),
+            total_staff=len(rows),
+            dates=sorted_dates
+        )
+        
+        return DashboardMatrixResponse(summary=summary, rows=rows)
+
+    def get_network_waybills(self, criteria: WaybillFilterCriteria, background_tasks: BackgroundTasks):
         response = self.jt_client.get_network_signing_detail(
             network_code=criteria.network_code,
             start_time=criteria.start_time,
@@ -171,13 +278,13 @@ class WaybillNetworkService:
         records_raw = response.get("data", {}).get("records", []) or []
 
         if not records_raw or criteria.sign_type != SignTypeEnum.PENDING.value:
-            return NetworkWaybillResponse(records=records_raw)
+            return self._aggregate_waybills(records_raw, criteria, 'arrival')
 
         records = [NetworkWaybillRecord(**r) for r in records_raw]
         waybill_nos = [r.canonical_waybill_no for r in records if r.canonical_waybill_no]
 
         if not waybill_nos:
-            return NetworkWaybillResponse(records=records_raw)
+            return self._aggregate_waybills([], criteria, 'assignment')
 
         departed = self.tracking_repo.get_departed_waybills(
             self.db, waybill_nos, current_network_id=criteria.network_code
@@ -185,7 +292,7 @@ class WaybillNetworkService:
 
         if not departed:
             self._enqueue_healing(waybill_nos, background_tasks)
-            return NetworkWaybillResponse(records=records_raw)
+            return self._aggregate_waybills(records_raw, criteria, 'assignment')
 
         rules = ExcludeRulesComposite(criteria.network_code, departed)
         filtered = []
@@ -201,22 +308,17 @@ class WaybillNetworkService:
 
         survivors = [r.canonical_waybill_no for r in filtered]
         
-        # Sobreescribir deliveryUser con el historial local detallado (Healing)
         if survivors:
             staff_map = self._enrich_latest_messenger(filtered)
             for r_obj, r_raw in zip(filtered, filtered_raw):
                 if r_obj.delivery_user:
                     r_raw["deliveryUser"] = r_obj.delivery_user
 
-            # Saneamiento Inteligente en segundo plano
             mandatory = [wb for wb in survivors if wb not in staff_map]
             periodic = [wb for wb in survivors if wb in staff_map]
             self._enqueue_healing(mandatory, periodic, background_tasks)
 
-        return NetworkWaybillResponse(
-            records=filtered_raw, 
-            _filtered_count=len(records_raw) - len(filtered_raw)
-        )
+        return self._aggregate_waybills(filtered_raw, criteria, 'assignment')
 
     def _enrich_latest_messenger(self, records: List[NetworkWaybillRecord]) -> dict:
         if not records:

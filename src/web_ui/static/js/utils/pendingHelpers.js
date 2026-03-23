@@ -33,46 +33,7 @@ export function getPackageStatus(record) {
     return resolveValue([record.statusName, record.status, record.waybillStatusName], 'Pendiente');
 }
 
-export function pickFirstDate(record, fields, fallback = 'Sin Fecha') {
-    for (const field of fields) {
-        const value = record?.[field];
-        if (value && value !== 'N/A') return value;
-    }
-    return fallback;
-}
-
-export function getPackageDateByMode(record, dateMode, dateModes) {
-    if (dateMode === dateModes.assignment) {
-        return pickFirstDate(record, [
-            'deliveryScanTimeLatest',
-            'dispatchTime',
-            'assignTime',
-            'deliveryTime',
-            'operateTime',
-            'destArrivalTime',
-            'dateTime',
-            'deadLineTime',
-            'createTime',
-            'updateTime',
-            'scanTime'
-        ]);
-    }
-    return pickFirstDate(record, [
-        'destArrivalTime',
-        'arrivalTime',
-        'arriveTime',
-        'inboundTime',
-        'dispatchTime',
-        'operateTime',
-        'updateTime'
-    ]);
-}
-
-export function getSortTimestamp(value) {
-    if (!value || value === 'Sin Fecha') return 0;
-    const ts = new Date(value).getTime();
-    return Number.isNaN(ts) ? 0 : ts;
-}
+// Funciones de fecha eliminadas porque el backend ahora provee la información precalculada y normalizada.
 
 export function getPhoneButtonLabel(info) {
     if (!info) return '📞 Ver teléfono';
