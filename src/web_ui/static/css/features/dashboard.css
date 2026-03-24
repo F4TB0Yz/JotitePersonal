@@ -270,30 +270,34 @@
     font-weight: 500;
 }
 
-/* Colores de celda condicionales */
-.dash-cell-verylow {
-    background-color: rgba(230, 28, 36, 0.2);
-    color: #ff9f9f;
-}
-
+/* Colores de celda condicionales (Escala Verde -> Rojo) */
 .dash-cell-empty {
     background-color: rgba(255, 255, 255, 0.02);
     color: var(--text-muted);
 }
 
+/* 1 a 5 paquetes: Situación óptima (Verde intenso) */
+.dash-cell-verylow {
+    background-color: rgba(46, 204, 113, 0.25);
+    color: #69f0ae;
+}
+
+/* 6 a 15 paquetes: Situación normal (Verde suave / lima) */
 .dash-cell-low {
-    background-color: rgba(46, 204, 113, 0.18);
-    color: #7fffcf;
+    background-color: rgba(139, 195, 74, 0.2);
+    color: #dce775;
 }
 
+/* 16 a 30 paquetes: Precaución / Carga media (Amarillo/Naranja) */
 .dash-cell-med {
-    background-color: rgba(255, 193, 7, 0.18);
-    color: #ffd479;
+    background-color: rgba(255, 152, 0, 0.2);
+    color: #ffb74d;
 }
 
+/* Más de 30 paquetes: Sobrecarga / Crítico (Rojo) */
 .dash-cell-high {
-    background-color: rgba(255, 87, 34, 0.2);
-    color: #ffad90;
+    background-color: rgba(244, 67, 54, 0.25);
+    color: #ff8a80;
 }
 
 .dash-total-cell {
