@@ -15,7 +15,7 @@ from src.infrastructure.database.deps import get_db
 from src.infrastructure.database.connection import SessionLocal
 from src.services.waybill_network_service import WaybillNetworkService, WaybillFilterCriteria, WaybillDTO
 from src.services.global_search_service import GlobalSearchService
-from src.domain.exceptions import InvalidFilterCriteriaError, ExternalAPIError
+from src.domain.exceptions import InvalidFilterCriteriaError, ExternalAPIError, APIError
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api", tags=["Dashboard & Core"])
@@ -63,7 +63,10 @@ async def get_network_waybills(
         return response.model_dump(by_alias=True, exclude_none=True)
     except InvalidFilterCriteriaError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    except ExternalAPIError as exc:
+    except (ExternalAPIError, APIError) as exc:
+        err_msg = str(exc)
+        if "401" in err_msg or "Unauthorized" in err_msg:
+            raise HTTPException(status_code=401, detail="Token de J&T expirado o inválido. Por favor, renueva la sesión.")
         raise HTTPException(status_code=502, detail=f"Error upstream J&T: {exc}")
     except Exception:
         raise HTTPException(status_code=500, detail="Error interno del servidor")
@@ -81,7 +84,10 @@ async def get_waybill_cell_details(
         return [r.model_dump(by_alias=True) for r in records]
     except InvalidFilterCriteriaError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    except ExternalAPIError as exc:
+    except (ExternalAPIError, APIError) as exc:
+        err_msg = str(exc)
+        if "401" in err_msg or "Unauthorized" in err_msg:
+            raise HTTPException(status_code=401, detail="Token de J&T expirado o inválido. Por favor, renueva la sesión.")
         raise HTTPException(status_code=502, detail=f"Error upstream J&T: {exc}")
     except Exception:
         raise HTTPException(status_code=500, detail="Error interno del servidor")

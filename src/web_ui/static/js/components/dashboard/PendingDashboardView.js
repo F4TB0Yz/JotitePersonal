@@ -98,9 +98,17 @@ export default function PendingDashboardView() {
         setExportJsonError('');
     }, [loading]);
 
+    const isTokenError = error && error.toLowerCase().includes('token');
+
     return html`
         <main className="dashboard-main">
             <div className="dashboard-shell">
+                ${isTokenError ? html`
+                    <div className="dash-api-banner">
+                        <svg viewBox="0 0 24 24"><path d="M11 15h2v2h-2zm0-8h2v6h-2zm.99-5C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/></svg>
+                        <span>${error}</span>
+                    </div>
+                ` : null}
                 <div className="dashboard-header">
                     <div>
                         <h2>Guías pendientes por mensajero</h2>
@@ -174,7 +182,9 @@ export default function PendingDashboardView() {
                 </div>
                 <div className="dash-table-container">
                     ${error
-                        ? html`<div className="dash-error">${error}</div>`
+                        ? (isTokenError 
+                            ? html`<div className="dash-placeholder">La matriz de pendientes está oculta porque no hay conexión autencticada con el servidor.<br/>Cargue un token válido para continuar.</div>` 
+                            : html`<div className="dash-error">${error}</div>`)
                         : tableData.rows.length === 0
                             ? html`<div className="dash-placeholder">No hay paquetes pendientes en este rango.</div>`
                             : html`<table className="dash-target-table">
