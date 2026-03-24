@@ -94,11 +94,13 @@ export function usePendingDashboard() {
 
     const staffOptions = matrixData.rows.map((r) => r.staff);
 
-    // TD-09: filteredRows removed — the backend already filters by target_staff
-    // when that parameter is sent. The view renders matrixData.rows directly.
+    const displayedRows = selectedStaff === 'ALL' || !selectedStaff
+        ? (matrixData.rows || [])
+        : (matrixData.rows || []).filter(r => r.staff === selectedStaff);
+
     const tableData = {
         dates: matrixData.dates,
-        rows: matrixData.rows,
+        rows: displayedRows,
     };
 
     /**
