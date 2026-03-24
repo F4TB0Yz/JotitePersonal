@@ -7,7 +7,6 @@ import {
     getReceiverCity,
     getReceiverAddress,
     getPhoneButtonLabel,
-    getPackageDateByMode,
     getPackageStatus
 } from '../../utils/pendingHelpers.js';
 
@@ -135,7 +134,7 @@ export default function PendingDetailPanel({
                                                 ? html`<span className="dash-phone-value">${phoneInfo.value}</span>`
                                                 : null}
                                         </td>
-                                        <td data-label="Fecha">${getPackageDateByMode(pkg, dateMode, dateModes)}</td>
+                                        <td data-label="Fecha">${pkg.date || 'Sin Fecha'}</td>
                                         <td data-label="Estado">${detail?.status || getPackageStatus(pkg)}</td>
                                     </tr>`;
                                 })}
