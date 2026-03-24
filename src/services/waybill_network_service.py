@@ -335,39 +335,16 @@ class WaybillNetworkService:
         """Ensures '1 waybill = 1 item' by taking the latest event mapping."""
         unique_map = {}
         for wb in waybills:
-            if wb.waybill_no and wb.waybill_no != "Desconocido":
-                unique_map[wb.waybill_no] = wb
+            clean_no = wb.waybill_no.strip() if wb.waybill_no else ""
+            if clean_no and clean_no != "Desconocido":
+                wb.waybill_no = clean_no
+                unique_map[clean_no] = wb
         return list(unique_map.values())
 
-    def _aggregate_waybills(
-        self, records_raw: List[dict], criteria: WaybillFilterCriteria, mode: str
-    ) -> DashboardMatrixResponse:
-        """Orchestrates mapping → filtering → matrix construction."""
-        raw_waybills = [self._map_raw_to_dto(r, mode) for r in records_raw]
-        waybills = self._deduplicate_waybills(raw_waybills)
-        filtered = self._apply_filters(waybills, criteria)
-        return self._build_matrix(filtered)
-
-
-    def get_cell_details(
-        self, criteria: WaybillFilterCriteria, background_tasks: BackgroundTasks
+    def _get_valid_waybills(
+        self, criteria: WaybillFilterCriteria, background_tasks: Optional[BackgroundTasks] = None
     ) -> List[WaybillDTO]:
-        """
-        Returns a flat list of WaybillDTOs for a single staff × date cell.
-        The matrix build step is intentionally skipped — the caller only needs records.
-        """
-        response = self.jt_client.get_network_signing_detail(
-            network_code=criteria.network_code,
-            start_time=criteria.start_time,
-            end_time=criteria.end_time,
-            sign_type=criteria.sign_type,
-        )
-        records_raw = response.get("data", {}).get("records", []) or []
-        raw_waybills = [self._map_raw_to_dto(r, criteria.date_mode) for r in records_raw]
-        waybills = self._deduplicate_waybills(raw_waybills)
-        return self._apply_filters(waybills, criteria)
-
-    def get_network_waybills(self, criteria: WaybillFilterCriteria, background_tasks: BackgroundTasks) -> DashboardMatrixResponse:
+        """Single Source of Truth pipeline: fetch -> exclude -> map -> deduplicate -> filter."""
         response = self.jt_client.get_network_signing_detail(
             network_code=criteria.network_code,
             start_time=criteria.start_time,
@@ -376,27 +353,30 @@ class WaybillNetworkService:
         )
         records_raw = response.get("data", {}).get("records", []) or []
 
+        # If not pending, bypass strict rules
         if not records_raw or criteria.sign_type != SignTypeEnum.PENDING.value:
-            return self._aggregate_waybills(records_raw, criteria, criteria.date_mode)
+            raw_waybills = [self._map_raw_to_dto(r, criteria.date_mode) for r in records_raw]
+            waybills = self._deduplicate_waybills(raw_waybills)
+            return self._apply_filters(waybills, criteria)
 
         records = [NetworkWaybillRecord(**r) for r in records_raw]
         waybill_nos = [r.canonical_waybill_no for r in records if r.canonical_waybill_no]
 
         if not waybill_nos:
-            return self._aggregate_waybills([], criteria, criteria.date_mode)
+            return []
 
-        departed = self.tracking_repo.get_departed_waybills(
-            waybill_nos, current_network_id=criteria.network_code
-        )
+        departed = self.tracking_repo.get_departed_waybills(waybill_nos, current_network_id=criteria.network_code)
 
         if not departed:
-            self._enqueue_healing(mandatory=waybill_nos, periodic=[], background_tasks=background_tasks)
-            return self._aggregate_waybills(records_raw, criteria, criteria.date_mode)
-
+            if background_tasks:
+                self._enqueue_healing(mandatory=waybill_nos, periodic=[], background_tasks=background_tasks)
+            raw_waybills = [self._map_raw_to_dto(r, criteria.date_mode) for r in records_raw]
+            waybills = self._deduplicate_waybills(raw_waybills)
+            return self._apply_filters(waybills, criteria)
 
         rules = ExcludeRulesComposite(criteria.network_code, departed)
-        filtered = []
         filtered_raw = []
+        filtered = []
 
         for r_obj, r_raw in zip(records, records_raw):
             if not r_obj.canonical_waybill_no:
@@ -414,11 +394,25 @@ class WaybillNetworkService:
                 if r_obj.delivery_user:
                     r_raw["deliveryUser"] = r_obj.delivery_user
 
-            mandatory = [wb for wb in survivors if wb not in staff_map]
-            periodic = [wb for wb in survivors if wb in staff_map]
-            self._enqueue_healing(mandatory, periodic, background_tasks)
+            if background_tasks:
+                mandatory = [wb for wb in survivors if wb not in staff_map]
+                periodic = [wb for wb in survivors if wb in staff_map]
+                self._enqueue_healing(mandatory, periodic, background_tasks)
 
-        return self._aggregate_waybills(filtered_raw, criteria, criteria.date_mode)
+        raw_waybills = [self._map_raw_to_dto(r, criteria.date_mode) for r in filtered_raw]
+        waybills = self._deduplicate_waybills(raw_waybills)
+        return self._apply_filters(waybills, criteria)
+
+    def get_network_waybills(
+        self, criteria: WaybillFilterCriteria, background_tasks: BackgroundTasks
+    ) -> DashboardMatrixResponse:
+        waybills = self._get_valid_waybills(criteria, background_tasks)
+        return self._build_matrix(waybills)
+
+    def get_cell_details(
+        self, criteria: WaybillFilterCriteria, background_tasks: BackgroundTasks
+    ) -> List[WaybillDTO]:
+        return self._get_valid_waybills(criteria, background_tasks)
 
     def _enrich_latest_messenger(self, records: List[NetworkWaybillRecord]) -> dict:
         if not records:
