@@ -98,6 +98,13 @@ export function usePendingDashboard() {
         ? (matrixData.rows || [])
         : (matrixData.rows || []).filter(r => r.staff === selectedStaff);
 
+    const derivedSummary = {
+        ...(matrixData?.summary || {}),
+        total: displayedRows.reduce((sum, row) => sum + (row.total || 0), 0),
+        totalStaff: displayedRows.length,
+        old: displayedRows.reduce((sum, row) => sum + (row.old || 0), 0)
+    };
+
     const tableData = {
         dates: matrixData.dates,
         rows: displayedRows,
@@ -155,7 +162,7 @@ export function usePendingDashboard() {
         subtitle,
         // Derived data
         staffOptions,
-        summary: matrixData.summary,
+        summary: derivedSummary,
         tableData,
         matrixData,
         // Cell lazy-load
