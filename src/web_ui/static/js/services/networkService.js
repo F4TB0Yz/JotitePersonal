@@ -46,15 +46,11 @@ export function fetchPendingWaybills(networkCode, start, end, dateMode) {
 
 /**
  * Fetches the individual waybill records for a single cell in the dashboard matrix.
- * Reuses the same endpoint as the matrix fetch but activates server-side filtering via
- * `target_staff` and `target_date`. The backend returns a filtered DashboardMatrixResponse
- * from which the caller extracts the row records.
+ * Uses the dedicated details endpoint that returns a flat List[WaybillDTO] —
+ * no matrix unwrapping required on the frontend.
  *
- * Endpoint: POST /api/network/waybills
- * Response contract: { summary: DashboardSummaryDTO, rows: DashboardRowDTO[] }
- *
- * NOTE: When a dedicated GET /api/network/waybills/{staff}/{date} endpoint is available,
- * this function should be updated to use it for strict REST semantics.
+ * Endpoint: POST /api/network/waybills/details
+ * Response contract: WaybillDTO[]  (flat array)
  *
  * @param {string}      networkCode
  * @param {string}      start       - Formatted start datetime string.
@@ -62,7 +58,7 @@ export function fetchPendingWaybills(networkCode, start, end, dateMode) {
  * @param {string}      staff       - Exact staff name (matches DashboardRowDTO.staff).
  * @param {string}      date        - ISO date "YYYY-MM-DD", or "ALL" to retrieve all dates.
  * @param {string}      dateMode    - "assignment" | "arrival"
- * @returns {Promise<{summary: object, rows: object[]}>}
+ * @returns {Promise<object[]>}
  */
 export function fetchCellDetails(networkCode, start, end, staff, date, dateMode) {
     /** @type {CellDetailPayload} */
@@ -75,5 +71,5 @@ export function fetchCellDetails(networkCode, start, end, staff, date, dateMode)
         target_staff: staff,
         target_date: date === 'ALL' ? null : date,
     };
-    return post('/api/network/waybills', payload);
+    return post('/api/network/waybills/details', payload);
 }

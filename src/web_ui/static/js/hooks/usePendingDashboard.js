@@ -122,7 +122,8 @@ export function usePendingDashboard() {
 
         fetchCellDetails(networkCode, start, end, staff, day, dateMode)
             .then((data) => {
-                const records = Array.isArray(data) ? data : (data.records || data.rows || []);
+                // /api/network/waybills/details returns a flat WaybillDTO[]
+                const records = Array.isArray(data) ? data : [];
                 setSelectedCell({ staff, day, records });
             })
             .catch((err) => {

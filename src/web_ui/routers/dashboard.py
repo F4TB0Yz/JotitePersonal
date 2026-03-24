@@ -13,7 +13,7 @@ from src.services.kpi_service import KPIService
 from src.infrastructure.repositories.kpi_repository import KPIRepository
 from src.infrastructure.database.deps import get_db
 from src.infrastructure.database.connection import SessionLocal
-from src.services.waybill_network_service import WaybillNetworkService, WaybillFilterCriteria
+from src.services.waybill_network_service import WaybillNetworkService, WaybillFilterCriteria, WaybillDTO
 from src.services.global_search_service import GlobalSearchService
 from src.domain.exceptions import InvalidFilterCriteriaError, ExternalAPIError
 from sqlalchemy.orm import Session
@@ -60,7 +60,25 @@ async def get_network_waybills(
 ) -> dict:
     try:
         response = await asyncio.to_thread(service.get_network_waybills, criteria, background_tasks)
-        return response.dict(exclude_none=True)
+        return response.model_dump(by_alias=True, exclude_none=True)
+    except InvalidFilterCriteriaError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except ExternalAPIError as exc:
+        raise HTTPException(status_code=502, detail=f"Error upstream J&T: {exc}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+@router.post("/network/waybills/details")
+async def get_waybill_cell_details(
+    criteria: WaybillFilterCriteria,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    service: WaybillNetworkService = Depends(get_waybill_network_service)
+) -> list:
+    """Returns a flat list of WaybillDTOs for a single staff × date cell.
+    Consumed by the detail modal — no matrix wrapping."""
+    try:
+        records = await asyncio.to_thread(service.get_cell_details, criteria, background_tasks)
+        return [r.model_dump() for r in records]
     except InvalidFilterCriteriaError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except ExternalAPIError as exc:

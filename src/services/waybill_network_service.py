@@ -51,9 +51,14 @@ class DashboardRowDTO(BaseModel):
     dates: dict[str, int]
 
 class DashboardSummaryDTO(BaseModel):
-    total_packages: int
-    total_staff: int
+    model_config = ConfigDict(populate_by_name=True)
+
+    total_packages: int = Field(serialization_alias="total")
+    total_staff: int    = Field(serialization_alias="totalStaff")
     dates: List[str]
+    # Legacy convenience fields expected by the frontend summary cards:
+    old: int = 0
+    unassigned: int = 0
 
 class DashboardMatrixResponse(BaseModel):
     summary: DashboardSummaryDTO
@@ -248,19 +253,25 @@ class WaybillNetworkService:
             entry["total"] += 1
             entry["dates"][wb.date] = entry["dates"].get(wb.date, 0) + 1
 
+        _SIN_ENRUTAR = "Sin enrutar"
+
+        def _sort_key(r: DashboardRowDTO) -> tuple:
+            # Pin 'Sin enrutar' to the bottom; rest sorted by total descending.
+            return (1 if r.staff == _SIN_ENRUTAR else 0, -r.total)
+
         rows = sorted(
-            [
-                DashboardRowDTO(staff=s, total=d["total"], dates=d["dates"])
-                for s, d in staff_map.items()
-            ],
-            key=lambda r: r.total,
-            reverse=True,
+            [DashboardRowDTO(staff=s, total=d["total"], dates=d["dates"]) for s, d in staff_map.items()],
+            key=_sort_key,
         )
+
+        unassigned = staff_map.get(_SIN_ENRUTAR, {}).get("total", 0)
+
         return DashboardMatrixResponse(
             summary=DashboardSummaryDTO(
                 total_packages=len(waybills),
                 total_staff=len(rows),
                 dates=sorted(all_dates),
+                unassigned=unassigned,
             ),
             rows=rows,
         )
@@ -273,6 +284,23 @@ class WaybillNetworkService:
         filtered = self._apply_cell_filter(waybills, criteria)
         return self._build_matrix(filtered)
 
+
+    def get_cell_details(
+        self, criteria: WaybillFilterCriteria, background_tasks: BackgroundTasks
+    ) -> List[WaybillDTO]:
+        """
+        Returns a flat list of WaybillDTOs for a single staff × date cell.
+        The matrix build step is intentionally skipped — the caller only needs records.
+        """
+        response = self.jt_client.get_network_signing_detail(
+            network_code=criteria.network_code,
+            start_time=criteria.start_time,
+            end_time=criteria.end_time,
+            sign_type=criteria.sign_type,
+        )
+        records_raw = response.get("data", {}).get("records", []) or []
+        waybills = [self._map_raw_to_dto(r, criteria.date_mode) for r in records_raw]
+        return self._apply_cell_filter(waybills, criteria)
 
     def get_network_waybills(self, criteria: WaybillFilterCriteria, background_tasks: BackgroundTasks) -> DashboardMatrixResponse:
         response = self.jt_client.get_network_signing_detail(
