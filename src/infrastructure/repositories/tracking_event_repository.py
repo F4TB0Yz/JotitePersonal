@@ -60,19 +60,37 @@ class TrackingEventRepository:
         if not rows:
             return
 
-        # Single bulk statement — SQLite INSERT OR REPLACE honours the
-        # UNIQUE(waybill_no, time, type_name) constraint and updates in place.
-        self.session.connection().execute(
-            text(
+        is_postgres = self.session.get_bind().dialect.name == "postgresql"
+
+        if is_postgres:
+            stmt = text(
+                "INSERT INTO tracking_events "
+                "(waybill_no, time, type_name, network_name, scan_network_id, "
+                " staff_name, staff_contact, status, content, event_code, fetched_at) "
+                "VALUES "
+                "(:waybill_no, :time, :type_name, :network_name, :scan_network_id, "
+                " :staff_name, :staff_contact, :status, :content, :event_code, :fetched_at) "
+                "ON CONFLICT (waybill_no, time, type_name) DO UPDATE SET "
+                "network_name = EXCLUDED.network_name, "
+                "scan_network_id = EXCLUDED.scan_network_id, "
+                "staff_name = EXCLUDED.staff_name, "
+                "staff_contact = EXCLUDED.staff_contact, "
+                "status = EXCLUDED.status, "
+                "content = EXCLUDED.content, "
+                "event_code = EXCLUDED.event_code, "
+                "fetched_at = EXCLUDED.fetched_at"
+            )
+        else:
+            stmt = text(
                 "INSERT OR REPLACE INTO tracking_events "
                 "(waybill_no, time, type_name, network_name, scan_network_id, "
                 " staff_name, staff_contact, status, content, event_code, fetched_at) "
                 "VALUES "
                 "(:waybill_no, :time, :type_name, :network_name, :scan_network_id, "
                 " :staff_name, :staff_contact, :status, :content, :event_code, :fetched_at)"
-            ),
-            rows,
-        )
+            )
+
+        self.session.connection().execute(stmt, rows)
         self.session.commit()
 
     # ── Read ──────────────────────────────────────────────────────────────────
