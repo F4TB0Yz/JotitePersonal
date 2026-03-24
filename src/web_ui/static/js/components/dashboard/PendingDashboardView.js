@@ -229,7 +229,8 @@ export default function PendingDashboardView() {
                                             ${tableData.dates.map((date) => {
                                                 const value = row.dates[date] || 0;
                                                 const clickable = value > 0;
-                                                const classes = `${cellClass(value)} ${clickable ? 'dash-cell-clickable' : ''}`.trim();
+                                                const isCellOverdue = row.overdueDates?.includes(date);
+                                                const classes = `${cellClass(value, isCellOverdue)} ${clickable ? 'dash-cell-clickable' : ''}`.trim();
                                                 return html`<td
                                                     key=${`${row.staff}-${date}`}
                                                     className=${classes}

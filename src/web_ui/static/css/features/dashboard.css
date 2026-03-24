@@ -300,6 +300,14 @@
     color: #ff8a80;
 }
 
+/* Alarma crítica: Guías antiguas > 5 días (Rojo brillante con borde) */
+.dash-cell-overdue {
+    background-color: rgba(255, 17, 0, 0.45) !important;
+    color: #ffffff;
+    font-weight: bold;
+    box-shadow: inset 0 0 0 2px #ff4433;
+}
+
 .dash-total-cell {
     font-weight: 700;
 }

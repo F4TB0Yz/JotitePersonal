@@ -54,6 +54,7 @@ class DashboardRowDTO(BaseModel):
     staff: str
     total: int
     dates: dict[str, int]
+    overdue_dates: List[str] = Field(default=[], serialization_alias="overdueDates")
     overdue_5_days: int = Field(default=0, serialization_alias="old")
 
 class DashboardSummaryDTO(BaseModel):
@@ -285,7 +286,7 @@ class WaybillNetworkService:
 
         for wb in waybills:
             all_dates.add(wb.date)
-            entry = staff_map.setdefault(wb.staff, {"total": 0, "dates": {}, "overdue_5_days": 0})
+            entry = staff_map.setdefault(wb.staff, {"total": 0, "dates": {}, "overdue_5_days": 0, "overdue_set": set()})
             entry["total"] += 1
             entry["dates"][wb.date] = entry["dates"].get(wb.date, 0) + 1
 
@@ -296,6 +297,7 @@ class WaybillNetworkService:
                     if delta > 5:
                         overdue_count += 1
                         entry["overdue_5_days"] += 1
+                        entry["overdue_set"].add(wb.date)
             except (ValueError, TypeError):
                 pass
 
@@ -310,6 +312,7 @@ class WaybillNetworkService:
                 staff=s, 
                 total=d["total"], 
                 dates=d["dates"], 
+                overdue_dates=sorted(list(d["overdue_set"])),
                 overdue_5_days=d["overdue_5_days"]
             ) for s, d in staff_map.items()],
             key=_sort_key,

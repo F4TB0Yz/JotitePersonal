@@ -1,5 +1,6 @@
-export function cellClass(value) {
+export function cellClass(value, isOverdue = false) {
     if (!value) return 'dash-cell-empty';
+    if (isOverdue) return 'dash-cell-overdue';
     if (value <= 5) return 'dash-cell-verylow';
     if (value <= 15) return 'dash-cell-low';
     if (value <= 30) return 'dash-cell-med';
