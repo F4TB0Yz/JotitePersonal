@@ -36,9 +36,23 @@ export function usePendingDashboard() {
         setSelectedCell(null);
         fetchPendingWaybills(networkCode, start, end, dateMode)
             .then((data) => {
+                let safeDates = data.dates || (data.summary && data.summary.dates) || [];
+
+                // Si el backend no envió las columnas globales, las extraemos dinámicamente de las filas
+                if (safeDates.length === 0 && data.rows && data.rows.length > 0) {
+                    const uniqueDates = new Set();
+                    data.rows.forEach(row => {
+                        // Soporta tanto row.dates como row.data dependiendo de cómo el backend haya nombrado el diccionario
+                        const rowDict = row.dates || row.data || {};
+                        Object.keys(rowDict).forEach(d => uniqueDates.add(d));
+                    });
+                    // Ignoramos la llave 'total' si el backend la coló en el diccionario por accidente
+                    safeDates = Array.from(uniqueDates).filter(d => d !== 'total').sort();
+                }
+
                 setMatrixData({
                     summary: data.summary || { total: 0, old: 0, unassigned: 0 },
-                    dates: data.dates || [],
+                    dates: safeDates,
                     rows: data.rows || []
                 });
                 setSubtitle(`Punto: ${networkCode} | Periodo: ${startDate} a ${endDate}`);
