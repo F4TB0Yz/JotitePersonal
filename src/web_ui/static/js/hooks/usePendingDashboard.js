@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from '../lib/ui.js';
+import { useState, useCallback, useEffect, useRef } from '../lib/ui.js';
 import { DEFAULT_NETWORK_CODE } from '../utils/constants.js';
 import { toISODateInput, buildDateRange } from '../utils/formatters.js';
 import { fetchPendingWaybills, fetchCellDetails } from '../services/networkService.js';
@@ -6,6 +6,37 @@ import { fetchPendingWaybills, fetchCellDetails } from '../services/networkServi
 const DATE_MODE_ARRIVAL = 'arrival';
 const DATE_MODE_ASSIGNMENT = 'assignment';
 
+/** @type {{ summary: object, dates: string[], rows: object[] }} */
+const EMPTY_MATRIX = { summary: { total: 0, old: 0, unassigned: 0 }, dates: [], rows: [] };
+
+/**
+ * Extracts the column date list from the API response, falling back to
+ * deriving it dynamically from the row dictionaries if the backend omitted it.
+ *
+ * @param {object} data - Raw API response object.
+ * @returns {string[]} Sorted list of unique date strings.
+ */
+function _resolveDates(data) {
+    const fromSummary = data.dates || data.summary?.dates || [];
+    if (fromSummary.length > 0) return fromSummary;
+    if (!data.rows?.length) return [];
+
+    const unique = new Set();
+    data.rows.forEach((row) => {
+        Object.keys(row.dates || row.data || {}).forEach((d) => unique.add(d));
+    });
+    return Array.from(unique).filter((d) => d !== 'total').sort();
+}
+
+/**
+ * Core hook for the Pending Dashboard. Manages filter state, fetches the
+ * matrix data, and exposes the lazy cell-detail loader.
+ *
+ * Intentionally does NOT manage waybill detail, phone, or messenger-contact
+ * state — those concerns live in useWaybillDetails.
+ *
+ * @returns {object} Dashboard state and action API.
+ */
 export function usePendingDashboard() {
     const today = toISODateInput(new Date());
     const [networkCode, setNetworkCode] = useState(DEFAULT_NETWORK_CODE);
@@ -13,17 +44,16 @@ export function usePendingDashboard() {
     const [endDate, setEndDate] = useState(today);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    
-    // Replace giant records array with clean matrix state
-    const [matrixData, setMatrixData] = useState({ summary: { total: 0, old: 0, unassigned: 0 }, dates: [], rows: [] });
-    
+    const [matrixData, setMatrixData] = useState(EMPTY_MATRIX);
     const [subtitle, setSubtitle] = useState('');
     const [dateMode, setDateMode] = useState(DATE_MODE_ASSIGNMENT);
     const [selectedStaff, setSelectedStaff] = useState('ALL');
-
-    // Lazy load state
     const [selectedCell, setSelectedCell] = useState(null);
     const [cellLoading, setCellLoading] = useState(false);
+
+    // TD-15: Prevents the dateMode effect from firing on the initial mount,
+    // where fetchDashboard will have already run via the mount effect below.
+    const isMounted = useRef(false);
 
     const fetchDashboard = useCallback(() => {
         if (!networkCode || !startDate || !endDate) {
@@ -34,26 +64,13 @@ export function usePendingDashboard() {
         setLoading(true);
         setError('');
         setSelectedCell(null);
+
         fetchPendingWaybills(networkCode, start, end, dateMode)
             .then((data) => {
-                let safeDates = data.dates || (data.summary && data.summary.dates) || [];
-
-                // Si el backend no envió las columnas globales, las extraemos dinámicamente de las filas
-                if (safeDates.length === 0 && data.rows && data.rows.length > 0) {
-                    const uniqueDates = new Set();
-                    data.rows.forEach(row => {
-                        // Soporta tanto row.dates como row.data dependiendo de cómo el backend haya nombrado el diccionario
-                        const rowDict = row.dates || row.data || {};
-                        Object.keys(rowDict).forEach(d => uniqueDates.add(d));
-                    });
-                    // Ignoramos la llave 'total' si el backend la coló en el diccionario por accidente
-                    safeDates = Array.from(uniqueDates).filter(d => d !== 'total').sort();
-                }
-
                 setMatrixData({
-                    summary: data.summary || { total: 0, old: 0, unassigned: 0 },
-                    dates: safeDates,
-                    rows: data.rows || []
+                    summary: data.summary || EMPTY_MATRIX.summary,
+                    dates: _resolveDates(data),
+                    rows: data.rows || [],
                 });
                 setSubtitle(`Punto: ${networkCode} | Periodo: ${startDate} a ${endDate}`);
             })
@@ -61,75 +78,88 @@ export function usePendingDashboard() {
             .finally(() => setLoading(false));
     }, [networkCode, startDate, endDate, dateMode]);
 
+    // Initial fetch on mount — runs exactly once.
     useEffect(() => {
         fetchDashboard();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const staffOptions = (matrixData.rows || []).map(r => r.staff);
+    // Re-fetch on dateMode change, but skip the mount cycle (isMounted guard).
+    useEffect(() => {
+        if (!isMounted.current) {
+            isMounted.current = true;
+            return;
+        }
+        fetchDashboard();
+    }, [dateMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const filteredRows = selectedStaff === 'ALL' 
-        ? matrixData.rows 
-        : matrixData.rows.filter(r => r.staff === selectedStaff);
+    const staffOptions = matrixData.rows.map((r) => r.staff);
 
+    // TD-09: filteredRows removed — the backend already filters by target_staff
+    // when that parameter is sent. The view renders matrixData.rows directly.
     const tableData = {
         dates: matrixData.dates,
-        rows: filteredRows
+        rows: matrixData.rows,
     };
 
+    /**
+     * Returns a sample waybill number for a given staff, if the backend provides one.
+     * @param {string} staffValue
+     * @returns {string}
+     */
     const getSampleWaybillForStaff = useCallback((staffValue) => {
-        const row = matrixData.rows.find(r => r.staff === staffValue);
-        // The backend should ideally provide a sample waybill, or we gracefully return an empty string.
-        return row?.sampleWaybill || ''; 
+        const row = matrixData.rows.find((r) => r.staff === staffValue);
+        return row?.sampleWaybill || '';
     }, [matrixData.rows]);
 
+    /**
+     * Lazy-loads the individual waybill records for a specific staff × date cell.
+     * @param {string} staff
+     * @param {string} day - ISO date string, or "ALL".
+     */
     const loadCellDetails = useCallback((staff, day) => {
         setCellLoading(true);
         const { start, end } = buildDateRange(startDate, endDate);
+
         fetchCellDetails(networkCode, start, end, staff, day, dateMode)
-            .then(data => {
-                // Ensure robust data extraction whether it's wrapped in { records: [] } or just []
-                const records = Array.isArray(data) ? data : (data.records || []);
+            .then((data) => {
+                const records = Array.isArray(data) ? data : (data.records || data.rows || []);
                 setSelectedCell({ staff, day, records });
             })
-            .catch(err => {
+            .catch((err) => {
                 console.error('Error fetching cell details:', err);
                 setSelectedCell(null);
             })
-            .finally(() => {
-                setCellLoading(false);
-            });
+            .finally(() => setCellLoading(false));
     }, [networkCode, startDate, endDate, dateMode]);
 
     return {
+        // Filter state
         dateMode,
         setDateMode,
-        dateModes: {
-            arrival: DATE_MODE_ARRIVAL,
-            assignment: DATE_MODE_ASSIGNMENT
-        },
+        dateModes: { arrival: DATE_MODE_ARRIVAL, assignment: DATE_MODE_ASSIGNMENT },
         selectedStaff,
         setSelectedStaff,
-        staffOptions,
         networkCode,
         setNetworkCode,
         startDate,
         setStartDate,
         endDate,
         setEndDate,
+        // Fetch
         fetchDashboard,
         loading,
         error,
         subtitle,
+        // Derived data
+        staffOptions,
         summary: matrixData.summary,
         tableData,
         matrixData,
-        
-        // Expose new lazy loading API and state
+        // Cell lazy-load
         loadCellDetails,
         selectedCell,
         setSelectedCell,
         cellLoading,
-        getSampleWaybillForStaff
+        getSampleWaybillForStaff,
     };
 }

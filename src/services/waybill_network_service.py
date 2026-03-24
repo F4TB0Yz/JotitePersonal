@@ -1,11 +1,21 @@
 import time
 import random
 from typing import List, Optional, Set
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.orm import Session
 from fastapi import BackgroundTasks
 
-from src.domain.enums.waybill_enums import SignTypeEnum, WaybillStatusEnum, ScanTypeNameEnum, NetworkCodesEnum, are_networks_equivalent
+from src.domain.enums.waybill_enums import (
+    SignTypeEnum,
+    WaybillStatusEnum,
+    ScanTypeNameEnum,
+    NetworkCodesEnum,
+    are_networks_equivalent,
+    is_bogota_network,
+    is_centro_network,
+    DateModeEnum,
+    DATE_FIELDS_BY_MODE,
+)
 from src.infrastructure.repositories.tracking_event_repository import TrackingEventRepository
 from src.infrastructure.database.connection import SessionLocal
 from src.infrastructure.repositories.config_repository import ConfigRepository
@@ -15,15 +25,15 @@ from src.models.waybill import TrackingEvent
 # --- Pydantic Models ---
 
 class WaybillFilterCriteria(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     network_code: str = Field(..., alias="networkCode")
     start_time: str = Field(..., alias="startTime")
     end_time: str = Field(..., alias="endTime")
     sign_type: int = Field(SignTypeEnum.PENDING.value, alias="signType")
     target_staff: Optional[str] = None
     target_date: Optional[str] = None
-
-    class Config:
-        populate_by_name = True
+    date_mode: str = Field(default=DateModeEnum.ASSIGNMENT, alias="dateMode")
 
 class WaybillDTO(BaseModel):
     waybill_no: str
@@ -50,6 +60,8 @@ class DashboardMatrixResponse(BaseModel):
     rows: List[DashboardRowDTO]
 
 class NetworkWaybillRecord(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
     waybill_no: Optional[str] = Field(None, alias="waybillNo")
     bill_code: Optional[str] = Field(None, alias="billCode")
     order_id: Optional[str] = Field(None, alias="orderId")
@@ -59,10 +71,6 @@ class NetworkWaybillRecord(BaseModel):
     status: Optional[str] = Field(None, alias="status")
     scan_type_name: Optional[str] = Field(None, alias="scanTypeName")
     delivery_user: Optional[str] = Field(None, alias="deliveryUser")
-
-    class Config:
-        populate_by_name = True
-        extra = "allow"
 
     @property
     def canonical_waybill_no(self) -> str:
@@ -112,13 +120,17 @@ class ExcludeRulesComposite:
             return False
 
     class BogotaCentroRule:
-        def __init__(self, network_code: str):
-            self.network_code = network_code
+        """Excludes records whose scan network is a Bogotá/Centro node
+        when the current node is NOT itself in the Bogotá metropolitan area.
+        Uses normalised domain predicates — immune to API casing/accent variations."""
+
+        def __init__(self, network_code: str) -> None:
+            self._current_is_bogota = is_bogota_network(str(network_code))
+
         def is_satisfied_by(self, record: NetworkWaybillRecord) -> bool:
             r_net_name = record.scan_network_name or ""
-            if (NetworkCodesEnum.BOGOTA.value in r_net_name or NetworkCodesEnum.CENTRO.value in r_net_name) and NetworkCodesEnum.BOGOTA.value not in str(self.network_code):
-                return True
-            return False
+            scan_is_bogota_zone = is_bogota_network(r_net_name) or is_centro_network(r_net_name)
+            return scan_is_bogota_zone and not self._current_is_bogota
 
     class TerminalStatusRule:
         def is_satisfied_by(self, record: NetworkWaybillRecord) -> bool:
@@ -135,53 +147,58 @@ class ExcludeRulesComposite:
 # --- Background Worker ---
 
 class WaybillHealerWorker:
+    """
+    Heals stale waybills by fetching their latest tracking events from the
+    J&T API and persisting them locally.  All dependencies are injected via
+    the constructor — no global look-ups, fully testable.
+    """
+
+    def __init__(self, client: JTClient, repo: TrackingEventRepository) -> None:
+        self._client = client
+        self._repo = repo
+
+    def heal_stale_waybills(self, waybills: List[str]) -> None:
+        for wb in waybills:
+            if not wb:
+                continue
+            try:
+                resp = self._client.get_tracking_list(wb)
+                events = self._extract_events(resp)
+                if events:
+                    self._repo.save_events(wb, events)
+            except Exception:
+                pass
+            finally:
+                time.sleep(0.5)
+
     @staticmethod
-    def heal_stale_waybills(waybills: List[str]):
-        if not waybills:
-            return
-            
-        config = ConfigRepository.get_cached()
-        client = JTClient(config=config)
-        
-        with SessionLocal() as db:
-            repo = TrackingEventRepository(db)
-            
-            for wb in waybills:
-                if not wb: continue
-                try:
-                    resp = client.get_tracking_list(wb)
-                    data_list = resp.get("data") or []
-                    details = []
-                    if data_list and isinstance(data_list, list):
-                        details = data_list[0].get("details", [])
-                        
-                    if details:
-                        events = [
-                            TrackingEvent(
-                                time=d.get("scanTime"),
-                                type_name=d.get("scanTypeName"),
-                                network_name=d.get("scanNetworkName"),
-                                scan_network_id=d.get("scanNetworkId"),
-                                staff_name=d.get("staffName") or d.get("scanByName"),
-                                staff_contact=d.get("staffContact") or "",
-                                status=d.get("status"),
-                                content=d.get("waybillTrackingContent"),
-                                code=d.get("code")
-                            ) for d in details
-                        ]
-                        repo.save_events(wb, events)
-                    time.sleep(0.5) 
-                except Exception:
-                    time.sleep(0.5)
-                    continue
+    def _extract_events(resp: dict) -> List[TrackingEvent]:
+        """Pure parser: API response dict → List[TrackingEvent]."""
+        data_list = resp.get("data") or []
+        if not (data_list and isinstance(data_list, list)):
+            return []
+        details = data_list[0].get("details", [])
+        return [
+            TrackingEvent(
+                time=d.get("scanTime"),
+                type_name=d.get("scanTypeName"),
+                network_name=d.get("scanNetworkName"),
+                scan_network_id=d.get("scanNetworkId"),
+                staff_name=d.get("staffName") or d.get("scanByName"),
+                staff_contact=d.get("staffContact") or "",
+                status=d.get("status"),
+                content=d.get("waybillTrackingContent"),
+                code=d.get("code"),
+            )
+            for d in details
+        ]
 
 # --- Service ---
 
 class WaybillNetworkService:
-    def __init__(self, jt_client: JTClient, tracking_repo: TrackingEventRepository, db: Session):
+    def __init__(self, jt_client: JTClient, tracking_repo: TrackingEventRepository) -> None:
         self.jt_client = jt_client
         self.tracking_repo = tracking_repo
-        self.db = db
 
     def _normalize_staff(self, delivery_user: Optional[str]) -> str:
         if not delivery_user or not delivery_user.strip():
@@ -189,86 +206,75 @@ class WaybillNetworkService:
         return delivery_user.strip()
 
     def _resolve_date(self, record: dict, mode: str) -> str:
-        if mode == 'assignment':
-            fields = [
-                'deliveryScanTimeLatest', 'dispatchTime', 'assignTime',
-                'deliveryTime', 'operateTime', 'destArrivalTime', 'dateTime',
-                'deadLineTime', 'createTime', 'updateTime', 'scanTime'
-            ]
-        else:
-            fields = [
-                'destArrivalTime', 'arrivalTime', 'arriveTime', 'inboundTime',
-                'dispatchTime', 'operateTime', 'updateTime'
-            ]
-        
+        fields: tuple[str, ...] = DATE_FIELDS_BY_MODE.get(mode, DATE_FIELDS_BY_MODE[DateModeEnum.ASSIGNMENT])
         for field in fields:
             val = record.get(field)
             if val and str(val) != 'N/A':
                 return str(val)[:10]
         return 'Sin Fecha'
 
-    def _aggregate_waybills(self, records_raw: List[dict], criteria: WaybillFilterCriteria, mode: str):
-        waybills = []
-        for r_raw in records_raw:
-            staff = self._normalize_staff(r_raw.get("deliveryUser") or r_raw.get("staffName"))
-            date = self._resolve_date(r_raw, mode)
-            wb_no = r_raw.get("waybillNo") or r_raw.get("billCode") or r_raw.get("orderId") or "Desconocido"
-            status = r_raw.get("waybillStatus") or r_raw.get("status") or r_raw.get("statusName") or "Pendiente"
-            
-            city = r_raw.get("receiverCityName") or r_raw.get("receiverCity") or "N/A"
-            receiver = r_raw.get("receiverName") or r_raw.get("receiver") or "N/A"
-            address = r_raw.get("receiverAddress") or r_raw.get("receiverAddressDetail") or "N/A"
-            phone = r_raw.get("receiverPhone") or r_raw.get("receiverMobile") or "N/A"
-
-            waybills.append(WaybillDTO(
-                waybill_no=wb_no,
-                status=status,
-                date=date,
-                staff=staff,
-                city=city,
-                receiver=receiver,
-                address=address,
-                phone=phone
-            ))
-
-        if criteria.target_staff and criteria.target_date:
-            return [wb for wb in waybills if wb.staff == criteria.target_staff and wb.date == criteria.target_date]
-
-        staff_map = {}
-        all_dates = set()
-        
-        for wb in waybills:
-            staff = wb.staff
-            date = wb.date
-            all_dates.add(date)
-            
-            if staff not in staff_map:
-                staff_map[staff] = {'total': 0, 'dates': {}}
-            
-            staff_map[staff]['total'] += 1
-            staff_map[staff]['dates'][date] = staff_map[staff]['dates'].get(date, 0) + 1
-            
-        sorted_dates = sorted(list(all_dates))
-        
-        rows = []
-        for staff, data in staff_map.items():
-            rows.append(DashboardRowDTO(
-                staff=staff,
-                total=data['total'],
-                dates=data['dates']
-            ))
-            
-        rows.sort(key=lambda x: x.total, reverse=True)
-
-        summary = DashboardSummaryDTO(
-            total_packages=len(waybills),
-            total_staff=len(rows),
-            dates=sorted_dates
+    def _map_raw_to_dto(self, r_raw: dict, mode: str) -> WaybillDTO:
+        """Pure mapper: raw API dict → typed WaybillDTO. No side effects."""
+        return WaybillDTO(
+            waybill_no=r_raw.get("waybillNo") or r_raw.get("billCode") or r_raw.get("orderId") or "Desconocido",
+            status=r_raw.get("waybillStatus") or r_raw.get("status") or r_raw.get("statusName") or "Pendiente",
+            date=self._resolve_date(r_raw, mode),
+            staff=self._normalize_staff(r_raw.get("deliveryUser") or r_raw.get("staffName")),
+            city=r_raw.get("receiverCityName") or r_raw.get("receiverCity") or "N/A",
+            receiver=r_raw.get("receiverName") or r_raw.get("receiver") or "N/A",
+            address=r_raw.get("receiverAddress") or r_raw.get("receiverAddressDetail") or "N/A",
+            phone=r_raw.get("receiverPhone") or r_raw.get("receiverMobile") or "N/A",
         )
-        
-        return DashboardMatrixResponse(summary=summary, rows=rows)
 
-    def get_network_waybills(self, criteria: WaybillFilterCriteria, background_tasks: BackgroundTasks):
+    def _apply_cell_filter(
+        self, waybills: List[WaybillDTO], criteria: WaybillFilterCriteria
+    ) -> List[WaybillDTO]:
+        """Pure filter: returns only waybills matching the cell-detail request."""
+        if not (criteria.target_staff and criteria.target_date):
+            return waybills
+        return [
+            wb for wb in waybills
+            if wb.staff == criteria.target_staff and wb.date == criteria.target_date
+        ]
+
+    def _build_matrix(self, waybills: List[WaybillDTO]) -> DashboardMatrixResponse:
+        """Pure aggregation: List[WaybillDTO] → staff × date matrix."""
+        staff_map: dict[str, dict] = {}
+        all_dates: set[str] = set()
+
+        for wb in waybills:
+            all_dates.add(wb.date)
+            entry = staff_map.setdefault(wb.staff, {"total": 0, "dates": {}})
+            entry["total"] += 1
+            entry["dates"][wb.date] = entry["dates"].get(wb.date, 0) + 1
+
+        rows = sorted(
+            [
+                DashboardRowDTO(staff=s, total=d["total"], dates=d["dates"])
+                for s, d in staff_map.items()
+            ],
+            key=lambda r: r.total,
+            reverse=True,
+        )
+        return DashboardMatrixResponse(
+            summary=DashboardSummaryDTO(
+                total_packages=len(waybills),
+                total_staff=len(rows),
+                dates=sorted(all_dates),
+            ),
+            rows=rows,
+        )
+
+    def _aggregate_waybills(
+        self, records_raw: List[dict], criteria: WaybillFilterCriteria, mode: str
+    ) -> DashboardMatrixResponse:
+        """Orchestrates mapping → filtering → matrix construction."""
+        waybills = [self._map_raw_to_dto(r, mode) for r in records_raw]
+        filtered = self._apply_cell_filter(waybills, criteria)
+        return self._build_matrix(filtered)
+
+
+    def get_network_waybills(self, criteria: WaybillFilterCriteria, background_tasks: BackgroundTasks) -> DashboardMatrixResponse:
         response = self.jt_client.get_network_signing_detail(
             network_code=criteria.network_code,
             start_time=criteria.start_time,
@@ -278,21 +284,22 @@ class WaybillNetworkService:
         records_raw = response.get("data", {}).get("records", []) or []
 
         if not records_raw or criteria.sign_type != SignTypeEnum.PENDING.value:
-            return self._aggregate_waybills(records_raw, criteria, 'arrival')
+            return self._aggregate_waybills(records_raw, criteria, criteria.date_mode)
 
         records = [NetworkWaybillRecord(**r) for r in records_raw]
         waybill_nos = [r.canonical_waybill_no for r in records if r.canonical_waybill_no]
 
         if not waybill_nos:
-            return self._aggregate_waybills([], criteria, 'assignment')
+            return self._aggregate_waybills([], criteria, criteria.date_mode)
 
         departed = self.tracking_repo.get_departed_waybills(
-            self.db, waybill_nos, current_network_id=criteria.network_code
+            waybill_nos, current_network_id=criteria.network_code
         )
 
         if not departed:
-            self._enqueue_healing(waybill_nos, background_tasks)
-            return self._aggregate_waybills(records_raw, criteria, 'assignment')
+            self._enqueue_healing(mandatory=waybill_nos, periodic=[], background_tasks=background_tasks)
+            return self._aggregate_waybills(records_raw, criteria, criteria.date_mode)
+
 
         rules = ExcludeRulesComposite(criteria.network_code, departed)
         filtered = []
@@ -318,23 +325,33 @@ class WaybillNetworkService:
             periodic = [wb for wb in survivors if wb in staff_map]
             self._enqueue_healing(mandatory, periodic, background_tasks)
 
-        return self._aggregate_waybills(filtered_raw, criteria, 'assignment')
+        return self._aggregate_waybills(filtered_raw, criteria, criteria.date_mode)
 
     def _enrich_latest_messenger(self, records: List[NetworkWaybillRecord]) -> dict:
         if not records:
             return {}
         waybill_nos = [r.canonical_waybill_no for r in records if r.canonical_waybill_no]
-        staff_map = self.tracking_repo.get_latest_delivery_events(self.db, waybill_nos)
+        staff_map = self.tracking_repo.get_latest_delivery_events(waybill_nos)
         for r in records:
             wb = r.canonical_waybill_no
             if wb in staff_map:
                 r.delivery_user = staff_map[wb]
         return staff_map
 
-    def _enqueue_healing(self, mandatory: List[str], periodic: List[str], background_tasks: BackgroundTasks):
+    def _enqueue_healing(
+        self, mandatory: List[str], periodic: List[str], background_tasks: BackgroundTasks
+    ) -> None:
         to_process = list(mandatory)
         if periodic:
             to_process += random.sample(periodic, min(10, len(periodic)))
-            
-        if to_process:
-            background_tasks.add_task(WaybillHealerWorker.heal_stale_waybills, to_process)
+        if not to_process:
+            return
+
+        def _run_healing(waybills: List[str]) -> None:
+            config = ConfigRepository.get_cached()
+            client = JTClient(config=config)
+            with SessionLocal() as db:
+                repo = TrackingEventRepository(db)
+                WaybillHealerWorker(client, repo).heal_stale_waybills(waybills)
+
+        background_tasks.add_task(_run_healing, to_process)

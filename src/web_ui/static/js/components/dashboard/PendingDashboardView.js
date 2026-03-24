@@ -1,12 +1,10 @@
 import { html, useState, useEffect } from '../../lib/ui.js';
 import { usePendingDashboard } from '../../hooks/usePendingDashboard.js';
+import { useWaybillDetails } from '../../hooks/useWaybillDetails.js';
 import usePendingExports from '../../hooks/usePendingExports.js';
 import { formatShortDate } from '../../utils/formatters.js';
-import { fetchWaybillDetails, fetchWaybillPhones } from '../../services/addressService.js';
-import { fetchMessengerContact } from '../../services/messengerService.js';
 import DateRangePicker from '../shared/DateRangePicker.js';
 import PendingDetailPanel from './PendingDetailPanel.js';
-
 import { cellClass } from '../../utils/pendingHelpers.js';
 
 
@@ -41,16 +39,32 @@ export default function PendingDashboardView() {
     const assignmentModeActive = dateMode === dateModes.assignment;
     const activeDateLabel = assignmentModeActive ? 'Asignación mensajero' : 'Arribo destino';
 
-    const [detailMap, setDetailMap] = useState({});
-    const [detailLoading, setDetailLoading] = useState(false);
-    const [detailError, setDetailError] = useState('');
-    const [phoneState, setPhoneState] = useState({});
-    const [messengerContacts, setMessengerContacts] = useState({});
+    const {
+        detailMap,
+        detailLoading,
+        detailError,
+        phoneState,
+        messengerContacts,
+        handlePhoneClick,
+        handleMessengerClick,
+    } = useWaybillDetails({ selectedCell, networkCode, getSampleWaybillForStaff });
 
-    // Since the backend already returns data sorted/grouped, and we don't have getPackageDateByMode anymore
-    // we can just use the records array as is, or sort it if it has standard date fields.
-    // Omit sorting here if data is already in order, or keep a simpler sort if necessary.
     const detailRows = selectedCell ? [...selectedCell.records] : [];
+
+
+    const handleCellClick = (staff, day) => {
+        loadCellDetails(staff, day);
+    };
+
+    const handleTotalClick = (staff) => {
+        loadCellDetails(staff, 'ALL');
+    };
+
+    const handleStaffFilterToggle = (staff) => {
+        if (!staff) return;
+        setSelectedCell(null);
+        setSelectedStaff((prev) => (prev === staff ? 'ALL' : staff));
+    };
 
     const {
         showExportMenu,
@@ -72,202 +86,17 @@ export default function PendingDashboardView() {
         endDate,
         selectedStaff,
         activeDateLabel,
-        filteredRecords: matrixData?.rows || [], // For backward compatibility if usePendingExports needs it
+        filteredRecords: matrixData?.rows || [],
         detailRows,
         selectedCell
     });
 
     useEffect(() => {
-        if (loading) {
-            setSelectedCell(null);
-            setMessengerContacts({});
-            setShowExportMenu(false);
-            setExportJsonError('');
-        }
-    }, [loading]);
-
-    useEffect(() => {
-        setMessengerContacts({});
-    }, [networkCode]);
-
-    useEffect(() => {
-        if (!selectedCell || !selectedCell.records) {
-            setDetailMap({});
-            setDetailError('');
-            setDetailLoading(false);
-            setPhoneState({});
-            setExportJsonError('');
-            return;
-        }
-        const ids = Array.from(
-            new Set(
-                selectedCell.records
-                    .map((item) => item.waybillNo)
-                    .filter((wb) => typeof wb === 'string' && wb.trim().length > 0)
-            )
-        );
-        if (ids.length === 0) {
-            setDetailMap({});
-            setDetailError('');
-            setDetailLoading(false);
-            return;
-        }
-        let cancelled = false;
-        setDetailLoading(true);
-        setDetailError('');
-        fetchWaybillDetails(ids)
-            .then((data) => {
-                if (cancelled) return;
-                setDetailMap(data || {});
-            })
-            .catch((err) => {
-                if (cancelled) return;
-                setDetailError(err?.message || 'No se pudo obtener el detalle de las guías.');
-                setDetailMap({});
-            })
-            .finally(() => {
-                if (cancelled) return;
-                setDetailLoading(false);
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, [selectedCell]);
-
-    useEffect(() => {
-        if (!selectedCell || !selectedCell.records) return;
-        const allowed = new Set(
-            selectedCell.records
-                .map((item) => item.waybillNo)
-                .filter((wb) => typeof wb === 'string' && wb.trim().length > 0)
-        );
-        setPhoneState((prev) => {
-            const next = {};
-            allowed.forEach((wb) => {
-                if (prev[wb]) {
-                    next[wb] = prev[wb];
-                }
-            });
-            return next;
-        });
-    }, [selectedCell]);
-
-    const handleCellClick = (staff, day) => {
-        loadCellDetails(staff, day);
-    };
-
-    const handleTotalClick = (staff) => {
-        loadCellDetails(staff, 'ALL');
-    };
-
-    const handleMessengerClick = (staff) => {
-        if (!staff || staff === 'Sin enrutar') return;
-        const key = staff.trim().toLowerCase();
-        const current = messengerContacts[key];
-        if (current?.value && !current.loading) {
-            setMessengerContacts((prev) => ({
-                ...prev,
-                [key]: {
-                    ...current,
-                    visible: !current.visible
-                }
-            }));
-            return;
-        }
-
-        setMessengerContacts((prev) => ({
-            ...prev,
-            [key]: {
-                value: '',
-                loading: true,
-                visible: false,
-                error: ''
-            }
-        }));
-
-        const sampleWaybill = getSampleWaybillForStaff(staff);
-        fetchMessengerContact(staff, networkCode, sampleWaybill)
-            .then((data) => {
-                const phone = data?.phone;
-                setMessengerContacts((prev) => ({
-                    ...prev,
-                    [key]: {
-                        value: phone || '',
-                        loading: false,
-                        visible: Boolean(phone),
-                        error: phone ? '' : 'Teléfono no disponible'
-                    }
-                }));
-            })
-            .catch((err) => {
-                setMessengerContacts((prev) => ({
-                    ...prev,
-                    [key]: {
-                        value: '',
-                        loading: false,
-                        visible: false,
-                        error: err?.message || 'Error consultando mensajero'
-                    }
-                }));
-            });
-    };
-
-    const handleStaffFilterToggle = (staff) => {
-        if (!staff) return;
+        if (!loading) return;
         setSelectedCell(null);
-        setSelectedStaff((prev) => (prev === staff ? 'ALL' : staff));
-    };
-
-    const handlePhoneClick = (waybillNo) => {
-        if (!waybillNo) return;
-        const current = phoneState[waybillNo];
-        if (current?.value && !current.loading) {
-            setPhoneState((prev) => ({
-                ...prev,
-                [waybillNo]: {
-                    ...current,
-                    visible: !current.visible
-                }
-            }));
-            return;
-        }
-
-        setPhoneState((prev) => ({
-            ...prev,
-            [waybillNo]: {
-                value: '',
-                visible: true,
-                loading: true,
-                error: ''
-            }
-        }));
-
-        fetchWaybillPhones([waybillNo])
-            .then((data) => {
-                const phone = data?.[waybillNo];
-                setPhoneState((prev) => ({
-                    ...prev,
-                    [waybillNo]: {
-                        value: phone || '',
-                        visible: Boolean(phone),
-                        loading: false,
-                        error: phone ? '' : 'Teléfono no disponible'
-                    }
-                }));
-            })
-            .catch((err) => {
-                setPhoneState((prev) => ({
-                    ...prev,
-                    [waybillNo]: {
-                        value: '',
-                        visible: false,
-                        loading: false,
-                        error: err?.message || 'Error consultando teléfono'
-                    }
-                }));
-            });
-    };
-
+        setShowExportMenu(false);
+        setExportJsonError('');
+    }, [loading]);
 
     return html`
         <main className="dashboard-main">

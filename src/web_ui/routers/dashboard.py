@@ -1,92 +1,41 @@
-import re
 import asyncio
 import io
-import random
-import time
-from typing import Optional, List
+from typing import Optional
 from urllib.parse import urlparse
-from fastapi import APIRouter, HTTPException, Body, Request, BackgroundTasks, Depends
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import StreamingResponse
-from src.infrastructure.database.connection import SessionLocal
 from src.infrastructure.repositories.config_repository import ConfigRepository
 from src.infrastructure.repositories.tracking_event_repository import TrackingEventRepository
 from src.jt_api.client import JTClient
 from src.services.temu_alert_service import TemuAlertService
 from src.services.temu_prediction_service import temu_prediction_service
-from src.services.novedades_service import NovedadesService
 from src.services.kpi_service import KPIService
-from src.infrastructure.repositories.novedades_repository import NovedadesRepository
 from src.infrastructure.repositories.kpi_repository import KPIRepository
 from src.infrastructure.database.deps import get_db
+from src.infrastructure.database.connection import SessionLocal
 from src.services.waybill_network_service import WaybillNetworkService, WaybillFilterCriteria
+from src.services.global_search_service import GlobalSearchService
+from src.domain.exceptions import InvalidFilterCriteriaError, ExternalAPIError
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api", tags=["Dashboard & Core"])
 
 
 
-def _normalize_waybill_record(waybill_no: str, details: dict) -> dict:
-    return {
-        "waybill_no": waybill_no,
-        "receiver": details.get("receiverName") or details.get("receiver") or "N/A",
-        "city": details.get("receiverCity") or details.get("city") or "N/A",
-        "address": details.get("receiverDetailedAddress") or details.get("address") or "N/A",
-        "sender": details.get("senderName") or details.get("sender") or "N/A",
-        "order_source": details.get("orderSource") or "N/A",
-    }
 
 @router.get("/search")
-async def global_search(q: str, limit: int = 6):
+async def global_search(q: str, limit: int = 6) -> dict:
     query = (q or "").strip()
     if len(query) < 2:
         return {"waybills": [], "messengers": [], "novedades": []}
 
     max_items = max(1, min(limit, 20))
-
-    def _search():
-        waybill_results = []
-        messenger_results = []
-        novedades_results = []
-
-        config = ConfigRepository.get_cached(); client = JTClient(config=config)
-
-        maybe_waybill = bool(re.fullmatch(r"[A-Za-z0-9\-]{6,32}", query))
-        if maybe_waybill:
-            try:
-                waybill_no = query.upper()
-                detail_resp = client.get_order_detail(waybill_no)
-                if detail_resp.get("code") == 1:
-                    details = detail_resp.get("data", {}).get("details", {})
-                    if details:
-                        waybill_results.append(_normalize_waybill_record(waybill_no, details))
-            except Exception:
-                pass
-
-        try:
-            messenger_resp = client.search_messengers(query)
-            if messenger_resp.get("code") == 1 and "data" in messenger_resp:
-                data = messenger_resp.get("data")
-                records = data.get("records", []) if isinstance(data, dict) else (data or [])
-                messenger_results = records[:max_items]
-        except Exception:
-            pass
-
-        try:
-            with SessionLocal() as db:
-                novedades_repo = NovedadesRepository(db)
-                novedades_svc = NovedadesService(novedades_repo)
-                novedades_results = novedades_svc.search_novedades(query, limit=max_items)
-        except Exception:
-            pass
-
-        return {
-            "waybills": waybill_results[:max_items],
-            "messengers": messenger_results[:max_items],
-            "novedades": novedades_results[:max_items],
-        }
+    config = ConfigRepository.get_cached()
+    client = JTClient(config=config)
+    service = GlobalSearchService(jt_client=client, max_items=max_items)
 
     try:
-        return await asyncio.to_thread(_search)
+        return await asyncio.to_thread(service.search, query)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -100,28 +49,24 @@ def get_tracking_repository(db: Session = Depends(get_db)) -> TrackingEventRepos
 def get_waybill_network_service(
     client: JTClient = Depends(get_jt_client),
     repo: TrackingEventRepository = Depends(get_tracking_repository),
-    db: Session = Depends(get_db)
 ) -> WaybillNetworkService:
-    return WaybillNetworkService(client, repo, db)
+    return WaybillNetworkService(client, repo)
 
 @router.post("/network/waybills")
 async def get_network_waybills(
-    req: dict = Body(...), 
+    criteria: WaybillFilterCriteria,
     background_tasks: BackgroundTasks = BackgroundTasks(),
     service: WaybillNetworkService = Depends(get_waybill_network_service)
-):
-    try:
-        criteria = WaybillFilterCriteria(**req)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Faltan parámetros requeridos: {str(e)}")
-
+) -> dict:
     try:
         response = await asyncio.to_thread(service.get_network_waybills, criteria, background_tasks)
-        if isinstance(response, list):
-            return [r.dict(exclude_none=True) for r in response]
         return response.dict(exclude_none=True)
-    except Exception as e:
-        return {"summary": {"total_packages": 0, "total_staff": 0, "dates": []}, "rows": [], "error": str(e)}
+    except InvalidFilterCriteriaError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except ExternalAPIError as exc:
+        raise HTTPException(status_code=502, detail=f"Error upstream J&T: {exc}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 @router.get("/alerts/temu")
 async def get_temu_alerts(

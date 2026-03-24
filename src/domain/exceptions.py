@@ -23,3 +23,13 @@ class InvalidStatusError(DomainException):
 class ValidationError(DomainException):
     """Raised when data validation fails."""
     pass
+
+class InvalidFilterCriteriaError(DomainException):
+    """Raised when filter criteria are semantically invalid or incomplete."""
+    pass
+
+class ExternalAPIError(DomainException):
+    """Raised when the upstream J&T API returns an unexpected or failed response."""
+    def __init__(self, message: str, upstream_code: int | None = None) -> None:
+        super().__init__(message)
+        self.upstream_code = upstream_code
