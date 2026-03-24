@@ -1,5 +1,6 @@
 import time
 import random
+from datetime import datetime
 from typing import List, Optional, Set
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.orm import Session
@@ -55,12 +56,11 @@ class DashboardRowDTO(BaseModel):
 class DashboardSummaryDTO(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    total_packages: int = Field(serialization_alias="total")
-    total_staff: int    = Field(serialization_alias="totalStaff")
+    total_packages: int  = Field(serialization_alias="total")
+    total_staff: int     = Field(serialization_alias="totalStaff")
     dates: List[str]
-    # Legacy convenience fields expected by the frontend summary cards:
-    old: int = 0
-    unassigned: int = 0
+    overdue_5_days: int  = Field(default=0, serialization_alias="old")
+    unassigned: int      = Field(default=0, serialization_alias="unassigned")
 
 class DashboardMatrixResponse(BaseModel):
     summary: DashboardSummaryDTO
@@ -254,27 +254,46 @@ class WaybillNetworkService:
             ),
         )
 
-    def _apply_cell_filter(
+    def _apply_filters(
         self, waybills: List[WaybillDTO], criteria: WaybillFilterCriteria
     ) -> List[WaybillDTO]:
-        """Pure filter: returns only waybills matching the cell-detail request."""
-        if not (criteria.target_staff and criteria.target_date):
-            return waybills
-        return [
-            wb for wb in waybills
-            if wb.staff == criteria.target_staff and wb.date == criteria.target_date
-        ]
+        """Applies staff and date filters independently.
+
+        Each criterion is optional: if absent (empty / None / 'ALL'), that
+        dimension is left unfiltered. The two filters are composed sequentially.
+        """
+        result = waybills
+
+        if criteria.target_staff and criteria.target_staff.upper() != "ALL":
+            result = [wb for wb in result if wb.staff == criteria.target_staff]
+
+        if criteria.target_date:
+            result = [wb for wb in result if wb.date == criteria.target_date]
+
+        return result
 
     def _build_matrix(self, waybills: List[WaybillDTO]) -> DashboardMatrixResponse:
         """Pure aggregation: List[WaybillDTO] → staff × date matrix."""
         staff_map: dict[str, dict] = {}
         all_dates: set[str] = set()
 
+        today = datetime.utcnow().date()
+        overdue_count = 0
+
         for wb in waybills:
             all_dates.add(wb.date)
             entry = staff_map.setdefault(wb.staff, {"total": 0, "dates": {}})
             entry["total"] += 1
             entry["dates"][wb.date] = entry["dates"].get(wb.date, 0) + 1
+
+            # Count packages older than 5 days; skip unparseable dates gracefully.
+            try:
+                if wb.date and wb.date != "Sin Fecha":
+                    delta = (today - datetime.strptime(wb.date[:10], "%Y-%m-%d").date()).days
+                    if delta > 5:
+                        overdue_count += 1
+            except (ValueError, TypeError):
+                pass
 
         _SIN_ENRUTAR = "Sin enrutar"
 
@@ -294,6 +313,7 @@ class WaybillNetworkService:
                 total_packages=len(waybills),
                 total_staff=len(rows),
                 dates=sorted(all_dates),
+                overdue_5_days=overdue_count,
                 unassigned=unassigned,
             ),
             rows=rows,
@@ -304,7 +324,7 @@ class WaybillNetworkService:
     ) -> DashboardMatrixResponse:
         """Orchestrates mapping → filtering → matrix construction."""
         waybills = [self._map_raw_to_dto(r, mode) for r in records_raw]
-        filtered = self._apply_cell_filter(waybills, criteria)
+        filtered = self._apply_filters(waybills, criteria)
         return self._build_matrix(filtered)
 
 
@@ -323,7 +343,7 @@ class WaybillNetworkService:
         )
         records_raw = response.get("data", {}).get("records", []) or []
         waybills = [self._map_raw_to_dto(r, criteria.date_mode) for r in records_raw]
-        return self._apply_cell_filter(waybills, criteria)
+        return self._apply_filters(waybills, criteria)
 
     def get_network_waybills(self, criteria: WaybillFilterCriteria, background_tasks: BackgroundTasks) -> DashboardMatrixResponse:
         response = self.jt_client.get_network_signing_detail(
