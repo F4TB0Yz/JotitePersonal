@@ -17,6 +17,7 @@ data/
 
 # Config con credenciales
 config.json
+.env
 
 # IDE
 .vscode/

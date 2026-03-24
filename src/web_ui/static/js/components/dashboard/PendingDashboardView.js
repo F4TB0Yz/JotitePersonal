@@ -91,6 +91,44 @@ export default function PendingDashboardView() {
         selectedCell
     });
 
+    const [reportLoading, setReportLoading] = useState(false);
+    const [cityMessengers, setCityMessengers] = useState(new Set());
+
+    const handleDownloadReport = async () => {
+        setReportLoading(true);
+        try {
+            const response = await fetch('/api/network/waybills/report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    networkCode: networkCode,
+                    startTime: startDate ? startDate + ' 00:00:00' : '',
+                    endTime: endDate ? endDate + ' 23:59:59' : '',
+                    dateMode: dateMode,
+                    signType: 1, // Pending as defined in Python enums SignTypeEnum.PENDING.value
+                    reportCityMessengers: Array.from(cityMessengers)
+                })
+            });
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.detail || 'Error al descargar el reporte');
+            }
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'mensajeros_pendientes.pdf';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        } catch (e) {
+            alert('Error: ' + e.message);
+        } finally {
+            setReportLoading(false);
+        }
+    };
+
     useEffect(() => {
         if (!loading) return;
         setSelectedCell(null);
@@ -157,6 +195,16 @@ export default function PendingDashboardView() {
                         </button>
                         <button
                             type="button"
+                            className="dash-report-btn"
+                            style=${{ marginLeft: '8px' }}
+                            disabled=${loading || reportLoading || !matrixData?.rows?.length}
+                            onClick=${handleDownloadReport}
+                            title="Descargar reporte PDF de mensajeros pendientes"
+                        >
+                            ${reportLoading ? '⌛ Reporte…' : '↓ PDF'}
+                        </button>
+                        <button
+                            type="button"
                             className="dash-json-export-btn"
                             disabled=${loading || exportJsonLoading || !matrixData?.rows?.length}
                             onClick=${handleExportDashboardJson}
@@ -208,8 +256,21 @@ export default function PendingDashboardView() {
                                                         className="dash-staff-checkbox"
                                                         checked=${isStaffSelected}
                                                         onChange=${() => handleStaffFilterToggle(row.staff)}
-                                                        title="Filtrar este mensajero"
+                                                        title="Filtrar vista por este mensajero"
                                                     />
+                                                    ${row.staff !== 'Sin enrutar' ? html`<input
+                                                        type="checkbox"
+                                                        className="dash-city-checkbox"
+                                                        style=${{ marginLeft: '4px', accentColor: '#var(--primary-color)' }}
+                                                        checked=${cityMessengers.has(row.staff)}
+                                                        onChange=${(e) => {
+                                                            const next = new Set(cityMessengers);
+                                                            if (e.target.checked) next.add(row.staff);
+                                                            else next.delete(row.staff);
+                                                            setCityMessengers(next);
+                                                        }}
+                                                        title="Incluir ciudad en PDF"
+                                                    />` : null}
                                                     <button
                                                         type="button"
                                                         className=${`dash-staff-filter-btn ${isStaffSelected ? 'is-active' : ''}`}

@@ -15,8 +15,14 @@ from src.infrastructure.database.deps import get_db
 from src.infrastructure.database.connection import SessionLocal
 from src.services.waybill_network_service import WaybillNetworkService, WaybillFilterCriteria, WaybillDTO
 from src.services.global_search_service import GlobalSearchService
-from src.domain.exceptions import InvalidFilterCriteriaError, ExternalAPIError, APIError
+from src.services.generate_pending_messengers_report_use_case import GeneratePendingMessengersReportUseCase
+from src.infrastructure.repositories.pending_messengers_repository import PendingMessengersRepositoryImpl
+from src.infrastructure.providers.pdf_report_provider import PdfReportProviderImpl
+from src.services.get_messenger_contact_use_case import GetMessengerContactUseCase
+from src.infrastructure.providers.jt_messenger_provider import JTMessengerProvider
+from src.domain.exceptions import InvalidFilterCriteriaError, ExternalAPIError, APIError, NoDataFoundError, ReportGenerationError
 from sqlalchemy.orm import Session
+from fastapi import Response
 
 router = APIRouter(prefix="/api", tags=["Dashboard & Core"])
 
@@ -51,6 +57,27 @@ def get_waybill_network_service(
     repo: TrackingEventRepository = Depends(get_tracking_repository),
 ) -> WaybillNetworkService:
     return WaybillNetworkService(client, repo)
+
+def get_messenger_provider(client: JTClient = Depends(get_jt_client)) -> JTMessengerProvider:
+    return JTMessengerProvider(client=client)
+
+def get_messenger_contact_use_case(provider: JTMessengerProvider = Depends(get_messenger_provider)) -> GetMessengerContactUseCase:
+    return GetMessengerContactUseCase(provider=provider)
+
+def get_pending_messengers_repository(
+    network_service: WaybillNetworkService = Depends(get_waybill_network_service),
+    contact_use_case: GetMessengerContactUseCase = Depends(get_messenger_contact_use_case)
+) -> PendingMessengersRepositoryImpl:
+    return PendingMessengersRepositoryImpl(network_service, contact_use_case)
+
+def get_pdf_report_provider() -> PdfReportProviderImpl:
+    return PdfReportProviderImpl()
+
+def get_generate_report_use_case(
+    repo: PendingMessengersRepositoryImpl = Depends(get_pending_messengers_repository),
+    pdf_provider: PdfReportProviderImpl = Depends(get_pdf_report_provider)
+) -> GeneratePendingMessengersReportUseCase:
+    return GeneratePendingMessengersReportUseCase(repo, pdf_provider)
 
 @router.post("/network/waybills")
 async def get_network_waybills(
@@ -91,6 +118,28 @@ async def get_waybill_cell_details(
         raise HTTPException(status_code=502, detail=f"Error upstream J&T: {exc}")
     except Exception:
         raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+@router.post("/network/waybills/report")
+async def generate_pending_messengers_report(
+    criteria: WaybillFilterCriteria,
+    use_case: GeneratePendingMessengersReportUseCase = Depends(get_generate_report_use_case)
+):
+    try:
+        pdf_bytes = await asyncio.to_thread(use_case.execute, criteria.model_dump(by_alias=True))
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": "attachment; filename=mensajeros_pendientes.pdf",
+                "Cache-Control": "no-cache"
+            }
+        )
+    except NoDataFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ReportGenerationError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Error interno al generar el reporte: {str(exc)}")
 
 @router.get("/alerts/temu")
 async def get_temu_alerts(

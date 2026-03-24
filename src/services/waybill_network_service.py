@@ -39,6 +39,7 @@ class WaybillFilterCriteria(BaseModel):
     target_staff: Optional[str] = None
     target_date: Optional[str] = None
     date_mode: str = Field(default=DateModeEnum.ASSIGNMENT, alias="dateMode")
+    report_city_messengers: list[str] = Field(default_factory=list, alias="reportCityMessengers")
 
 class WaybillDTO(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -60,6 +61,7 @@ class DashboardRowDTO(BaseModel):
     dates: dict[str, int]
     overdue_dates: List[str] = Field(default=[], serialization_alias="overdueDates")
     overdue_5_days: int = Field(default=0, serialization_alias="old")
+    assigned_city: Optional[str] = Field(default=None, serialization_alias="assignedCity")
 
 class DashboardSummaryDTO(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -294,9 +296,11 @@ class WaybillNetworkService:
 
         for wb in waybills:
             all_dates.add(wb.date)
-            entry = staff_map.setdefault(wb.staff, {"total": 0, "dates": {}, "overdue_5_days": 0, "overdue_set": set()})
+            entry = staff_map.setdefault(wb.staff, {"total": 0, "dates": {}, "overdue_5_days": 0, "overdue_set": set(), "cities": []})
             entry["total"] += 1
             entry["dates"][wb.date] = entry["dates"].get(wb.date, 0) + 1
+            if wb.city and wb.city != "N/A":
+                entry["cities"].append(wb.city)
 
             # Count packages older than 5 days; skip unparseable dates gracefully.
             try:
@@ -315,13 +319,18 @@ class WaybillNetworkService:
             # Pin 'Sin enrutar' to the bottom; rest sorted by total descending.
             return (1 if r.staff == _SIN_ENRUTAR else 0, -r.total)
 
+        def _get_mode_city(cities: list) -> Optional[str]:
+            if not cities: return None
+            return max(set(cities), key=cities.count)
+
         rows = sorted(
             [DashboardRowDTO(
                 staff=s, 
                 total=d["total"], 
                 dates=d["dates"], 
                 overdue_dates=sorted(list(d["overdue_set"])),
-                overdue_5_days=d["overdue_5_days"]
+                overdue_5_days=d["overdue_5_days"],
+                assigned_city=_get_mode_city(d["cities"])
             ) for s, d in staff_map.items()],
             key=_sort_key,
         )

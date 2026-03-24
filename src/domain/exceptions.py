@@ -33,3 +33,10 @@ class ExternalAPIError(DomainException):
     def __init__(self, message: str, upstream_code: int | None = None) -> None:
         super().__init__(message)
         self.upstream_code = upstream_code
+class ReportGenerationError(DomainException):
+    """Raised when PDF report generation fails."""
+    pass
+
+class NoDataFoundError(DomainException):
+    """Raised when no data is found for a report or query."""
+    pass

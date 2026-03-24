@@ -32,6 +32,8 @@ class MessengerContact(BaseModel):
     accountCode: Optional[str] = Field(None, description="Account code")
     networkName: Optional[str] = Field(None, description="Network name")
     phone: Optional[str] = Field(None, description="Phone number")
+    pending_count: Optional[int] = Field(None, description="Count of pending waybills")
+    city: Optional[str] = Field(None, description="City based on recent packages")
 
 class MessengerNotFoundException(Exception):
     """Excepción lanzada cuando no se encuentra el mensajero."""
