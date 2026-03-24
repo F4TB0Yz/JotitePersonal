@@ -7,7 +7,6 @@ import {
     getReceiverCity,
     getReceiverAddress,
     getPackageStatus,
-    getPackageDateByMode,
     EXPORTABLE_FIELDS
 } from '../utils/pendingHelpers.js';
 import { formatShortDate } from '../utils/formatters.js';
@@ -61,7 +60,7 @@ export default function usePendingExports({
                 receiverPhone: detail?.receiverPhone || null,
                 status: detail?.status || getPackageStatus(pkg),
                 staff: staffLabelResolver(pkg),
-                referenceDate: getPackageDateByMode(pkg, dateMode, dateModes)
+                referenceDate: pkg.date || 'Sin Fecha'
             },
             sourceRecord: pkg,
             officialDetail: intelligence?.detail || detail,
@@ -82,7 +81,7 @@ export default function usePendingExports({
         if (fieldKey === 'receiverCity') return detail?.receiverCity || getReceiverCity(pkg);
         if (fieldKey === 'receiverAddress') return detail?.receiverAddress || getReceiverAddress(pkg);
         if (fieldKey === 'receiverPhone') return detail?.receiverPhone || 'N/A';
-        if (fieldKey === 'date') return getPackageDateByMode(pkg, dateMode, dateModes);
+        if (fieldKey === 'date') return pkg.date || 'Sin Fecha';
         if (fieldKey === 'status') return detail?.status || getPackageStatus(pkg);
         if (fieldKey === 'staff') return selectedCell?.staff || 'N/A';
         return '';
