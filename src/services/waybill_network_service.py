@@ -1,6 +1,8 @@
 import time
 import random
+import logging
 from datetime import datetime
+
 from typing import List, Optional, Set
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.orm import Session
@@ -22,6 +24,8 @@ from src.infrastructure.database.connection import SessionLocal
 from src.infrastructure.repositories.config_repository import ConfigRepository
 from src.jt_api.client import JTClient
 from src.models.waybill import TrackingEvent
+
+logger = logging.getLogger(__name__)
 
 # --- Pydantic Models ---
 
@@ -101,7 +105,11 @@ class ExcludeRulesComposite:
         ]
 
     def should_exclude(self, record: NetworkWaybillRecord) -> bool:
-        return any(rule.is_satisfied_by(record) for rule in self.rules)
+        for rule in self.rules:
+            if rule.is_satisfied_by(record):
+                logger.warning(f"Guia {record.canonical_waybill_no} excluida por la regla {rule.__class__.__name__}")
+                return True
+        return False
 
     class DepartedRule:
         def __init__(self, departed: Set[str]):

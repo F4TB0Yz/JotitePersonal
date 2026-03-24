@@ -123,7 +123,7 @@ class TrackingEventRepository:
                 func.row_number()
                 .over(
                     partition_by=TrackingEventORM.waybill_no,
-                    order_by=TrackingEventORM.time.desc(),
+                    order_by=(TrackingEventORM.time.desc(), TrackingEventORM.id.desc()),
                 )
                 .label("rn"),
             )
