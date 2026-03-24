@@ -36,14 +36,16 @@ class WaybillFilterCriteria(BaseModel):
     date_mode: str = Field(default=DateModeEnum.ASSIGNMENT, alias="dateMode")
 
 class WaybillDTO(BaseModel):
-    waybill_no: str
-    status: str
-    date: str
-    staff: str
-    city: str = "N/A"
-    receiver: str = "N/A"
-    address: str = "N/A"
-    phone: str = "N/A"
+    model_config = ConfigDict(populate_by_name=True)
+
+    waybill_no: str  = Field(serialization_alias="waybillNo")
+    status: str      = Field(serialization_alias="status")
+    date: str        = Field(serialization_alias="date")
+    staff: str       = Field(serialization_alias="staff")
+    city: str        = Field(default="N/A", serialization_alias="city")
+    receiver: str    = Field(default="N/A", serialization_alias="receiver")
+    address: str     = Field(default="N/A", serialization_alias="address")
+    phone: str       = Field(default="N/A", serialization_alias="phone")
 
 class DashboardRowDTO(BaseModel):
     staff: str
@@ -221,14 +223,35 @@ class WaybillNetworkService:
     def _map_raw_to_dto(self, r_raw: dict, mode: str) -> WaybillDTO:
         """Pure mapper: raw API dict → typed WaybillDTO. No side effects."""
         return WaybillDTO(
-            waybill_no=r_raw.get("waybillNo") or r_raw.get("billCode") or r_raw.get("orderId") or "Desconocido",
-            status=r_raw.get("waybillStatus") or r_raw.get("status") or r_raw.get("statusName") or "Pendiente",
+            waybill_no=(
+                r_raw.get("waybillNo") or r_raw.get("billCode")
+                or r_raw.get("orderId") or "Desconocido"
+            ),
+            status=(
+                r_raw.get("waybillStatus") or r_raw.get("status")
+                or r_raw.get("statusName") or "Pendiente"
+            ),
             date=self._resolve_date(r_raw, mode),
-            staff=self._normalize_staff(r_raw.get("deliveryUser") or r_raw.get("staffName")),
-            city=r_raw.get("receiverCityName") or r_raw.get("receiverCity") or "N/A",
-            receiver=r_raw.get("receiverName") or r_raw.get("receiver") or "N/A",
-            address=r_raw.get("receiverAddress") or r_raw.get("receiverAddressDetail") or "N/A",
-            phone=r_raw.get("receiverPhone") or r_raw.get("receiverMobile") or "N/A",
+            staff=self._normalize_staff(
+                r_raw.get("deliveryUser") or r_raw.get("staffName")
+            ),
+            # J&T uses both receive* and receiver* variants across endpoints.
+            city=(
+                r_raw.get("receiveCityName") or r_raw.get("receiverCityName")
+                or r_raw.get("receiverCity") or r_raw.get("city") or "N/A"
+            ),
+            receiver=(
+                r_raw.get("receiveName") or r_raw.get("receiverName")
+                or r_raw.get("customerName") or r_raw.get("receiver") or "N/A"
+            ),
+            address=(
+                r_raw.get("receiveAddress") or r_raw.get("receiverAddress")
+                or r_raw.get("receiverAddressDetail") or r_raw.get("address") or "N/A"
+            ),
+            phone=(
+                r_raw.get("receiveMobile") or r_raw.get("receiverPhone")
+                or r_raw.get("receiverMobile") or r_raw.get("phone") or "N/A"
+            ),
         )
 
     def _apply_cell_filter(

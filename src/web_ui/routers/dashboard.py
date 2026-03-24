@@ -78,7 +78,7 @@ async def get_waybill_cell_details(
     Consumed by the detail modal — no matrix wrapping."""
     try:
         records = await asyncio.to_thread(service.get_cell_details, criteria, background_tasks)
-        return [r.model_dump() for r in records]
+        return [r.model_dump(by_alias=True) for r in records]
     except InvalidFilterCriteriaError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except ExternalAPIError as exc:
