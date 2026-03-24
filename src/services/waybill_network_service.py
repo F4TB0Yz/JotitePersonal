@@ -331,11 +331,20 @@ class WaybillNetworkService:
             rows=rows,
         )
 
+    def _deduplicate_waybills(self, waybills: List[WaybillDTO]) -> List[WaybillDTO]:
+        """Ensures '1 waybill = 1 item' by taking the latest event mapping."""
+        unique_map = {}
+        for wb in waybills:
+            if wb.waybill_no and wb.waybill_no != "Desconocido":
+                unique_map[wb.waybill_no] = wb
+        return list(unique_map.values())
+
     def _aggregate_waybills(
         self, records_raw: List[dict], criteria: WaybillFilterCriteria, mode: str
     ) -> DashboardMatrixResponse:
         """Orchestrates mapping → filtering → matrix construction."""
-        waybills = [self._map_raw_to_dto(r, mode) for r in records_raw]
+        raw_waybills = [self._map_raw_to_dto(r, mode) for r in records_raw]
+        waybills = self._deduplicate_waybills(raw_waybills)
         filtered = self._apply_filters(waybills, criteria)
         return self._build_matrix(filtered)
 
@@ -354,7 +363,8 @@ class WaybillNetworkService:
             sign_type=criteria.sign_type,
         )
         records_raw = response.get("data", {}).get("records", []) or []
-        waybills = [self._map_raw_to_dto(r, criteria.date_mode) for r in records_raw]
+        raw_waybills = [self._map_raw_to_dto(r, criteria.date_mode) for r in records_raw]
+        waybills = self._deduplicate_waybills(raw_waybills)
         return self._apply_filters(waybills, criteria)
 
     def get_network_waybills(self, criteria: WaybillFilterCriteria, background_tasks: BackgroundTasks) -> DashboardMatrixResponse:
