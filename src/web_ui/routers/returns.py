@@ -13,6 +13,7 @@ from src.jt_api.client import JTClient
 from src.services.returns_service import ReturnsService
 from src.infrastructure.repositories.returns_repository import ReturnsRepository
 from src.infrastructure.database.connection import SessionLocal
+from src.domain.exceptions import DomainException, APIError, ValidationError
 
 router = APIRouter(prefix="/api/returns", tags=["Returns"])
 
@@ -204,8 +205,14 @@ async def get_return_print_url(payload: ReturnPrintUrlPayload):
     try:
         data = await asyncio.to_thread(_fetch_print_url, payload)
         return {"success": True, "data": data}
-    except ValueError as exc:
+    except (ValueError, ValidationError) as exc:
         logger.warning(f"Error de validación en print-url: {str(exc)}")
+        raise HTTPException(status_code=400, detail=str(exc))
+    except APIError as exc:
+        logger.error(f"Error de API externa en print-url: {str(exc)}")
+        raise HTTPException(status_code=502, detail=str(exc))
+    except DomainException as exc:
+        logger.warning(f"Error de dominio en print-url: {str(exc)}")
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         exc_name = exc.__class__.__name__
