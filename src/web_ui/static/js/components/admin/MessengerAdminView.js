@@ -9,7 +9,7 @@ import MessengerReportSection from './MessengerReportSection.js';
 function renderMessengerRow(messenger, phoneState) {
     if (!messenger) {
         return html`<tr>
-            <td colspan="5" className="table-placeholder">Usa el buscador para encontrar mensajeros…</td>
+            <td colSpan="5" className="table-placeholder">Usa el buscador para encontrar mensajeros…</td>
         </tr>`;
     }
     const statusColor = messenger.status === 1 ? '#56d364' : '#ff7b72';
@@ -528,7 +528,7 @@ export default function MessengerAdminView() {
                                                 </button>
                                             </td>
                                         </tr>`)
-            : html`<tr><td colspan="7" className="table-placeholder">Sin liquidaciones generadas aún.</td></tr>`}
+            : html`<tr><td colSpan="7" className="table-placeholder">Sin liquidaciones generadas aún.</td></tr>`}
                             </tbody>
                         </table>
                     </div>

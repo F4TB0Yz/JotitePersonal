@@ -53,13 +53,15 @@ export default function TemuAlertCenter({ isActive }) {
         }
     }, [festivoMode, loadFestivoData]);
 
-    const barcodeItems = festivoMode ? festivoItems : grouped.breached.map((alert) => ({
-        value: alert.billcode,
-        goods: alert.goodsName,
-        weight: alert.weight,
-        staff: alert.staff,
-        operateTime: alert.operateTime
-    }));
+    const barcodeItems = useMemo(() => {
+        return festivoMode ? festivoItems : grouped.breached.map((alert) => ({
+            value: alert.billcode,
+            goods: alert.goodsName,
+            weight: alert.weight,
+            staff: alert.staff,
+            operateTime: alert.operateTime
+        }));
+    }, [festivoMode, festivoItems, grouped.breached]);
 
     const { barcodeModal, openBarcodeViewer, closeBarcodeViewer, shiftBarcode } = useBarcodeCarousel(barcodeItems);
 

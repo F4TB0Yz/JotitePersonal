@@ -4,6 +4,9 @@ from typing import List, Optional
 import asyncio
 import os
 from datetime import datetime, timedelta
+import logging
+
+logger = logging.getLogger(__name__)
 
 from src.infrastructure.repositories.config_repository import ConfigRepository
 from src.jt_api.client import JTClient
@@ -186,22 +189,29 @@ async def get_return_printable(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
+def _fetch_print_url(payload: ReturnPrintUrlPayload):
+    with SessionLocal() as db_session:
+        service = _build_returns_service(db_session)
+        return service.get_print_waybill_url(
+            waybill_no=payload.waybill_no,
+            template_size=payload.template_size,
+            pring_type=payload.pring_type,
+            printer=payload.printer,
+        )
+
 @router.post("/print-url")
 async def get_return_print_url(payload: ReturnPrintUrlPayload):
     try:
-        def _run():
-            with SessionLocal() as db_session:
-                service = _build_returns_service(db_session)
-                return service.get_print_waybill_url(
-                    waybill_no=payload.waybill_no,
-                    template_size=payload.template_size,
-                    pring_type=payload.pring_type,
-                    printer=payload.printer,
-                )
-
-        data = await asyncio.to_thread(_run)
+        data = await asyncio.to_thread(_fetch_print_url, payload)
         return {"success": True, "data": data}
     except ValueError as exc:
+        logger.warning(f"Error de validación en print-url: {str(exc)}")
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        exc_name = exc.__class__.__name__
+        if "Connect" in exc_name or "Timeout" in exc_name or "Network" in exc_name:
+            logger.error(f"Fallo de red en print-url ({exc_name}): {str(exc)}")
+            raise HTTPException(status_code=502, detail="Error de comunicación con el servicio externo")
+        
+        logger.exception("Error interno no controlado en print-url")
+        raise HTTPException(status_code=500, detail="Ocurrió un error interno procesando la solicitud")

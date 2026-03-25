@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from '../lib/ui.js';
+import { useState, useEffect, useCallback, useMemo } from '../lib/ui.js';
 import { fetchTemuAlerts } from '../services/alertService.js';
 
 export default function useTemuAlerts({ isActive }) {
@@ -60,9 +60,9 @@ export default function useTemuAlerts({ isActive }) {
         return () => window.removeEventListener('temu-breach-predicted', onPredictedBreach);
     }, []);
 
-    return { 
+    return useMemo(() => ({ 
         windowHours, setWindowHours, 
         includeOverdue, setIncludeOverdue, 
         loading, error, data, realtimeNote, loadData 
-    };
+    }), [windowHours, includeOverdue, loading, error, data, realtimeNote, loadData]);
 }
