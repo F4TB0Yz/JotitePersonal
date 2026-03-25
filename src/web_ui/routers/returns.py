@@ -195,9 +195,6 @@ def _fetch_print_url(payload: ReturnPrintUrlPayload):
         service = _build_returns_service(db_session)
         return service.get_print_waybill_url(
             waybill_no=payload.waybill_no,
-            template_size=payload.template_size,
-            pring_type=payload.pring_type,
-            printer=payload.printer,
         )
 
 @router.post("/print-url")

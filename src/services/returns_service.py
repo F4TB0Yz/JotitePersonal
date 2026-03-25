@@ -147,28 +147,28 @@ class ReturnsService:
     def get_print_waybill_url(
         self,
         waybill_no: str,
-        template_size: int = 1,
-        pring_type: int = 1,
-        printer: int = 0,
     ) -> dict[str, Any]:
+        """
+        Obtiene la URL de impresión de guías de devolución.
+        Refactorizado para manejar directamente el link si 'data' es un string.
+        """
         target = (waybill_no or "").strip().upper()
         if not target:
             raise ValidationError("waybill_no requerido")
 
-        response = self.client.get_return_print_waybill_url_new(
-            [target],
-            template_size=template_size,
-            pring_type=pring_type,
-            printer=printer,
-        )
+        # Se eliminan parámetros obsoletos para cumplir el contrato del cliente J&T
+        response = self.client.get_return_print_waybill_url_new([target])
 
         if response.get("code") != 1:
             raise APIError(response.get("msg") or "No se pudo obtener el link de impresión", status_code=response.get("code"))
 
-        data = response.get("data") or {}
+        data = response.get("data")
         resolved_url = None
 
-        if isinstance(data, dict):
+        # Validación explícita según el contrato real y retrocompatibilidad
+        if isinstance(data, str) and data.startswith("http"):
+            resolved_url = data
+        elif isinstance(data, dict):
             resolved_url = (
                 data.get("centrePrintUrl")
                 or data.get("centerPrintUrl")
@@ -176,7 +176,7 @@ class ReturnsService:
                 or data.get("url")
             )
         elif isinstance(data, list) and data:
-            first = data[0] or {}
+            first = data[0]
             if isinstance(first, dict):
                 resolved_url = (
                     first.get("centrePrintUrl")
@@ -184,6 +184,8 @@ class ReturnsService:
                     or first.get("printUrl")
                     or first.get("url")
                 )
+            elif isinstance(first, str) and first.startswith("http"):
+                resolved_url = first
 
         return {
             "waybill_no": target,

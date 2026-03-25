@@ -1,4 +1,6 @@
 import requests
+from typing import Any
+
 
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -443,11 +445,12 @@ class JTClient:
 
     def get_return_print_waybill_url_new(
         self,
-        waybill_nos,
-        template_size=1,
-        pring_type=1,
-        printer=0,
-    ):
+        waybill_nos: str | list[str],
+    ) -> dict[str, Any]:
+        """
+        Obtiene la URL de impresión de guías de devolución.
+        Refactorizado según contrato real: payload es una lista de objetos.
+        """
         if isinstance(waybill_nos, str):
             cleaned_ids = [waybill_nos.strip()] if waybill_nos.strip() else []
         else:
@@ -456,14 +459,16 @@ class JTClient:
         if not cleaned_ids:
             raise ValueError("Debe enviar al menos una guía válida")
 
-        payload = {
-            "waybillNos": cleaned_ids,
-            "waybillNoList": cleaned_ids,
-            "templateSize": int(template_size),
-            "pringType": int(pring_type),
-            "printer": int(printer),
-            "countryId": str(self.config.get("countryId", "1")),
-        }
+        # El contrato real exige una lista de objetos con billType y applyTypeCode específicos
+        # Los parámetros templateSize, printer y pringType son obsoletos en este endpoint
+        payload = [
+            {
+                "billType": "middle",
+                "waybillId": waybill_id,
+                "applyTypeCode": 4
+            }
+            for waybill_id in cleaned_ids
+        ]
 
         return self._post(
             "/rebackTransferExpress/getPrintWaybillUrlNew",

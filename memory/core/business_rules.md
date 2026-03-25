@@ -20,3 +20,5 @@ Optimizar el tiempo dedicado a la generación de **informes de paquetes, guías 
 3. **Informes**: Los informes deben cubrir: **paquetes**, **guías** y **mensajeros**.
 4. **Persistencia Local**: Toda entidad crítica (como las Devoluciones/Snapshots) debe ser persistida localmente para permitir auditoría y trabajo offline.
 5. **Gestión de Errores**: Es obligatorio el uso de las excepciones de dominio definidas en `src/domain/exceptions.py` (`DomainException`, `APIError`, etc.) en lugar de excepciones nativas genéricas.
+## Integraciones de API (J&T)
+- **Regla Estricta**: Todo nuevo endpoint o modificación del `JTClient` debe basarse EXCLUSIVAMENTE en el volcado de la petición real (cURL) desde el portal web. Queda prohibido asumir la estructura de los payloads o respuestas. Si el campo `data` es un string directo, no debe intentarse parsear como un diccionario.
