@@ -15,6 +15,18 @@ function printFlagLabel(value) {
     return Number(value) === 1 ? 'Sí' : 'No';
 }
 
+function KPICard({ label, value, isBadge = false, subtext = '' }) {
+    return html`
+        <div className="returns-kpi-card">
+            <span className="kpi-label">${label}</span>
+            ${isBadge 
+                ? html`<span className="kpi-badge">${value}</span>` 
+                : html`<span className="kpi-value">${value}</span>`}
+            <span className="kpi-subtext">${subtext}</span>
+        </div>
+    `;
+}
+
 export default function ReturnsView({ isActive }) {
     const {
         status,
@@ -45,10 +57,16 @@ export default function ReturnsView({ isActive }) {
 
     const isPrintableMode = status === 'printable';
 
+    // Reactividad Inmediata: Solo ante cambios de estado, flag de impresión o tamaño de página.
+    // No ante fechas, que requieren el botón "Buscar".
     useEffect(() => {
         if (!isActive) return;
         fetchReturns({ page: 1, persist: true });
-    }, [isActive, fetchReturns]);
+    }, [isActive, status, printableFlag, pageSize, fetchReturns]);
+
+    const handleFilterChange = (setter, value) => {
+        setter(value);
+    };
 
     const canGoPrev = currentPage > 1;
     const canGoNext = pages > 0 ? currentPage < pages : records.length >= pageSize;
@@ -80,7 +98,7 @@ export default function ReturnsView({ isActive }) {
                                     key=${item.value}
                                     type="button"
                                     className=${`returns-status-btn ${status === item.value ? 'active' : ''}`}
-                                    onClick=${() => setStatus(item.value)}
+                                    onClick=${() => handleFilterChange(setStatus, item.value)}
                                     aria-pressed=${status === item.value}
                                 >
                                     ${item.label}
@@ -98,7 +116,7 @@ export default function ReturnsView({ isActive }) {
                                         key=${item.value}
                                         type="button"
                                         className=${`returns-status-btn ${Number(printableFlag) === item.value ? 'active' : ''}`}
-                                        onClick=${() => setPrintableFlag(item.value)}
+                                        onClick=${() => handleFilterChange(setPrintableFlag, item.value)}
                                         aria-pressed=${Number(printableFlag) === item.value}
                                     >
                                         ${item.label}
@@ -112,7 +130,7 @@ export default function ReturnsView({ isActive }) {
                             <select
                                 className="form-input"
                                 value=${String(pageSize)}
-                                onChange=${(event) => setPageSize(Number(event.target.value || 20))}
+                                onChange=${(event) => handleFilterChange(setPageSize, Number(event.target.value || 20))}
                             >
                                 <option value="20">20</option>
                                 <option value="50">50</option>
@@ -145,11 +163,26 @@ export default function ReturnsView({ isActive }) {
                     </form>
                 </div>
 
-                <div className="returns-meta">
-                    <span>Total: <strong>${total}</strong></span>
-                    <span>Estado: <strong>${statusLabel(status)}</strong></span>
-                    <span>Insertados en consulta: <strong>${snapshotsInserted}</strong></span>
-                    <span>Última sincronización: <strong>${formatDateTimeLabel(syncedAt)}</strong></span>
+                <div className="returns-kpi-grid">
+                    <${KPICard} 
+                        label="Total de Guías" 
+                        value=${total} 
+                        subtext="Resultados encontrados"
+                    />
+                    <${KPICard} 
+                        label="Estado Actual" 
+                        value=${statusLabel(status)} 
+                        isBadge=${true}
+                    />
+                    <${KPICard} 
+                        label="Nuevos Registros" 
+                        value=${snapshotsInserted} 
+                        subtext="En última consulta"
+                    />
+                    <${KPICard} 
+                        label="Última Sincronización" 
+                        value=${formatDateTimeLabel(syncedAt) || 'Sin fecha'} 
+                    />
                 </div>
 
                 ${printLinkMessage ? html`<div className="returns-print-message">${printLinkMessage}</div>` : null}
