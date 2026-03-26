@@ -51,33 +51,33 @@ class ExcludeRulesComposite:
     class CargaExpedicionRule:
         """Excluye si el paquete salió de la red objetivo hacia otro nodo."""
         def __init__(self, target_network: str):
-            self.target_network = target_network
+            self.target_network = str(target_network).strip()
             
         def is_satisfied_by(self, events: List[TrackingEvent]) -> bool:
             return any(
                 (e.type_name == "Carga y expedición" or e.code == 1) and 
-                (e.network_name == self.target_network or are_networks_equivalent(e.scan_network_id, self.target_network))
+                (are_networks_equivalent(e.scan_network_id, self.target_network))
                 for e in events
             )
 
     class DifferentNetworkRule:
         """Excluye si el último escaneo físico ocurrió en una red fuera de jurisdicción."""
         def __init__(self, target_network: str):
-            self.target_network = target_network
+            self.target_network = str(target_network).strip()
             
         def is_satisfied_by(self, events: List[TrackingEvent]) -> bool:
             if not events: 
                 return False
-            # Asumimos que events[0] es el más reciente (sorted desc)
-            last_event = events[0]
-            
-            # Si el nombre coincide exactamente o el ID es equivalente, es la misma red
-            is_same_net = (
-                (last_event.network_name == self.target_network) or
-                are_networks_equivalent(last_event.scan_network_id, self.target_network)
-            )
-            
-            return not is_same_net
+                
+            # Buscar el evento más reciente que SÍ tenga un ID de red confiable
+            for e in events:
+                if e.scan_network_id:
+                    # Si el ID existe y no es equivalente, está fuera de la jurisdicción
+                    return not are_networks_equivalent(e.scan_network_id, self.target_network)
+                    
+            # Si ningún evento tiene ID (ej. solo tenemos el snapshot resumido de la API sin ID),
+            # no excluimos el paquete a ciegas (inocente hasta demostrar lo contrario).
+            return False
 
     class BogotaCentroRule:
         """Regla especial para nodos Metropolitanos (Bogotá/Centro)."""
