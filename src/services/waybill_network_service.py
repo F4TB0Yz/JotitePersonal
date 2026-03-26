@@ -23,7 +23,8 @@ from src.infrastructure.repositories.tracking_event_repository import TrackingEv
 from src.infrastructure.database.connection import SessionLocal
 from src.infrastructure.repositories.config_repository import ConfigRepository
 from src.jt_api.client import JTClient
-from src.models.waybill import TrackingEvent, is_pending_at_network
+from src.models.waybill import TrackingEvent
+from src.domain.specifications.pending_waybill_spec import ExcludeRulesComposite
 
 logger = logging.getLogger(__name__)
 
@@ -94,41 +95,7 @@ class NetworkWaybillRecord(BaseModel):
         wb = self.waybill_no or self.bill_code or self.order_id or ""
         return wb.strip().upper()
 
-# --- Specification Pattern for Rules ---
-
-class ExcludeRulesComposite:
-    """
-    Composite rule that aggregates historical tracking information and J&T record 
-    state to determine if a waybill is strictly 'Pending' at a given node.
-    """
-    def __init__(self, network_code: str, history_map: dict[str, List[TrackingEvent]]):
-        self.network_code = network_code
-        self.history_map = history_map
-
-    def should_exclude(self, record: NetworkWaybillRecord) -> bool:
-        wb_no = record.canonical_waybill_no
-        history = self.history_map.get(wb_no, [])
-
-        # If we have no history, we create a pseudo-event from the J&T record's 
-        # current status to avoid false negatives on new/un-healed waybills.
-        if not history:
-            history = [
-                TrackingEvent(
-                    time="N/A",
-                    type_name=record.scan_type_name or "Desconocido",
-                    network_name=record.scan_network_name or "N/A",
-                    status=record.waybill_status or record.status or ""
-                )
-            ]
-
-        # Use the pure domain specification
-        is_pending = is_pending_at_network(history, self.network_code)
-        
-        if not is_pending:
-            logger.warning(f"Guia {wb_no} excluida por la Especificación de Dominio: no es Pendiente en {self.network_code}")
-            return True
-            
-        return False
+# --- Specification Logic moved to domain/specifications/pending_waybill_spec.py ---
 
 # --- Background Worker ---
 
@@ -347,18 +314,36 @@ class WaybillNetworkService:
         if not waybill_nos:
             return []
 
-        # Fetch full history for local evaluation
+        # Fetch historical events from local DB
         history_map = self.tracking_repo.get_events_map(waybill_nos)
-
-        rules = ExcludeRulesComposite(criteria.network_code, history_map)
+        
+        # Instantiate domain specification
+        rules = ExcludeRulesComposite(criteria.network_code)
+        
         filtered_raw = []
         filtered = []
 
         for r_obj, r_raw in zip(records, records_raw):
-            if not r_obj.canonical_waybill_no:
+            wb_no = r_obj.canonical_waybill_no
+            if not wb_no:
                 continue
-            if rules.should_exclude(r_obj):
+            
+            # Combine historical events with the current snapshot from J&T API
+            current_event = TrackingEvent(
+                time="now", # Current snapshot
+                type_name=r_obj.scan_type_name or "Desconocido",
+                network_name=r_obj.scan_network_name or "N/A",
+                status=r_obj.waybill_status or r_obj.status or ""
+            )
+            
+            # History is stored DESC in DB, so we prepend the 'now' event or append it?
+            # Usually, history_map[wb_no] is sorted by time DESC.
+            history = history_map.get(wb_no, [])
+            combined_events = [current_event] + history
+            
+            if rules.should_exclude(combined_events):
                 continue
+                
             filtered_raw.append(r_raw)
             filtered.append(r_obj)
 
