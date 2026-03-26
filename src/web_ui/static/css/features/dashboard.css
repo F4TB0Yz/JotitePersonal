@@ -247,18 +247,18 @@
 }
 
 .dash-target-table {
+    table-layout: auto; 
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
-    white-space: nowrap;
+    font-size: 0.85rem; /* Más pequeña pero legible */
     color: var(--text-main);
 }
 
 .dash-target-table th,
 .dash-target-table td {
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 8px 12px;
+    padding: 6px 4px !important; /* Padding mínimo */
     text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .dash-target-table th {
@@ -267,23 +267,28 @@
     font-weight: 600;
 }
 
-.dash-target-table th.header-date {
-    background-color: #1f2b3b;
-}
-
 .dash-target-table th.header-total {
     background-color: #151b24;
 }
 
+/* Columna del mensajero */
 .dash-target-table th:first-child,
 .dash-target-table td:first-child {
     text-align: left;
-    font-weight: 600;
+    min-width: 140px;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background-color: rgba(255, 255, 255, 0.02);
 }
 
-.dash-target-table td:first-child {
-    background-color: rgba(255, 255, 255, 0.02);
-    color: white;
+/* Las columnas de fechas (números) deben ser lo más estrechas posible */
+.dash-target-table td:not(:first-child):not(:last-child),
+.dash-target-table th:not(:first-child):not(:last-child) {
+    width: 40px;
+    min-width: 40px;
+    white-space: nowrap;
 }
 
 .dash-target-table tr:hover td:first-child {

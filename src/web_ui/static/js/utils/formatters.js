@@ -42,14 +42,11 @@ export function calculateRate(total, success) {
 }
 
 export function formatShortDate(dateStr) {
-    if (!dateStr) return 'Sin Fecha';
-    if (dateStr === 'Sin Fecha') return dateStr;
+    if (!dateStr || dateStr === 'Sin Fecha') return 'S/F';
     const [year, month, day] = dateStr.split('-');
     if (!year || !month || !day) return dateStr;
-    const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-    const monthIndex = parseInt(month, 10) - 1;
-    if (monthIndex < 0 || monthIndex > 11) return dateStr;
-    return `${day}-${months[monthIndex]}`;
+    // Formato DD/MM para ahorrar espacio en la matriz
+    return `${day}/${month}`;
 }
 
 export function buildDateRange(from, to) {
