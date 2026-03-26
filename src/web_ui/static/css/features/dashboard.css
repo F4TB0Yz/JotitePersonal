@@ -248,15 +248,17 @@
 
 .dash-target-table {
     table-layout: auto; 
-    width: 100%;
+    width: auto; /* La tabla abraza su contenido */
+    max-width: 100%; 
+    margin: 0 auto; /* Centrar matriz en la pantalla */
     border-collapse: collapse;
-    font-size: 0.85rem; /* Más pequeña pero legible */
+    font-size: 0.85rem;
     color: var(--text-main);
 }
 
 .dash-target-table th,
 .dash-target-table td {
-    padding: 6px 4px !important; /* Padding mínimo */
+    padding: 6px 4px !important;
     text-align: center;
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
@@ -275,19 +277,19 @@
 .dash-target-table th:first-child,
 .dash-target-table td:first-child {
     text-align: left;
-    min-width: 140px;
-    max-width: 200px;
+    width: 220px; /* Ancho fijo para evitar abismo visual */
+    max-width: 250px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     background-color: rgba(255, 255, 255, 0.02);
 }
 
-/* Las columnas de fechas (números) deben ser lo más estrechas posible */
+/* Las columnas de fechas (números) deben tener respiración coherente */
 .dash-target-table td:not(:first-child):not(:last-child),
 .dash-target-table th:not(:first-child):not(:last-child) {
-    width: 40px;
-    min-width: 40px;
+    min-width: 55px; /* Evita que queden excesivamente pegadas */
+    padding: 8px 6px !important;
     white-space: nowrap;
 }
 
