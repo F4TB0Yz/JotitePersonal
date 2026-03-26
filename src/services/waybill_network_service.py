@@ -23,7 +23,7 @@ from src.infrastructure.repositories.tracking_event_repository import TrackingEv
 from src.infrastructure.database.connection import SessionLocal
 from src.infrastructure.repositories.config_repository import ConfigRepository
 from src.jt_api.client import JTClient
-from src.models.waybill import TrackingEvent
+from src.models.waybill import TrackingEvent, is_pending_at_network
 
 logger = logging.getLogger(__name__)
 
@@ -97,73 +97,38 @@ class NetworkWaybillRecord(BaseModel):
 # --- Specification Pattern for Rules ---
 
 class ExcludeRulesComposite:
-    def __init__(self, network_code: str, departed_waybills: Set[str]):
-        self.rules = [
-            self.DepartedRule(departed_waybills),
-            self.CargaExpedicionRule(network_code),
-            self.DifferentNetworkRule(network_code),
-            self.BogotaCentroRule(network_code),
-            self.TerminalStatusRule()
-        ]
+    """
+    Composite rule that aggregates historical tracking information and J&T record 
+    state to determine if a waybill is strictly 'Pending' at a given node.
+    """
+    def __init__(self, network_code: str, history_map: dict[str, List[TrackingEvent]]):
+        self.network_code = network_code
+        self.history_map = history_map
 
     def should_exclude(self, record: NetworkWaybillRecord) -> bool:
-        for rule in self.rules:
-            if rule.is_satisfied_by(record):
-                logger.warning(f"Guia {record.canonical_waybill_no} excluida por la regla {rule.__class__.__name__}")
-                return True
-        return False
+        wb_no = record.canonical_waybill_no
+        history = self.history_map.get(wb_no, [])
 
-    class DepartedRule:
-        def __init__(self, departed: Set[str]):
-            self.departed = departed
-        def is_satisfied_by(self, record: NetworkWaybillRecord) -> bool:
-            return record.canonical_waybill_no in self.departed
-
-    class CargaExpedicionRule:
-        def __init__(self, network_code: str):
-            self.network_code = network_code
-        def is_satisfied_by(self, record: NetworkWaybillRecord) -> bool:
-            r_type = record.scan_type_name or ""
-            r_net_id = record.scan_network_id or ""
-            r_net_name = record.scan_network_name or ""
-            if ScanTypeNameEnum.CARGA_EXPEDICION.value in r_type:
-                if r_net_id == NetworkCodesEnum.CUND_PUNTO6.value or r_net_id == str(self.network_code) or "Cund-Punto6" in r_net_name:
-                    return True
-            return False
-
-    class DifferentNetworkRule:
-        def __init__(self, network_code: str):
-            self.network_code = network_code
-        def is_satisfied_by(self, record: NetworkWaybillRecord) -> bool:
-            r_net_id = record.scan_network_id or ""
-            if r_net_id and self.network_code and not are_networks_equivalent(r_net_id, self.network_code):
-                return True
-            return False
-
-    class BogotaCentroRule:
-        """Excludes records whose scan network is a Bogotá/Centro node
-        when the current node is NOT itself in the Bogotá metropolitan area.
-        Uses normalised domain predicates — immune to API casing/accent variations."""
-
-        def __init__(self, network_code: str) -> None:
-            self._current_is_bogota = is_bogota_network(str(network_code))
-
-        def is_satisfied_by(self, record: NetworkWaybillRecord) -> bool:
-            r_net_name = record.scan_network_name or ""
-            scan_is_bogota_zone = is_bogota_network(r_net_name) or is_centro_network(r_net_name)
-            return scan_is_bogota_zone and not self._current_is_bogota
-
-    class TerminalStatusRule:
-        def is_satisfied_by(self, record: NetworkWaybillRecord) -> bool:
-            r_type = record.scan_type_name or ""
-            r_status = record.waybill_status or record.status or ""
-            terminals = [
-                WaybillStatusEnum.ENTREGADO.value, 
-                WaybillStatusEnum.DEVUELTO.value, 
-                WaybillStatusEnum.FIRMADO.value, 
-                WaybillStatusEnum.ANULADO.value
+        # If we have no history, we create a pseudo-event from the J&T record's 
+        # current status to avoid false negatives on new/un-healed waybills.
+        if not history:
+            history = [
+                TrackingEvent(
+                    time="N/A",
+                    type_name=record.scan_type_name or "Desconocido",
+                    network_name=record.scan_network_name or "N/A",
+                    status=record.waybill_status or record.status or ""
+                )
             ]
-            return any(x in r_type or x in r_status for x in terminals)
+
+        # Use the pure domain specification
+        is_pending = is_pending_at_network(history, self.network_code)
+        
+        if not is_pending:
+            logger.warning(f"Guia {wb_no} excluida por la Especificación de Dominio: no es Pendiente en {self.network_code}")
+            return True
+            
+        return False
 
 # --- Background Worker ---
 
@@ -382,16 +347,10 @@ class WaybillNetworkService:
         if not waybill_nos:
             return []
 
-        departed = self.tracking_repo.get_departed_waybills(waybill_nos, current_network_id=criteria.network_code)
+        # Fetch full history for local evaluation
+        history_map = self.tracking_repo.get_events_map(waybill_nos)
 
-        if not departed:
-            if background_tasks:
-                self._enqueue_healing(mandatory=waybill_nos, periodic=[], background_tasks=background_tasks)
-            raw_waybills = [self._map_raw_to_dto(r, criteria.date_mode) for r in records_raw]
-            waybills = self._deduplicate_waybills(raw_waybills)
-            return self._apply_filters(waybills, criteria)
-
-        rules = ExcludeRulesComposite(criteria.network_code, departed)
+        rules = ExcludeRulesComposite(criteria.network_code, history_map)
         filtered_raw = []
         filtered = []
 

@@ -266,3 +266,36 @@ class TrackingEventRepository:
             .all()
         )
         return {wb: name for wb, name in rows if name}
+
+    def get_events_map(self, waybill_nos: List[str]) -> dict[str, List[TrackingEvent]]:
+        """
+        Fetches the complete tracking history for multiple waybills at once.
+        Returns a dict mapping waybill_no -> List[TrackingEvent].
+        """
+        if not waybill_nos:
+            return {}
+
+        events_map: dict[str, List[TrackingEvent]] = {}
+        for offset in range(0, len(waybill_nos), _SQLITE_CHUNK):
+            chunk = waybill_nos[offset : offset + _SQLITE_CHUNK]
+            rows = (
+                self.session.query(TrackingEventORM)
+                .filter(TrackingEventORM.waybill_no.in_(chunk))
+                .order_by(TrackingEventORM.waybill_no, TrackingEventORM.time.desc())
+                .all()
+            )
+            for row in rows:
+                events_map.setdefault(row.waybill_no, []).append(
+                    TrackingEvent(
+                        time=row.time,
+                        type_name=row.type_name,
+                        network_name=row.network_name or "N/A",
+                        scan_network_id=row.scan_network_id or "",
+                        staff_name=row.staff_name,
+                        staff_contact=row.staff_contact,
+                        status=row.status or "",
+                        content=row.content or "",
+                        code=row.event_code,
+                    )
+                )
+        return events_map

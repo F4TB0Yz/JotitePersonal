@@ -30,7 +30,12 @@ class TemuAlertService:
 
     @staticmethod
     def _resolve_timezone(tz_string: Optional[str]) -> timezone:
-        match = re.match(r"GMT([+-])(\d{2})(\d{2})", tz_string or "")
+        tz_string = tz_string or ""
+        # Manejo explícito de Colombia para evitar fallbacks erróneos a UTC en servidores
+        if "Bogota" in tz_string or "Bogotá" in tz_string or tz_string == "America/Bogota":
+            return timezone(timedelta(hours=-5))
+
+        match = re.match(r"GMT([+-])(\d{2})(\d{2})", tz_string)
         if match:
             sign = 1 if match.group(1) == "+" else -1
             hours = int(match.group(2))
@@ -62,10 +67,32 @@ class TemuAlertService:
         include_overdue: bool
     ) -> Dict[str, Any]:
         now = datetime.now(self.tzinfo)
+        
+        # 1. Deduplicación por billcode (tomar el evento más reciente si hay duplicados)
+        # Y filtrado opcional de guías que ya tienen un escaneo de problema ("handled")
+        unique_latest: Dict[str, Dict[str, Any]] = {}
+        for r in records:
+            bc = (r.get("billcode") or "").strip()
+            if not bc:
+                continue
+            
+            # Omitir guías cuyo último evento reportado sea un problema (novedad)
+            # J&T suele mover estas fuera del monitor de "pendiente" de 96h
+            if r.get("problemOperateType") == "问题件扫描":
+                continue
+
+            if bc in unique_latest:
+                current_time = self._parse_datetime(r.get("operateTime"))
+                existing_time = self._parse_datetime(unique_latest[bc].get("operateTime"))
+                if current_time and existing_time and current_time > existing_time:
+                    unique_latest[bc] = r
+            else:
+                unique_latest[bc] = r
+
         warnings: List[Dict[str, Any]] = []
         breached: List[Dict[str, Any]] = []
 
-        for record in records:
+        for record in unique_latest.values():
             operate_time = self._parse_datetime(record.get("operateTime"))
             if not operate_time:
                 continue
