@@ -44,7 +44,7 @@ class ExcludeRulesComposite:
             # Si ALGÚN evento en el historial tiene un estado terminal, se excluye
             return any(
                 any(t in (e.type_name or "") or t in (e.status or "") for t in terminals) or
-                (e.code == 100 or e.code in (170, 172))
+                (e.code in (100, 170, 172) if e.code is not None else False)
                 for e in events
             )
 

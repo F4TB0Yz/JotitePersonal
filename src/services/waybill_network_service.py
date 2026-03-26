@@ -333,6 +333,7 @@ class WaybillNetworkService:
                 time="now", # Current snapshot
                 type_name=r_obj.scan_type_name or "Desconocido",
                 network_name=r_obj.scan_network_name or "N/A",
+                scan_network_id=str(r_obj.scan_network_id or ""),  # <-- FIX CRÍTICO AÑADIDO
                 status=r_obj.waybill_status or r_obj.status or ""
             )
             
