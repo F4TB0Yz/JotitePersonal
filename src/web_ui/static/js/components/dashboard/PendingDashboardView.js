@@ -239,8 +239,9 @@ export default function PendingDashboardView() {
                                 <thead>
                                     <tr>
                                         <th>Empleado de entrega</th>
-                                        ${tableData.dates.map((date) => html`<th key=${date}>${formatShortDate(date)}</th>`)}
-                                        <th>Total</th>
+                                        ${tableData.dates.map((date) => html`<th key=${date} className="date-header">${formatShortDate(date)}</th>`)}
+                                        <th className="total-header">Total</th>
+                                        <th className="filler-column"></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -301,7 +302,7 @@ export default function PendingDashboardView() {
                                                 const value = row.dates[date] || 0;
                                                 const clickable = value > 0;
                                                 const isCellOverdue = row.overdueDates?.includes(date);
-                                                const classes = `${cellClass(value, isCellOverdue)} ${clickable ? 'dash-cell-clickable' : ''}`.trim();
+                                                const classes = `date-cell ${cellClass(value, isCellOverdue)} ${clickable ? 'dash-cell-clickable' : ''}`.trim();
                                                 return html`<td
                                                     key=${`${row.staff}-${date}`}
                                                     className=${classes}
@@ -313,13 +314,14 @@ export default function PendingDashboardView() {
                                                 </td>`;
                                             })}
                                             <td
-                                                className=${`dash-total-cell ${row.total > 0 ? 'dash-cell-clickable' : ''}`}
+                                                className=${`total-cell dash-total-cell ${row.total > 0 ? 'dash-cell-clickable' : ''}`}
                                                 onClick=${row.total > 0 ? () => handleTotalClick(row.staff) : undefined}
                                                 role=${row.total > 0 ? 'button' : undefined}
                                                 title=${row.total > 0 ? 'Ver todos los paquetes del mensajero' : undefined}
                                             >
                                                 ${row.total}
                                             </td>
+                                            <td className="filler-column"></td>
                                         </tr>`;
                                     })}
                                 </tbody>

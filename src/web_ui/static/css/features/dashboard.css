@@ -247,10 +247,8 @@
 }
 
 .dash-target-table {
+    width: 100%; /* Recuperamos el ancho completo de la pantalla */
     table-layout: auto; 
-    width: auto; /* La tabla abraza su contenido */
-    max-width: 100%; 
-    margin: 0 auto; /* Centrar matriz en la pantalla */
     border-collapse: collapse;
     font-size: 0.85rem;
     color: var(--text-main);
@@ -258,9 +256,33 @@
 
 .dash-target-table th,
 .dash-target-table td {
-    padding: 6px 4px !important;
-    text-align: center;
     border: 1px solid rgba(255, 255, 255, 0.05);
+    text-align: center;
+}
+
+/* 1. Congelar columna de Nombres */
+.dash-target-table th:first-child, 
+.dash-target-table td:first-child {
+    width: 250px;
+    min-width: 250px;
+    max-width: 250px;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* 2. Congelar columnas de Fechas/Totales */
+.dash-target-table th.date-header, 
+.dash-target-table td.date-cell,
+.dash-target-table th.total-header,
+.dash-target-table td.total-cell {
+    width: 65px; 
+    min-width: 65px;
+    max-width: 65px;
+    text-align: center;
+    padding: 8px 4px !important;
 }
 
 .dash-target-table th {
@@ -269,28 +291,16 @@
     font-weight: 600;
 }
 
-.dash-target-table th.header-total {
+.dash-target-table th.total-header {
     background-color: #151b24;
 }
 
-/* Columna del mensajero */
-.dash-target-table th:first-child,
-.dash-target-table td:first-child {
-    text-align: left;
-    width: 220px; /* Ancho fijo para evitar abismo visual */
-    max-width: 250px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    background-color: rgba(255, 255, 255, 0.02);
-}
-
-/* Las columnas de fechas (números) deben tener respiración coherente */
-.dash-target-table td:not(:first-child):not(:last-child),
-.dash-target-table th:not(:first-child):not(:last-child) {
-    min-width: 55px; /* Evita que queden excesivamente pegadas */
-    padding: 8px 6px !important;
-    white-space: nowrap;
+/* 3. Magia: Columna de Relleno que absorbe el vacío */
+.dash-target-table .filler-column {
+    width: auto; /* Toma el 100% del espacio sobrante */
+    pointer-events: none; /* No interactuable */
+    background-color: transparent; /* Se mezcla con el fondo */
+    border: none !important; /* Sin bordes para ser invisible */
 }
 
 .dash-target-table tr:hover td:first-child {
