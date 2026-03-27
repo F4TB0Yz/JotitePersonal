@@ -77,13 +77,13 @@ export default function usePendingExports({
 
     const getExportCellValue = (pkg, detail, fieldKey) => {
         if (fieldKey === 'waybillNo') return pkg.waybillNo || 'N/A';
-        if (fieldKey === 'receiverName') return detail?.receiverName || getReceiverName(pkg);
-        if (fieldKey === 'receiverCity') return detail?.receiverCity || getReceiverCity(pkg);
-        if (fieldKey === 'receiverAddress') return detail?.receiverAddress || getReceiverAddress(pkg);
-        if (fieldKey === 'receiverPhone') return detail?.receiverPhone || pkg.receiverPhone || pkg.senderPhone || 'N/A';
+        if (fieldKey === 'receiverName') return detail?.receiverName || pkg.receiver || 'Sin destinatario';
+        if (fieldKey === 'receiverCity') return detail?.receiverCity || pkg.city || 'Ciudad desconocida';
+        if (fieldKey === 'receiverAddress') return detail?.receiverAddress || pkg.address || 'Sin dirección';
+        if (fieldKey === 'receiverPhone') return detail?.receiverPhone || pkg.phone || 'N/A';
         if (fieldKey === 'date') return pkg.date || 'Sin Fecha';
-        if (fieldKey === 'status') return detail?.status || getPackageStatus(pkg);
-        if (fieldKey === 'staff') return pkg.deliveryUser || (selectedCell?.staff !== 'ALL' ? selectedCell?.staff : null) || 'Sin enrutar';
+        if (fieldKey === 'status') return detail?.status || pkg.status || 'Pendiente';
+        if (fieldKey === 'staff') return pkg.staff || 'Sin enrutar';
         return '';
     };
 
