@@ -1,8 +1,11 @@
+import logging
 from typing import List, Dict, Any
 from src.domain.messenger import MessengerContact
 from src.domain.exceptions import NoDataFoundError, ReportGenerationError
 from src.domain.interfaces.pending_messengers_repository import IPendingMessengersRepository
 from src.domain.interfaces.pdf_generator_provider import PdfGeneratorProvider
+
+logger = logging.getLogger(__name__)
 
 class GeneratePendingMessengersReportUseCase:
     """
@@ -51,4 +54,5 @@ class GeneratePendingMessengersReportUseCase:
             return self.pdf_provider.generate_pending_messengers_report(messengers)
         except Exception as e:
             # Captura errores de la librería PDF y los envuelve en la excepción de dominio
+            logger.exception("Error crítico generando PDF de mensajeros")
             raise ReportGenerationError(f"Error al generar el PDF: {str(e)}")
