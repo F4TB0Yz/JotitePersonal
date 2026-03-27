@@ -80,10 +80,10 @@ export default function usePendingExports({
         if (fieldKey === 'receiverName') return detail?.receiverName || getReceiverName(pkg);
         if (fieldKey === 'receiverCity') return detail?.receiverCity || getReceiverCity(pkg);
         if (fieldKey === 'receiverAddress') return detail?.receiverAddress || getReceiverAddress(pkg);
-        if (fieldKey === 'receiverPhone') return detail?.receiverPhone || 'N/A';
+        if (fieldKey === 'receiverPhone') return detail?.receiverPhone || pkg.receiverPhone || pkg.senderPhone || 'N/A';
         if (fieldKey === 'date') return pkg.date || 'Sin Fecha';
         if (fieldKey === 'status') return detail?.status || getPackageStatus(pkg);
-        if (fieldKey === 'staff') return selectedCell?.staff || 'N/A';
+        if (fieldKey === 'staff') return pkg.deliveryUser || (selectedCell?.staff !== 'ALL' ? selectedCell?.staff : null) || 'Sin enrutar';
         return '';
     };
 
@@ -138,26 +138,23 @@ export default function usePendingExports({
             </html>
         `;
 
-        // Usar Blob URL en lugar de document.write: evita la condición de carrera
-        // con el evento load y el problema del parser con tags </script> en template literals.
+        // Imprimir via iframe oculto: no abre ventana nueva, onload es confiable
         const blob = new Blob([htmlContent], { type: 'text/html; charset=utf-8' });
         const blobUrl = URL.createObjectURL(blob);
 
-        const printWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer,width=1200,height=900');
-        if (!printWindow) {
-            window.alert('No se pudo abrir la ventana para exportar PDF. Verifica tu bloqueador de pop-ups.');
-            URL.revokeObjectURL(blobUrl);
-            return;
-        }
-
-        printWindow.onload = function () {
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+        iframe.src = blobUrl;
+        iframe.onload = function () {
             requestAnimationFrame(function () {
                 setTimeout(function () {
-                    printWindow.print();
+                    iframe.contentWindow.print();
+                    document.body.removeChild(iframe);
                     URL.revokeObjectURL(blobUrl);
                 }, 150);
             });
         };
+        document.body.appendChild(iframe);
     };
 
     const exportRecordsAsJson = async ({ records, fileLabel, scope, detailDay = null, detailDayLabel = null, staffLabelResolver }) => {
