@@ -303,6 +303,34 @@
     border: none !important; /* Sin bordes para ser invisible */
 }
 
+/* Fila de totales */
+.dash-target-table tfoot tr {
+    background-color: rgba(255, 255, 255, 0.04);
+    font-weight: 700;
+    border-top: 2px solid var(--border-color);
+}
+
+.dash-target-table tfoot td {
+    color: white;
+}
+
+/* Indicador de interactividad */
+.dash-target-table .clickable-date {
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dash-target-table .clickable-date:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--accent-color);
+}
+
+/* Estado activo cuando una fecha está seleccionada (opcional para el futuro) */
+.dash-target-table .active-date-filter {
+    background-color: var(--accent-color) !important;
+    color: white !important;
+}
+
 .dash-target-table tr:hover td:first-child {
     background-color: rgba(255, 255, 255, 0.05);
 }

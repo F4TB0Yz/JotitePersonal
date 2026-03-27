@@ -60,6 +60,11 @@ export default function PendingDashboardView() {
         loadCellDetails(staff, 'ALL');
     };
 
+    const handleDateClick = (date) => {
+        setSelectedStaff('ALL');
+        loadCellDetails('ALL', date);
+    };
+
     const handleStaffFilterToggle = (staff) => {
         if (!staff) return;
         setSelectedCell(null);
@@ -235,11 +240,26 @@ export default function PendingDashboardView() {
                             : html`<div className="dash-error">${error}</div>`)
                         : tableData.rows.length === 0
                             ? html`<div className="dash-placeholder">No hay paquetes pendientes en este rango.</div>`
-                            : html`<table className="dash-target-table">
+                            : (() => {
+                                const columnTotals = tableData.dates.reduce((acc, date) => {
+                                    acc[date] = tableData.rows.reduce((sum, row) => sum + (row.dates[date] || 0), 0);
+                                    return acc;
+                                }, {});
+                                
+                                return html`<table className="dash-target-table">
                                 <thead>
                                     <tr>
                                         <th>Empleado de entrega</th>
-                                        ${tableData.dates.map((date) => html`<th key=${date} className="date-header">${formatShortDate(date)}</th>`)}
+                                        ${tableData.dates.map((date) => html`
+                                            <th 
+                                                key=${date} 
+                                                className="date-header clickable-date"
+                                                onClick=${() => handleDateClick(date)}
+                                                title="Filtrar todos los paquetes de esta fecha"
+                                            >
+                                                ${formatShortDate(date)}
+                                            </th>
+                                        `)}
                                         <th className="total-header">Total</th>
                                         <th className="filler-column"></th>
                                     </tr>
@@ -325,7 +345,24 @@ export default function PendingDashboardView() {
                                         </tr>`;
                                     })}
                                 </tbody>
-                            </table>`}
+                                <tfoot>
+                                    <tr>
+                                        <td>TOTALES</td>
+                                        ${tableData.dates.map((date) => html`
+                                            <td 
+                                                key=${`total-${date}`} 
+                                                className="total-cell date-cell clickable-date"
+                                                onClick=${() => handleDateClick(date)}
+                                            >
+                                                ${columnTotals[date] || 0}
+                                            </td>
+                                        `)}
+                                        <td className="total-cell dash-total-cell">${summary.total}</td>
+                                        <td className="filler-column"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>`;
+                        })()}
                 </div>
                 <${PendingDetailPanel}
                     selectedCell=${selectedCell}
