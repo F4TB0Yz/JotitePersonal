@@ -111,7 +111,7 @@ export default function usePendingExports({
             return `<tr>${cells}</tr>`;
         }).join('');
 
-        const htmlContent = `
+        const htmlContent = `<!DOCTYPE html>
             <html>
                 <head>
                     <meta charset="utf-8" />
@@ -134,13 +134,23 @@ export default function usePendingExports({
                         <thead><tr>${tableHead}</tr></thead>
                         <tbody>${tableRows}</tbody>
                     </table>
+                    <script>
+                        // Inversión de control: Imprimir solo cuando el motor haya pintado la pantalla
+                        window.onload = function() {
+                            requestAnimationFrame(function() {
+                                setTimeout(function() {
+                                    window.print();
+                                }, 150);
+                            });
+                        };
+                    </script>
                 </body>
             </html>
         `;
 
         const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=900');
         if (!printWindow) {
-            window.alert('No se pudo abrir la ventana para exportar PDF.');
+            window.alert('No se pudo abrir la ventana para exportar PDF. Verifica tu bloqueador de pop-ups.');
             return;
         }
 
@@ -148,9 +158,6 @@ export default function usePendingExports({
         printWindow.document.write(htmlContent);
         printWindow.document.close();
         printWindow.focus();
-        setTimeout(() => {
-            printWindow.print();
-        }, 300);
     };
 
     const exportRecordsAsJson = async ({ records, fileLabel, scope, detailDay = null, detailDayLabel = null, staffLabelResolver }) => {
