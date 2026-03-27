@@ -134,16 +134,6 @@ export default function usePendingExports({
                         <thead><tr>${tableHead}</tr></thead>
                         <tbody>${tableRows}</tbody>
                     </table>
-                    <script>
-                        // Inversión de control: Imprimir solo cuando el motor haya pintado la pantalla
-                        window.onload = function() {
-                            requestAnimationFrame(function() {
-                                setTimeout(function() {
-                                    window.print();
-                                }, 150);
-                            });
-                        };
-                    </script>
                 </body>
             </html>
         `;
@@ -153,6 +143,15 @@ export default function usePendingExports({
             window.alert('No se pudo abrir la ventana para exportar PDF. Verifica tu bloqueador de pop-ups.');
             return;
         }
+
+        // Inversión de control desde el padre: evita el bug del parser con </script> en template literals
+        printWindow.onload = function () {
+            requestAnimationFrame(function () {
+                setTimeout(function () {
+                    printWindow.print();
+                }, 150);
+            });
+        };
 
         printWindow.document.open();
         printWindow.document.write(htmlContent);
