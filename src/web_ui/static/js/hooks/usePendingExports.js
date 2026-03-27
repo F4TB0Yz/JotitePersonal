@@ -138,25 +138,26 @@ export default function usePendingExports({
             </html>
         `;
 
-        const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=900');
+        // Usar Blob URL en lugar de document.write: evita la condición de carrera
+        // con el evento load y el problema del parser con tags </script> en template literals.
+        const blob = new Blob([htmlContent], { type: 'text/html; charset=utf-8' });
+        const blobUrl = URL.createObjectURL(blob);
+
+        const printWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer,width=1200,height=900');
         if (!printWindow) {
             window.alert('No se pudo abrir la ventana para exportar PDF. Verifica tu bloqueador de pop-ups.');
+            URL.revokeObjectURL(blobUrl);
             return;
         }
 
-        // Inversión de control desde el padre: evita el bug del parser con </script> en template literals
         printWindow.onload = function () {
             requestAnimationFrame(function () {
                 setTimeout(function () {
                     printWindow.print();
+                    URL.revokeObjectURL(blobUrl);
                 }, 150);
             });
         };
-
-        printWindow.document.open();
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
-        printWindow.focus();
     };
 
     const exportRecordsAsJson = async ({ records, fileLabel, scope, detailDay = null, detailDayLabel = null, staffLabelResolver }) => {
